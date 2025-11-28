@@ -1,0 +1,105 @@
+============================= test session starts =============================
+platform win32 -- Python 3.11.9, pytest-9.0.0, pluggy-1.6.0 -- C:\Users\USER\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\USER\AutomationService\automation-service
+configfile: pytest.ini
+plugins: anyio-4.11.0, logfire-4.14.2, asyncio-1.3.0, cov-7.0.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 55 items
+
+tests/test_code_reviewer.py::test_review_commit_success PASSED           [  1%]
+tests/test_code_reviewer.py::test_review_commit_no_diff PASSED           [  3%]
+tests/test_code_reviewer.py::test_review_commit_llm_failure PASSED       [  5%]
+tests/test_code_reviewer.py::test_review_commit_post_as_issue PASSED     [  7%]
+tests/test_config.py::TestConfig::test_get_repo_full_name PASSED         [  9%]
+tests/test_config.py::TestConfig::test_validate_failure PASSED           [ 10%]
+tests/test_config.py::TestConfig::test_validate_success PASSED           [ 12%]
+tests/test_github_client.py::test_get_commit_diff_success PASSED         [ 14%]
+tests/test_github_client.py::test_get_commit_diff_failure PASSED         [ 16%]
+tests/test_github_client.py::test_get_commit_info_success PASSED         [ 18%]
+tests/test_github_client.py::test_get_commit_info_failure PASSED         [ 20%]
+tests/test_github_client.py::test_post_commit_comment_success PASSED     [ 21%]
+tests/test_github_client.py::test_post_commit_comment_failure PASSED     [ 23%]
+tests/test_github_client.py::test_create_issue_success PASSED            [ 25%]
+tests/test_github_client.py::test_create_issue_failure PASSED            [ 27%]
+tests/test_github_client.py::test_get_file_content_success PASSED        [ 29%]
+tests/test_github_client.py::test_get_file_content_404 PASSED            [ 30%]
+tests/test_github_client.py::test_get_file_content_failure PASSED        [ 32%]
+tests/test_github_client.py::test_update_file_success PASSED             [ 34%]
+tests/test_github_client.py::test_update_file_existing PASSED            [ 36%]
+tests/test_github_client.py::test_update_file_failure PASSED             [ 38%]
+tests/test_github_client.py::test_create_branch_success PASSED           [ 40%]
+tests/test_github_client.py::test_create_branch_failure PASSED           [ 41%]
+tests/test_github_client.py::test_create_pull_request_success PASSED     [ 43%]
+tests/test_github_client.py::test_create_pull_request_failure PASSED     [ 45%]
+tests/test_github_client.py::test_get_recent_commits_success PASSED      [ 47%]
+tests/test_github_client.py::test_get_recent_commits_failure PASSED      [ 49%]
+tests/test_llm_client.py::test_init_openai_success PASSED                [ 50%]
+tests/test_llm_client.py::test_init_anthropic_success PASSED             [ 52%]
+tests/test_llm_client.py::test_init_invalid_provider PASSED              [ 54%]
+tests/test_llm_client.py::test_init_missing_api_key PASSED               [ 56%]
+tests/test_llm_client.py::test_generate_openai PASSED                    [ 58%]
+tests/test_llm_client.py::test_generate_anthropic PASSED                 [ 60%]
+tests/test_llm_client.py::test_generate_failure PASSED                   [ 61%]
+tests/test_llm_client.py::test_analyze_code PASSED                       [ 63%]
+tests/test_llm_client.py::test_analyze_code_truncated PASSED             [ 65%]
+tests/test_llm_client.py::test_update_readme PASSED                      [ 67%]
+tests/test_llm_client.py::test_update_spec PASSED                        [ 69%]
+tests/test_orchestrator.py::test_run_automation_success PASSED           [ 70%]
+tests/test_orchestrator.py::test_run_automation_invalid_payload PASSED   [ 72%]
+tests/test_orchestrator.py::test_extract_diff_info_valid PASSED          [ 74%]
+tests/test_orchestrator.py::test_extract_diff_info_invalid PASSED        [ 76%]
+tests/test_orchestrator.py::test_run_parallel_tasks_success PASSED       [ 78%]
+tests/test_orchestrator.py::test_run_parallel_tasks_exception PASSED     [ 80%]
+tests/test_orchestrator.py::test_code_review_failure PASSED              [ 81%]
+tests/test_orchestrator.py::test_readme_update_skipped PASSED            [ 83%]
+tests/test_readme_updater.py::test_update_readme_success PASSED          [ 85%]
+tests/test_readme_updater.py::test_update_readme_no_changes PASSED       [ 87%]
+tests/test_readme_updater.py::test_update_readme_failure PASSED          [ 89%]
+tests/test_spec_updater.py::test_update_spec_success PASSED              [ 90%]
+tests/test_spec_updater.py::test_update_spec_failure PASSED              [ 92%]
+tests/test_webhook_server.py::TestWebhookServer::test_health_check PASSED [ 94%]
+tests/test_webhook_server.py::TestWebhookServer::test_webhook_invalid_signature PASSED [ 96%]
+tests/test_webhook_server.py::TestWebhookServer::test_webhook_push_event FAILED [ 98%]
+tests/test_webhook_server.py::TestWebhookServer::test_webhook_valid_signature_ping PASSED [100%]
+
+================================== FAILURES ===================================
+__________________ TestWebhookServer.test_webhook_push_event __________________
+
+self = <tests.test_webhook_server.TestWebhookServer testMethod=test_webhook_push_event>
+
+    def test_webhook_push_event(self):
+        payload = {
+            "ref": "refs/heads/main",
+            "commits": [{"id": "sha1", "message": "test"}],
+            "head_commit": {"id": "sha1", "message": "test"}
+        }
+        data = json.dumps(payload).encode()
+    
+        mac = hmac.new(b'secret', msg=data, digestmod=hashlib.sha256)
+        signature = f"sha256={mac.hexdigest()}"
+    
+        headers = {
+            'X-Hub-Signature-256': signature,
+            'X-GitHub-Event': 'push',
+            'Content-Type': 'application/json'
+        }
+    
+        # Mock orchestrator
+        self.server.orchestrator.process_push.return_value = {"success": True}
+    
+        response = self.app.post('/webhook', headers=headers, data=data)
+>       self.assertEqual(response.status_code, 200)
+E       AssertionError: 500 != 200
+
+tests\test_webhook_server.py:79: AssertionError
+------------------------------ Captured log call ------------------------------
+ERROR    src.automation_agent.webhook_server:webhook_server.py:160 Error processing push event: name 'result' is not defined
+Traceback (most recent call last):
+  File "C:\Users\USER\AutomationService\automation-service\src\automation_agent\webhook_server.py", line 156, in _handle_push_event
+    "details": result
+               ^^^^^^
+NameError: name 'result' is not defined
+=========================== short test summary info ===========================
+FAILED tests/test_webhook_server.py::TestWebhookServer::test_webhook_push_event
+======================== 1 failed, 54 passed in 1.73s =========================

@@ -3,6 +3,7 @@
 import logging
 import hmac
 import hashlib
+import asyncio
 from typing import Optional
 from flask import Flask, request, jsonify
 from .config import Config
@@ -88,7 +89,7 @@ class WebhookServer:
 
             # Process push event
             payload = request.json
-            return self._handle_push_event(payload)
+            return asyncio.run(self._handle_push_event(payload))
 
     def _verify_signature(self, request) -> bool:
         """Verify GitHub webhook signature.
@@ -125,7 +126,7 @@ class WebhookServer:
         # Compare signatures (constant-time comparison)
         return hmac.compare_digest(expected_signature, signature)
 
-    def _handle_push_event(self, payload: dict) -> tuple:
+    async def _handle_push_event(self, payload: dict) -> tuple:
         """Handle GitHub push event.
 
         Args:
@@ -141,29 +142,10 @@ class WebhookServer:
                 logger.info("No commits in push event")
                 return jsonify({"message": "No commits to process"}), 200
 
-            ref = payload.get("ref", "")
-            branch = ref.split("/")[-1] if "/" in ref else ref
+            # Run automation
+            result = await self.orchestrator.run_automation(payload)
 
-            # Get the latest commit
-            head_commit = payload.get("head_commit")
-            if not head_commit:
-                logger.warning("No head commit in payload")
-                return jsonify({"error": "No head commit found"}), 400
-
-            commit_sha = head_commit.get("id")
-            commit_message = head_commit.get("message", "")
-
-            logger.info(f"Processing push event: {commit_sha[:7]} on {branch}")
-            logger.info(f"Commit message: {commit_message}")
-
-            # Run automation orchestrator
-            result = self.orchestrator.process_push(
-                commit_sha=commit_sha,
-                branch=branch,
-                commit_message=commit_message,
-            )
-
-            if result["success"]:
+            if result.get("success"):
                 return jsonify({
                     "message": "Automation completed successfully",
                     "details": result

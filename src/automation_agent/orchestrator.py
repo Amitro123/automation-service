@@ -1,7 +1,6 @@
-"""Orchestrator for coordinating all automation tasks."""
-
+import asyncio
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, List, Callable, Optional
 from .github_client import GitHubClient
 from .code_reviewer import CodeReviewer
 from .readme_updater import ReadmeUpdater
@@ -37,159 +36,212 @@ class AutomationOrchestrator:
         self.spec_updater = spec_updater
         self.config = config
 
-    def process_push(self, commit_sha: str, branch: str, commit_message: str) -> Dict[str, Any]:
-        """Process a push event and execute all automation tasks.
+    async def run_automation(self, event_payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Process a push event and execute all automation tasks in parallel.
 
         Args:
-            commit_sha: Commit SHA to process
-            branch: Branch name
-            commit_message: Commit message
+            event_payload: GitHub webhook payload
 
         Returns:
             Dictionary with results of all tasks
         """
+        diff_info = self._extract_diff_info(event_payload)
+        if not diff_info:
+            return {"success": False, "error": "Invalid payload or no commits"}
+
+        commit_sha = diff_info["commit_sha"]
+        branch = diff_info["branch"]
         logger.info(f"Starting automation orchestration for commit {commit_sha[:7]}")
 
+        # Define tasks to run in parallel
+        tasks = [
+            self._run_code_review(commit_sha),
+            self._run_readme_update(commit_sha, branch),
+            self._run_spec_update(commit_sha, branch),
+        ]
+
+        # Execute tasks
+        task_results = await self._run_parallel_tasks(tasks)
+
         results = {
-            "success": True,
+            "success": all(r.get("success", False) for r in task_results),
             "commit_sha": commit_sha,
             "branch": branch,
             "tasks": {
-                "code_review": {"status": "pending"},
-                "readme_update": {"status": "pending"},
-                "spec_update": {"status": "pending"},
+                "code_review": task_results[0],
+                "readme_update": task_results[1],
+                "spec_update": task_results[2],
             },
         }
 
-        # Task 1: Code Review
+        logger.info(f"Automation orchestration completed. Success: {results['success']}")
+        return results
+
+    def _extract_diff_info(self, payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Extract relevant information from the webhook payload.
+
+        Args:
+            payload: Webhook payload
+
+        Returns:
+            Dictionary with commit_sha, branch, and message, or None if invalid
+        """
+        try:
+            head_commit = payload.get("head_commit")
+            if not head_commit:
+                return None
+
+            ref = payload.get("ref", "")
+            if ref.startswith("refs/heads/"):
+                branch = ref.replace("refs/heads/", "", 1)
+            else:
+                branch = ref
+
+            return {
+                "commit_sha": head_commit.get("id"),
+                "branch": branch,
+                "message": head_commit.get("message", ""),
+            }
+        except Exception as e:
+            logger.error(f"Failed to extract diff info: {e}")
+            return None
+
+    async def _run_parallel_tasks(self, tasks: List[Callable]) -> List[Dict[str, Any]]:
+        """Run multiple tasks in parallel using asyncio.gather.
+
+        Args:
+            tasks: List of coroutines to execute
+
+        Returns:
+            List of results from each task
+        """
+        return await asyncio.gather(*tasks, return_exceptions=True)
+
+    async def _run_code_review(self, commit_sha: str) -> Dict[str, Any]:
+        """Run code review task."""
         try:
             logger.info("Task 1: Running code review...")
-            review_success = self.code_reviewer.review_commit(
+            # Call async method directly
+            review_success = await self.code_reviewer.review_commit(
                 commit_sha=commit_sha,
                 post_as_issue=self.config.POST_REVIEW_AS_ISSUE,
             )
-            results["tasks"]["code_review"] = {
+            return {
+                "success": review_success,
                 "status": "completed" if review_success else "failed",
                 "posted_as_issue": self.config.POST_REVIEW_AS_ISSUE,
             }
-            if not review_success:
-                results["success"] = False
         except Exception as e:
             logger.error(f"Code review failed: {e}", exc_info=True)
-            results["tasks"]["code_review"] = {"status": "error", "error": str(e)}
-            results["success"] = False
+            return {"success": False, "status": "error", "error": str(e)}
 
-        # Task 2: README Update
+    async def _run_readme_update(self, commit_sha: str, branch: str) -> Dict[str, Any]:
+        """Run README update task."""
         try:
             logger.info("Task 2: Checking README updates...")
-            updated_readme = self.readme_updater.update_readme(
+            # Call async method directly
+            updated_readme = await self.readme_updater.update_readme(
                 commit_sha=commit_sha, branch=branch
             )
 
             if updated_readme:
-                # Determine where to commit
                 if self.config.CREATE_PR:
-                    pr_result = self._create_documentation_pr(
+                    pr_result = await asyncio.to_thread(
+                        self._create_documentation_pr,
                         branch=branch,
                         readme_content=updated_readme,
-                        spec_content=None,  # Will be added later
                         commit_sha=commit_sha,
                     )
-                    results["tasks"]["readme_update"] = {
+                    return {
+                        "success": pr_result["success"],
                         "status": "completed",
                         "pr_created": pr_result["success"],
                         "pr_number": pr_result.get("pr_number"),
                     }
                 elif self.config.AUTO_COMMIT:
-                    commit_success = self.github.update_file(
+                    commit_success = await asyncio.to_thread(
+                        self.github.update_file,
                         file_path="README.md",
                         content=updated_readme,
                         message=f"docs: Auto-update README.md from {commit_sha[:7]}",
                         branch=branch,
                     )
-                    results["tasks"]["readme_update"] = {
+                    return {
+                        "success": commit_success,
                         "status": "completed" if commit_success else "failed",
                         "auto_committed": commit_success,
                     }
                 else:
-                    results["tasks"]["readme_update"] = {
+                    return {
+                        "success": True,
                         "status": "completed",
-                        "note": "Updates generated but not committed (CREATE_PR and AUTO_COMMIT both false)",
+                        "note": "Updates generated but not committed",
                     }
             else:
-                results["tasks"]["readme_update"] = {
+                return {
+                    "success": True,
                     "status": "skipped",
                     "reason": "No updates needed",
                 }
         except Exception as e:
             logger.error(f"README update failed: {e}", exc_info=True)
-            results["tasks"]["readme_update"] = {"status": "error", "error": str(e)}
-            results["success"] = False
+            return {"success": False, "status": "error", "error": str(e)}
 
-        # Task 3: Spec.md Update
+    async def _run_spec_update(self, commit_sha: str, branch: str) -> Dict[str, Any]:
+        """Run spec.md update task."""
         try:
             logger.info("Task 3: Updating spec.md...")
-            updated_spec = self.spec_updater.update_spec(
+            # Call async method directly
+            updated_spec = await self.spec_updater.update_spec(
                 commit_sha=commit_sha, branch=branch
             )
 
             if updated_spec:
                 if self.config.CREATE_PR:
-                    # If README PR was created, add spec to it; otherwise create new PR
-                    if results["tasks"]["readme_update"].get("pr_created"):
-                        # Update spec in the same PR branch
-                        pr_branch = f"automation/docs-update-{commit_sha[:7]}"
-                        commit_success = self.github.update_file(
-                            file_path="spec.md",
-                            content=updated_spec,
-                            message=f"docs: Auto-update spec.md from {commit_sha[:7]}",
-                            branch=pr_branch,
-                        )
-                        results["tasks"]["spec_update"] = {
-                            "status": "completed" if commit_success else "failed",
-                            "added_to_pr": commit_success,
-                        }
-                    else:
-                        pr_result = self._create_documentation_pr(
-                            branch=branch,
-                            readme_content=None,
-                            spec_content=updated_spec,
-                            commit_sha=commit_sha,
-                        )
-                        results["tasks"]["spec_update"] = {
-                            "status": "completed",
-                            "pr_created": pr_result["success"],
-                            "pr_number": pr_result.get("pr_number"),
-                        }
+                    # Note: In parallel execution, we can't easily append to the README PR
+                    # because we don't know if it exists yet.
+                    # For simplicity in this async version, we'll create a separate PR or
+                    # try to find an existing one (omitted for brevity, creating new one).
+                    pr_result = await asyncio.to_thread(
+                        self._create_documentation_pr,
+                        branch=branch,
+                        spec_content=updated_spec,
+                        commit_sha=commit_sha,
+                    )
+                    return {
+                        "success": pr_result["success"],
+                        "status": "completed",
+                        "pr_created": pr_result["success"],
+                        "pr_number": pr_result.get("pr_number"),
+                    }
                 elif self.config.AUTO_COMMIT:
-                    commit_success = self.github.update_file(
+                    commit_success = await asyncio.to_thread(
+                        self.github.update_file,
                         file_path="spec.md",
                         content=updated_spec,
                         message=f"docs: Auto-update spec.md from {commit_sha[:7]}",
                         branch=branch,
                     )
-                    results["tasks"]["spec_update"] = {
+                    return {
+                        "success": commit_success,
                         "status": "completed" if commit_success else "failed",
                         "auto_committed": commit_success,
                     }
                 else:
-                    results["tasks"]["spec_update"] = {
+                    return {
+                        "success": True,
                         "status": "completed",
                         "note": "Updates generated but not committed",
                     }
             else:
-                results["tasks"]["spec_update"] = {
+                return {
+                    "success": False,
                     "status": "failed",
                     "reason": "Failed to generate spec update",
                 }
-                results["success"] = False
         except Exception as e:
             logger.error(f"Spec update failed: {e}", exc_info=True)
-            results["tasks"]["spec_update"] = {"status": "error", "error": str(e)}
-            results["success"] = False
-
-        logger.info(f"Automation orchestration completed. Success: {results['success']}")
-        return results
+            return {"success": False, "status": "error", "error": str(e)}
 
     def _create_documentation_pr(
         self,
@@ -209,7 +261,9 @@ class AutomationOrchestrator:
         Returns:
             Dictionary with PR creation result
         """
-        pr_branch = f"automation/docs-update-{commit_sha[:7]}"
+        # Use a unique branch name for each type of update to avoid conflicts in parallel
+        suffix = "readme" if readme_content else "spec"
+        pr_branch = f"automation/docs-{suffix}-{commit_sha[:7]}"
 
         try:
             # Create branch
@@ -236,7 +290,7 @@ class AutomationOrchestrator:
                     return {"success": False, "error": "Failed to update spec.md"}
 
             # Create PR
-            pr_title = f"🤖 Auto-update documentation from {commit_sha[:7]}"
+            pr_title = f"🤖 Auto-update {suffix} from {commit_sha[:7]}"
             pr_body = f"""## Automated Documentation Update
 
 This PR contains automated documentation updates generated from commit `{commit_sha[:7]}`.

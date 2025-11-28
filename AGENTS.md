@@ -1,43 +1,174 @@
-# Agent Instructions
+# 🤖 AGENTS.md - GitHub Automation Agent Instructions
 
-This document provides instructions for AI agents working on this codebase.
+Instructions for AI coding agents (Windsurf, Cursor, GitHub Copilot, etc.) working on this repository.
 
-## Project Structure
+## 🎯 Project Mission
 
-The project is a Python package located in `src/automation_agent`.
+**Single responsibility**: React to GitHub push events → run 3 parallel LLM-powered tasks:
+1. **Code Review** → post intelligent feedback (comments/issues)
+2. **README Update** → detect changes → create PR with docs
+3. **Spec Update** → append structured progress log
 
--   `src/automation_agent/`: Core package code.
--   `tests/`: Test directory (needs to be populated).
--   `main.py`: Entry point (moved to `src/automation_agent/main.py`).
+**Success metric**: After every push → repo has fresh review + updated docs + progress log.
 
-## Coding Standards
+## 📁 Project Structure
 
--   **Style**: Follow PEP 8 guidelines.
--   **Docstrings**: Use Google-style docstrings for all functions and classes.
--   **Type Hinting**: Use Python type hints for all function arguments and return values.
--   **Logging**: Use the `logging` module for all output, not `print`.
+src/automation_agent/ # Core package
+├── init.py
+├── main.py # Entry point (python -m automation_agent.main)
+├── webhook_server.py # Flask webhook endpoint
+├── orchestrator.py # Coordinates 3 parallel tasks
+├── code_reviewer.py # LLM-powered code analysis
+├── readme_updater.py # Smart README updates from diffs
+├── spec_updater.py # Progress documentation
+├── github_client.py # GitHub API wrapper
+├── llm_client.py # OpenAI/Anthropic abstraction
+├── config.py # .env loading + validation
+└── utils.py # Shared utilities
 
-## Testing
+tests/ # pytest tests (mock external services)
+.env.example # Configuration template
+requirements.txt # Dependencies
+README.md # User documentation
+spec.md # Product spec + progress log
 
--   Use `pytest` for testing.
--   Mock external services (`GitHubClient`, `LLMClient`, `requests`) in tests.
--   Do not make real API calls during tests.
--   Aim for high test coverage.
 
-## Workflow
+## 🚀 Setup & Run
 
-1.  **Read `spec.md`**: Understand the current state and tasks.
-2.  **Verify**: Always verify changes by running the code or tests.
-3.  **Config**: Use `config.py` for all configuration. Do not hardcode values.
-4.  **Dependencies**: Add new dependencies to `requirements.txt`.
+Install
+git clone https://github.com/Amitro123/GithubAgent.git
+cd GithubAgent
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
 
-## Running the Application
+Configure
+cp .env.example .env
 
-To run the application locally:
+Edit .env: GITHUB_TOKEN, OPENAI_API_KEY, etc.
+Run locally
+export PYTHONPATH=$PYTHONPATH:$(pwd)/src # Linux/Mac
+python -m automation_agent.main # http://localhost:8080/
 
-```bash
-export PYTHONPATH=$PYTHONPATH:$(pwd)/src
-python -m automation_agent.main
-```
+**Health check**: `curl http://localhost:8080/` → `{"status": "ok"}`
 
-Ensure environment variables are set (see `.env.example`).
+## 🛠️ Core Workflow (NEVER BREAK THIS)
+
+GitHub Push Event → webhook_server.py
+
+Verify HMAC signature → extract diff/commit SHA
+
+orchestrator.py → run 3 tasks IN PARALLEL:
+↳ code_reviewer.py → post comment/issue
+↳ readme_updater.py → create PR (if changes)
+↳ spec_updater.py → append to spec.md
+
+Log results + GitHub artifacts created
+
+## 📋 Agent Task Priorities
+
+When working on this repo, focus on these **in order**:
+
+### 1. **Core Flow Reliability** (Highest priority)
+✅ Make webhook → orchestrator → GitHub side-effects robust
+✅ Add retry logic for transient API failures
+✅ Make tasks idempotent (handle webhook retries)
+✅ Improve error handling + logging
+
+
+### 2. **LLM Output Quality**
+✅ Better prompts for code review (actionable, structured)
+✅ Smarter README change detection (functions/classes/APIs)
+✅ spec.md entries: summary + decisions + next steps
+✅ Chunk large diffs appropriately
+
+
+### 3. **Configuration & Extensibility**
+✅ Add multi-LLM support (Gemini, local models)
+✅ Per-branch policies (stricter on main)
+✅ Agent platform integration (Windsurf/Gravity hooks)
+
+
+## 🧪 Testing Rules
+
+**ALWAYS test changes with:**
+1. Unit tests (mock everything external)
+pytest tests/ -v
+
+2. Manual end-to-end
+echo "test" >> test.txt
+git add test.txt && git commit -m "test automation" && git push
+
+text
+
+**Mock these in tests:**
+- `github_client.py` (GitHub API)
+- `llm_client.py` (OpenAI/Anthropic)  
+- `requests` (webhook simulation)
+
+## 💻 Coding Standards
+
+✅ DO: Type hints + Google docstrings
+def analyze_diff(diff: str, context: Dict[str, str]) -> ReviewResult:
+"""Analyzes git diff and returns structured review.
+
+text
+Args:
+    diff: Raw git diff content
+    context: File contents around changes
+    
+Returns:
+    ReviewResult dataclass with strengths/issues/suggestions
+"""
+pass
+❌ NEVER: print(), hardcoded values, missing types
+text
+
+**Dependencies**: Add to `requirements.txt`, never `pip freeze`.
+
+## 🔒 Security Rules
+
+❌ NEVER log:
+
+GITHUB_TOKEN, API keys
+
+Full git diffs (may contain secrets)
+
+Raw webhook payloads
+
+✅ ALWAYS:
+
+Verify webhook HMAC signature
+
+Use minimal GitHub token scopes
+
+Validate/sanitize LLM outputs before posting
+
+
+## 🎯 Current spec.md Tasks
+
+Read `spec.md` first, then prioritize:
+1. ✅ Core functionality working
+2. 🔄 Comprehensive testing (Phase 3)
+3. 🚀 Deployment readiness (Phase 4)
+4. 💎 Refactoring + agent platform integration
+
+## 🚫 DON'T TOUCH (Unless Requested)
+
+❌ Don't change webhook payload format
+❌ Don't remove parallel task execution
+❌ Don't hardcode config values
+❌ Don't use print() for logging
+❌ Don't make real API calls in tests
+
+
+## 📈 Success Metrics for Agents
+
+Your changes are successful if:
+✅ pytest passes 100%
+✅ Local webhook server starts cleanly
+✅ Test push → 3 tasks complete → GitHub artifacts created
+✅ Logs are structured + no secrets exposed
+✅ README/spec.md stay accurate after changes
+
+undefined

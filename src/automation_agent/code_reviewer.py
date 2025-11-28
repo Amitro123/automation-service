@@ -21,7 +21,7 @@ class CodeReviewer:
         self.github = github_client
         self.llm = llm_client
 
-    def review_commit(self, commit_sha: str, post_as_issue: bool = False) -> bool:
+    async def review_commit(self, commit_sha: str, post_as_issue: bool = False) -> bool:
         """Review a commit and post findings.
 
         Args:
@@ -45,13 +45,14 @@ class CodeReviewer:
             logger.error("Failed to fetch commit info")
             return False
 
-        commit_message = commit_info.get("commit", {}).get("message", "")
-        author = commit_info.get("commit", {}).get("author", {}).get("name", "Unknown")
-
         # Generate code review
-        review = self._analyze_code_changes(diff, commit_message, author)
-        if not review:
-            logger.error("Failed to generate code review")
+        try:
+            review = await self.llm.analyze_code(diff)
+            if not review:
+                logger.error("Failed to generate code review")
+                return False
+        except Exception as e:
+            logger.error(f"LLM analysis failed: {e}")
             return False
 
         # Post review
@@ -59,81 +60,12 @@ class CodeReviewer:
             title = f"🤖 Code Review: {commit_sha[:7]}"
             issue_number = self.github.create_issue(
                 title=title,
-                body=review,
+                body=self._format_review(review),
                 labels=["automated-review", "code-quality"]
             )
             return issue_number is not None
         else:
-            return self.github.post_commit_comment(commit_sha, review)
-
-    def _analyze_code_changes(
-        self, diff: str, commit_message: str, author: str
-    ) -> Optional[str]:
-        """Analyze code changes using LLM.
-
-        Args:
-            diff: Git diff content
-            commit_message: Commit message
-            author: Commit author
-
-        Returns:
-            Formatted review text or None if analysis fails
-        """
-        prompt = self._build_review_prompt(diff, commit_message, author)
-        
-        try:
-            analysis = self.llm.generate(prompt, max_tokens=2000)
-            return self._format_review(analysis)
-        except Exception as e:
-            logger.error(f"LLM analysis failed: {e}")
-            return None
-
-    def _build_review_prompt(self, diff: str, commit_message: str, author: str) -> str:
-        """Build prompt for LLM code review.
-
-        Args:
-            diff: Git diff content
-            commit_message: Commit message
-            author: Commit author
-
-        Returns:
-            Formatted prompt string
-        """
-        # Truncate diff if too long (keep first 8000 chars)
-        if len(diff) > 8000:
-            diff = diff[:8000] + "\n\n[... diff truncated for analysis ...]\n"
-
-        return f"""You are an expert code reviewer. Analyze the following code changes and provide a comprehensive review.
-
-**Commit Information:**
-- Author: {author}
-- Message: {commit_message}
-
-**Code Changes (Git Diff):**
-```diff
-{diff}
-```
-
-**Review Instructions:**
-Provide a detailed code review covering:
-
-1. **Code Quality**: Assess readability, maintainability, and adherence to best practices
-2. **Potential Bugs**: Identify any logic errors, edge cases, or potential runtime issues
-3. **Security Concerns**: Flag any security vulnerabilities or unsafe practices
-4. **Performance**: Note any performance implications or optimization opportunities
-5. **Best Practices**: Suggest improvements aligned with language/framework conventions
-6. **Testing**: Comment on test coverage and testing approach if applicable
-
-**Output Format:**
-Structure your review as:
-- ✅ **Strengths**: What's done well
-- ⚠️ **Issues Found**: Critical problems that need fixing
-- 💡 **Suggestions**: Recommendations for improvement
-- 🔒 **Security**: Security-related observations
-- 📝 **Summary**: Overall assessment and priority actions
-
-Be constructive, specific, and actionable. Reference line numbers or code snippets when relevant.
-"""
+            return self.github.post_commit_comment(commit_sha, self._format_review(review))
 
     def _format_review(self, analysis: str) -> str:
         """Format the LLM analysis into a GitHub-friendly review.

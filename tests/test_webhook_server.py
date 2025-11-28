@@ -2,7 +2,7 @@ import unittest
 import json
 import hashlib
 import hmac
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, AsyncMock
 from src.automation_agent.webhook_server import WebhookServer
 from src.automation_agent.config import Config
 
@@ -73,8 +73,8 @@ class TestWebhookServer(unittest.TestCase):
         }
 
         # Mock orchestrator
-        self.server.orchestrator.process_push.return_value = {"success": True}
+        self.server.orchestrator.run_automation = AsyncMock(return_value={"success": True})
 
         response = self.app.post('/webhook', headers=headers, data=data)
         self.assertEqual(response.status_code, 200)
-        self.server.orchestrator.process_push.assert_called_once()
+        self.server.orchestrator.run_automation.assert_called_once()

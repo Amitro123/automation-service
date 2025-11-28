@@ -2,25 +2,31 @@
 
 An autonomous GitHub automation system that triggers on push events to perform intelligent code review, automatic README updates, and project progress documentation.
 
+## 💡 Why This Agent?
+
+- **Reduces repetitive code review work** - highlights risky changes and suggests fixes automatically  
+- **Keeps docs always fresh** - README and spec.md stay in sync with actual code changes  
+- **Intelligent layer over GitHub** - uses LLMs + orchestration instead of rigid YAML workflows  
+
 ## ✨ Features
 
 ### 1. 🔍 Automated Code Review
-- **Intelligent Analysis**: Uses LLM (GPT-4 or Claude) to analyze code changes
-- **Comprehensive Feedback**: Covers code quality, bugs, security, performance, and best practices
-- **Flexible Output**: Post as commit comments or GitHub issues
-- **Structured Reviews**: Organized sections for strengths, issues, suggestions, and security concerns
+- **Intelligent Analysis**: Uses LLM (GPT-4o / Claude 3.5) to analyze code changes
+- **Comprehensive Feedback**: Code quality, bugs, security, performance, best practices
+- **Flexible Output**: Commit comments, PR comments, or GitHub issues
+- **Structured Reviews**: Strengths, issues, suggestions, security concerns
 
 ### 2. 📝 Automatic README Updates
-- **Smart Detection**: Identifies new functions, classes, API changes, and dependency updates
-- **Context-Aware**: Analyzes git diffs to understand what changed
-- **Preserves Structure**: Maintains existing README format and tone
-- **Complete Updates**: Updates relevant sections without removing unrelated content
+- **Smart Detection**: Identifies new functions, classes, APIs, dependencies
+- **Context-Aware**: Analyzes git diffs to understand changes
+- **Preserves Structure**: Maintains existing format/tone, touches only relevant sections
+- **Safe Updates**: Creates PRs (configurable) instead of direct commits
 
 ### 3. 📊 Project Progress Documentation (spec.md)
-- **Development Log**: Tracks project evolution with each push
-- **Comprehensive Entries**: Includes change summaries, features, architecture decisions, and milestones
-- **Historical Context**: Considers recent commit history for better insights
-- **Next Steps**: Suggests remaining tasks based on current state
+- **Development Log**: Tracks evolution with structured entries per push
+- **Comprehensive Entries**: Change summaries, architecture decisions, milestones
+- **Historical Context**: Considers recent commits for insights
+- **Next Steps**: Suggests remaining tasks automatically
 
 ## 🏗️ Architecture
 
@@ -67,111 +73,89 @@ An autonomous GitHub automation system that triggers on push events to perform i
 
 ### Prerequisites
 - Python 3.9+
-- GitHub account with repository access
-- GitHub Personal Access Token
+- GitHub Personal Access Token (repo + issues + pull_requests scope)
 - OpenAI API key or Anthropic API key
 
 ### Installation
-
 ```bash
-# Clone repository
 git clone https://github.com/Amitro123/GithubAgent.git
 cd GithubAgent
 git checkout automation-agent-setup
 
-# Create virtual environment
 python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+# Linux/Mac
+source venv/bin/activate
+# Windows
+venv\Scripts\activate
 
-# Install dependencies
 pip install -r requirements.txt
 
-# Configure environment
 cp .env.example .env
-# Edit .env with your credentials
 ```
 
-### Configuration
+Edit `.env` with your credentials.
 
-Edit `.env`:
-
+### Run Locally
 ```bash
+# Ensure src is in PYTHONPATH
+# Windows (PowerShell)
+$env:PYTHONPATH = "$PWD/src"
+# Linux/Mac
+export PYTHONPATH=$PYTHONPATH:$(pwd)/src
+
+python -m automation_agent.main
+```
+
+Server runs on http://localhost:8080/
+
+## ⚙️ Configuration
+
+**.env file:**
+```ini
+# GitHub
 GITHUB_TOKEN=ghp_your_token_here
 GITHUB_WEBHOOK_SECRET=your_secret_here
 REPOSITORY_OWNER=your_username
 REPOSITORY_NAME=your_repo
 
+# LLM
 LLM_PROVIDER=openai
 OPENAI_API_KEY=sk-your_key_here
+LLM_MODEL=gpt-4o-mini
 
+# Behavior
 CREATE_PR=True
 AUTO_COMMIT=False
 POST_REVIEW_AS_ISSUE=False
+
+# Optional: Agent Platforms
+GRAVITY_ENABLED=False
+GRAVITY_API_KEY=
+GRAVITY_WORKFLOW_ID=
 ```
 
-### Run
+## 🧲 Agent Platform Integration (Optional)
 
-```bash
-python -m automation_agent.main
-```
+Works with **Windsurf**, **Gravity**, **n8n**, or any agent orchestrator:
 
-See [SETUP.md](SETUP.md) for detailed setup instructions.
+GitHub Push → Agent Platform Webhook → Orchestrator → GitHub API
+
+**Example flow:**
+1. Platform receives webhook → normalizes payload
+2. Calls `code_reviewer.py` → posts review comment/issue  
+3. Calls `readme_updater.py` → creates documentation PR
+4. Calls `spec_updater.py` → appends progress entry
+5. Platform handles retries, logging, notifications
 
 ## 📋 Workflow
 
-1. **Developer pushes code** → GitHub webhook triggers
-2. **Webhook server receives event** → Verifies signature, extracts commit data
-3. **Orchestrator executes tasks**:
-   - **Code Review**: Analyzes diff, generates review, posts comment/issue
-   - **README Update**: Detects changes, updates documentation, creates PR
-   - **Spec Update**: Documents progress, appends to spec.md
-4. **Results posted** → PR created or files committed
-
-## 🔒 Security
-
-- **Webhook Signature Verification**: HMAC-SHA256 validation prevents unauthorized requests
-- **Environment Variables**: Sensitive credentials stored securely
-- **Token Permissions**: Minimal required GitHub permissions
-- **HTTPS Required**: Webhook endpoint must use HTTPS in production
-
-## ⚙️ Configuration Options
-
-### Automation Behavior
-
-| Option | Description | Default |
-|--------|-------------|---------|
-| `CREATE_PR` | Create PRs for documentation updates | `True` |
-| `AUTO_COMMIT` | Directly commit to branch (use with caution) | `False` |
-| `POST_REVIEW_AS_ISSUE` | Post reviews as issues instead of comments | `False` |
-
-### LLM Configuration
-
-| Option | Description | Example |
-|--------|-------------|---------|
-| `LLM_PROVIDER` | LLM provider to use | `openai` or `anthropic` |
-| `LLM_MODEL` | Model name | `gpt-4-turbo-preview` |
-| `OPENAI_API_KEY` | OpenAI API key | `sk-...` |
-| `ANTHROPIC_API_KEY` | Anthropic API key | `sk-ant-...` |
-
-## 📦 Project Structure
-
-```
-automation_agent/
-├── __init__.py              # Package initialization
-├── config.py                # Configuration management
-├── github_client.py         # GitHub API wrapper
-├── llm_client.py           # LLM client (OpenAI/Anthropic)
-├── code_reviewer.py        # Code review module
-├── readme_updater.py       # README update module
-├── spec_updater.py         # Spec documentation module
-├── orchestrator.py         # Task coordination
-├── webhook_server.py       # Flask webhook server
-└── main.py                 # Entry point
-
-requirements.txt            # Python dependencies
-.env.example               # Environment template
-SETUP.md                   # Setup instructions
-```
+1. **Developer pushes code** → webhook triggers
+2. **Webhook verifies signature** → extracts diff/commit data  
+3. **Orchestrator runs 3 parallel tasks:**
+   - Code review → comment/issue
+   - README update → PR (if changes detected)
+   - spec.md update → append entry
+4. **Results posted** → repo stays documented automatically
 
 ## 🧪 Testing
 
@@ -180,81 +164,56 @@ SETUP.md                   # Setup instructions
 curl http://localhost:8080/
 ```
 
-### Test Push Event
+### Test Full Flow
 ```bash
-echo "# Test" >> test.txt
+echo "# Test change" >> test.txt
 git add test.txt
 git commit -m "test: trigger automation"
 git push
 ```
 
-### Expected Results
-1. ✅ Code review posted as commit comment or issue
-2. ✅ PR created with README updates (if changes detected)
-3. ✅ spec.md updated with progress entry
+**Expected results:**
+✅ Code review comment/issue  
+✅ README PR (if applicable)  
+✅ spec.md entry appended [web:35][memory:25]
+
+## 📦 Project Structure
+
+```
+automation_agent/
+├── src/
+│   └── automation_agent/
+│       ├── webhook_server.py # Flask webhook endpoint
+│       ├── orchestrator.py # Coordinates 3 parallel tasks
+│       ├── code_reviewer.py # LLM-powered code analysis
+│       ├── readme_updater.py # Smart README updates
+│       ├── spec_updater.py # Progress documentation
+│       ├── github_client.py # GitHub API wrapper
+│       ├── llm_client.py # OpenAI/Anthropic abstraction
+│       └── main.py # Entry point
+```
+
+## 🗺️ Roadmap
+
+- 🔄 Multi-LLM support (Gemini, local models)
+- 🔗 Multi-repo orchestration  
+- 🎛️ Per-branch policies (stricter main, relaxed feature branches)
+- 🔔 Integrations: Slack/Jira/n8n notifications
+- 📊 Metrics dashboard for review quality/velocity
+
+## 🔒 Security
+
+- HMAC-SHA256 webhook signature verification
+- Minimal GitHub token scopes
+- No logging of secrets/diffs
+- Environment-only credential storage
 
 ## 🌐 Deployment
 
-### Local Development
-Use ngrok or localtunnel for testing:
-```bash
-ngrok http 8080
-```
+**Local dev:** `ngrok http 8080`  
+**Production:** Docker, Railway, Render, or agent platforms
 
-### Production Options
-- **Cloud VM**: AWS EC2, DigitalOcean, Google Cloud
-- **Docker**: Containerized deployment
-- **Serverless**: AWS Lambda + API Gateway
-- **Platform**: Heroku, Railway, Render
-
-See [SETUP.md](SETUP.md) for detailed deployment instructions.
-
-## 🔧 Troubleshooting
-
-### Common Issues
-
-**Webhook Signature Verification Failed**
-- Verify `GITHUB_WEBHOOK_SECRET` matches webhook configuration
-
-**LLM API Errors**
-- Check API key validity and quota
-- Test with smaller diffs
-- Switch LLM provider if needed
-
-**Files Not Updated**
-- Verify `CREATE_PR` or `AUTO_COMMIT` is enabled
-- Check GitHub token permissions
-- Review logs for errors
-
-**Webhook Not Receiving Events**
-- Ensure webhook URL is publicly accessible
-- Check webhook deliveries on GitHub
-- Verify server is running
-
-## 📚 Documentation
-
-- **[SETUP.md](SETUP.md)**: Complete setup and deployment guide
-- **[.env.example](.env.example)**: Configuration template
-- **Code Comments**: Inline documentation in source files
-
-## 🤝 Contributing
-
-Contributions welcome! Please:
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
+See [SETUP.md](SETUP.md)
 
 ## 📄 License
-
-MIT License - see LICENSE file for details
-
-## 🙏 Acknowledgments
-
-- OpenAI and Anthropic for LLM APIs
-- GitHub for webhook infrastructure
-- Flask for web framework
-
----
-
-**Built with ❤️ for automated code quality and documentation**
+MIT

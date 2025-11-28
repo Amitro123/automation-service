@@ -1,8 +1,9 @@
 """LLM client supporting OpenAI and Anthropic."""
 
 import logging
-from typing import Optional
+from typing import Optional, Dict, Any
 import os
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -36,32 +37,32 @@ class LLMClient:
     def _initialize_openai(self):
         """Initialize OpenAI client."""
         try:
-            import openai
+            from openai import AsyncOpenAI
             self.api_key = self.api_key or os.getenv("OPENAI_API_KEY")
             if not self.api_key:
                 raise ValueError("OpenAI API key not provided")
             
-            self._client = openai.OpenAI(api_key=self.api_key)
+            self._client = AsyncOpenAI(api_key=self.api_key)
             self.model = self.model or "gpt-4-turbo-preview"
-            logger.info(f"Initialized OpenAI client with model {self.model}")
+            logger.info(f"Initialized AsyncOpenAI client with model {self.model}")
         except ImportError:
             raise ImportError("OpenAI package not installed. Run: pip install openai")
 
     def _initialize_anthropic(self):
         """Initialize Anthropic client."""
         try:
-            import anthropic
+            from anthropic import AsyncAnthropic
             self.api_key = self.api_key or os.getenv("ANTHROPIC_API_KEY")
             if not self.api_key:
                 raise ValueError("Anthropic API key not provided")
             
-            self._client = anthropic.Anthropic(api_key=self.api_key)
+            self._client = AsyncAnthropic(api_key=self.api_key)
             self.model = self.model or "claude-3-opus-20240229"
-            logger.info(f"Initialized Anthropic client with model {self.model}")
+            logger.info(f"Initialized AsyncAnthropic client with model {self.model}")
         except ImportError:
             raise ImportError("Anthropic package not installed. Run: pip install anthropic")
 
-    def generate(self, prompt: str, max_tokens: int = 1000, temperature: float = 0.7) -> str:
+    async def generate(self, prompt: str, max_tokens: int = 1000, temperature: float = 0.7) -> str:
         """Generate text using the configured LLM.
 
         Args:
@@ -76,25 +77,16 @@ class LLMClient:
             Exception: If generation fails
         """
         if self.provider == "openai":
-            return self._generate_openai(prompt, max_tokens, temperature)
+            return await self._generate_openai(prompt, max_tokens, temperature)
         elif self.provider == "anthropic":
-            return self._generate_anthropic(prompt, max_tokens, temperature)
+            return await self._generate_anthropic(prompt, max_tokens, temperature)
         else:
             raise ValueError(f"Unsupported provider: {self.provider}")
 
-    def _generate_openai(self, prompt: str, max_tokens: int, temperature: float) -> str:
-        """Generate text using OpenAI.
-
-        Args:
-            prompt: Input prompt
-            max_tokens: Maximum tokens
-            temperature: Sampling temperature
-
-        Returns:
-            Generated text
-        """
+    async def _generate_openai(self, prompt: str, max_tokens: int, temperature: float) -> str:
+        """Generate text using OpenAI."""
         try:
-            response = self._client.chat.completions.create(
+            response = await self._client.chat.completions.create(
                 model=self.model,
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=max_tokens,
@@ -105,19 +97,10 @@ class LLMClient:
             logger.error(f"OpenAI generation failed: {e}")
             raise
 
-    def _generate_anthropic(self, prompt: str, max_tokens: int, temperature: float) -> str:
-        """Generate text using Anthropic.
-
-        Args:
-            prompt: Input prompt
-            max_tokens: Maximum tokens
-            temperature: Sampling temperature
-
-        Returns:
-            Generated text
-        """
+    async def _generate_anthropic(self, prompt: str, max_tokens: int, temperature: float) -> str:
+        """Generate text using Anthropic."""
         try:
-            response = self._client.messages.create(
+            response = await self._client.messages.create(
                 model=self.model,
                 max_tokens=max_tokens,
                 temperature=temperature,
@@ -127,3 +110,96 @@ class LLMClient:
         except Exception as e:
             logger.error(f"Anthropic generation failed: {e}")
             raise
+
+    async def analyze_code(self, diff: str) -> str:
+        """Analyze code changes and provide a review.
+
+        Args:
+            diff: Git diff content
+
+        Returns:
+            Code review text
+        """
+        # Truncate diff if too long
+        if len(diff) > 8000:
+            diff = diff[:8000] + "\n\n[... diff truncated ...]"
+
+        prompt = f"""You are an expert code reviewer. Analyze the following code changes (git diff) and provide a comprehensive review.
+
+Code Changes:
+```diff
+{diff}
+```
+
+Instructions:
+1. Analyze code quality, potential bugs, security issues, and performance.
+2. Provide specific, actionable feedback.
+3. Structure the review with clear headings (Strengths, Issues, Suggestions).
+4. Be constructive and professional.
+
+Review:"""
+        return await self.generate(prompt, max_tokens=2000)
+
+    async def update_readme(self, diff: str, current_readme: str) -> str:
+        """Generate updates for README.md based on code changes.
+
+        Args:
+            diff: Git diff content
+            current_readme: Current README content
+
+        Returns:
+            Updated README content
+        """
+        if len(diff) > 8000:
+            diff = diff[:8000] + "\n\n[... diff truncated ...]"
+
+        prompt = f"""You are a technical documentation expert. Update the README.md based on the following code changes.
+
+Code Changes:
+```diff
+{diff}
+```
+
+Current README:
+```markdown
+{current_readme}
+```
+
+Instructions:
+1. Identify new features, configuration changes, or usage updates from the diff.
+2. Update the README to reflect these changes.
+3. Return the FULL updated README content in markdown format.
+4. Do not include any conversational text, just the markdown.
+
+Updated README:"""
+        return await self.generate(prompt, max_tokens=4000)
+
+    async def update_spec(self, commit_info: Dict[str, Any], current_spec: str) -> str:
+        """Update spec.md based on commit info.
+
+        Args:
+            commit_info: Commit information dictionary
+            current_spec: Current spec.md content
+
+        Returns:
+            Updated spec.md content
+        """
+        commit_msg = commit_info.get("message", "")
+        
+        prompt = f"""You are a product manager. Update the spec.md to reflect the latest progress.
+
+Commit Message: {commit_msg}
+
+Current Spec:
+```markdown
+{current_spec}
+```
+
+Instructions:
+1. Update the "Progress & Milestones" or "Current Tasks" section based on the commit message.
+2. Mark completed tasks as done.
+3. Return the FULL updated spec.md content.
+4. Do not include any conversational text, just the markdown.
+
+Updated Spec:"""
+        return await self.generate(prompt, max_tokens=4000)
