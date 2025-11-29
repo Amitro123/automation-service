@@ -17,7 +17,7 @@ async def test_review_commit_success(code_reviewer, mock_github_client, mock_llm
             "author": {"name": "Test User"}
         }
     }
-    mock_llm_client.analyze_code.return_value = "Code review analysis"
+    mock_llm_client.analyze_code.return_value = '{"strengths": ["Good"], "issues": [], "suggestions": []}'
     mock_github_client.post_commit_comment.return_value = True
 
     # Run review
@@ -54,7 +54,7 @@ async def test_review_commit_post_as_issue(code_reviewer, mock_github_client, mo
     """Test posting review as an issue."""
     mock_github_client.get_commit_diff.return_value = "diff content"
     mock_github_client.get_commit_info.return_value = {"commit": {}}
-    mock_llm_client.analyze_code.return_value = "Analysis"
+    mock_llm_client.analyze_code.return_value = '{"strengths": ["Good"], "issues": [], "suggestions": []}'
     mock_github_client.create_issue.return_value = 123
     
     result = await code_reviewer.review_commit("sha123", post_as_issue=True)

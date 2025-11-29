@@ -118,7 +118,7 @@ class LLMClient:
             diff: Git diff content
 
         Returns:
-            Code review text
+            Code review JSON string
         """
         # Truncate diff if too long
         if len(diff) > 8000:
@@ -134,8 +134,13 @@ Code Changes:
 Instructions:
 1. Analyze code quality, potential bugs, security issues, and performance.
 2. Provide specific, actionable feedback.
-3. Structure the review with clear headings (Strengths, Issues, Suggestions).
-4. Be constructive and professional.
+3. Return the result as a JSON object with the following structure:
+{{
+    "strengths": ["list of strings"],
+    "issues": [{{"file": "filename", "line": int, "severity": "high/medium/low", "message": "string"}}],
+    "suggestions": ["list of strings"]
+}}
+4. Do not include markdown formatting (like ```json), just the raw JSON string.
 
 Review:"""
         return await self.generate(prompt, max_tokens=2000)
@@ -182,13 +187,15 @@ Updated README:"""
             current_spec: Current spec.md content
 
         Returns:
-            Updated spec.md content
+            New spec.md entry
         """
         commit_msg = commit_info.get("message", "")
+        sha = commit_info.get("sha", "unknown")[:7]
         
         prompt = f"""You are a product manager. Update the spec.md to reflect the latest progress.
 
 Commit Message: {commit_msg}
+SHA: {sha}
 
 Current Spec:
 ```markdown
@@ -196,10 +203,20 @@ Current Spec:
 ```
 
 Instructions:
-1. Update the "Progress & Milestones" or "Current Tasks" section based on the commit message.
-2. Mark completed tasks as done.
-3. Return the FULL updated spec.md content.
-4. Do not include any conversational text, just the markdown.
+1. Create a new log entry for the "Development Log" section.
+2. The entry must follow this format:
+   #### YYYY-MM-DD HH:MM UTC | SHA: <sha> | "<commit_message>"
+   **Changes**
+   - [List changes]
 
-Updated Spec:"""
-        return await self.generate(prompt, max_tokens=4000)
+   **Decisions**
+   - [List decisions]
+
+   **Next Steps**
+   - [List next steps]
+
+3. Return ONLY the new entry. Do not return the full file.
+4. Do not include any conversational text.
+
+New Entry:"""
+        return await self.generate(prompt, max_tokens=1000)

@@ -68,7 +68,7 @@ def mock_anthropic_client():
 def mock_llm_client():
     """Mock LLMClient."""
     client = AsyncMock(spec=LLMClient)
-    client.analyze_code.return_value = "Mocked code analysis"
+    client.analyze_code.return_value = '{"strengths": ["Good"], "issues": [], "suggestions": []}'
     client.update_readme.return_value = "Mocked README update"
     client.update_spec.return_value = "Mocked spec update"
     return client
