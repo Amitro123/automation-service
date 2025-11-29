@@ -189,13 +189,13 @@ Updated README:"""
         
         prompt = f"""
         Update the project specification (spec.md) based on the following commit:
-
+        
         Commit Message: {commit_msg}
         Diff Summary: {diff_summary[:2000]}...
-
+        
         Current spec.md content:
         {current_spec[:2000]}...
-
+        
         Instructions:
         1. Analyze the changes and how they affect the project status.
         2. Generate a NEW entry for the "Development Log" section.

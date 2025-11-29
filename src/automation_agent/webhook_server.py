@@ -91,7 +91,7 @@ class WebhookServer:
             # Process push event in background
             payload = request.json
             threading.Thread(target=self._run_background_task, args=(payload,)).start()
-
+            
             return jsonify({"message": "Automation started", "status": "accepted"}), 202
 
     def _verify_signature(self, request) -> bool:
@@ -131,7 +131,7 @@ class WebhookServer:
 
     def _run_background_task(self, payload: dict):
         """Run automation task in background.
-
+        
         Args:
             payload: Webhook payload
         """

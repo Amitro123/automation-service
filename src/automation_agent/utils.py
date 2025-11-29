@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 def setup_logging(level: int = logging.INFO) -> None:
     """Setup basic logging configuration.
-
+    
     Args:
         level: Logging level
     """
@@ -19,10 +19,10 @@ def setup_logging(level: int = logging.INFO) -> None:
 
 def parse_json_safe(json_str: str) -> Dict[str, Any]:
     """Safely parse JSON string.
-
+    
     Args:
         json_str: JSON string to parse
-
+        
     Returns:
         Parsed dictionary or empty dict on failure
     """

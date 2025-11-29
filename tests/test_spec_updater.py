@@ -27,7 +27,7 @@ async def test_update_spec_success(spec_updater, mock_github_client, mock_llm_cl
     assert "New Entry" in result
     # Verify old content is NOT duplicated (simple check)
     assert result.count("Old Spec Content") == 1
-
+    
     mock_llm_client.update_spec.assert_called_once()
 
 @pytest.mark.asyncio

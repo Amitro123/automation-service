@@ -74,11 +74,11 @@ class TestWebhookServer(unittest.TestCase):
         }
 
         response = self.app.post('/webhook', headers=headers, data=data)
-
+        
         self.assertEqual(response.status_code, 202)
         self.assertEqual(response.json['status'], 'accepted')
         mock_thread.assert_called_once()
-
+        
         # Verify thread was started with correct target
         call_args = mock_thread.call_args
         self.assertEqual(call_args[1]['target'], self.server._run_background_task)
@@ -87,22 +87,22 @@ class TestWebhookServer(unittest.TestCase):
     @patch('src.automation_agent.webhook_server.asyncio.run')
     def test_run_background_task(self, mock_asyncio_run):
         payload = {"commits": [{"id": "sha1"}]}
-
+        
         # Mock _handle_push_event to be a coroutine
         async def mock_handle(p):
             pass
-
+            
         with patch.object(self.server, '_handle_push_event', side_effect=mock_handle) as mock_method:
             self.server._run_background_task(payload)
-
+            
             mock_asyncio_run.assert_called_once()
-            # We can't easily verify the coroutine passed to run() is exactly what we expect
+            # We can't easily verify the coroutine passed to run() is exactly what we expect 
             # without more complex mocking, but we verify run() is called.
 
     @patch('src.automation_agent.webhook_server.asyncio.run')
     def test_run_background_task_exception(self, mock_asyncio_run):
         mock_asyncio_run.side_effect = Exception("Error")
         payload = {"commits": [{"id": "sha1"}]}
-
+        
         # Should not raise exception (logged only)
         self.server._run_background_task(payload)
