@@ -109,16 +109,15 @@ text
 ## 💻 Coding Standards
 
 ✅ DO: Type hints + Google docstrings
-def analyze_diff(diff: str, context: Dict[str, str]) -> ReviewResult:
+def analyze_diff(diff: str, context: Dict[str, str]) -> str:
 """Analyzes git diff and returns structured review.
 
-text
 Args:
     diff: Raw git diff content
     context: File contents around changes
     
 Returns:
-    ReviewResult dataclass with strengths/issues/suggestions
+    Markdown formatted review string
 """
 pass
 ❌ NEVER: print(), hardcoded values, missing types

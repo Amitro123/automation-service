@@ -185,21 +185,25 @@ Updated README:"""
             Updated spec.md content
         """
         commit_msg = commit_info.get("message", "")
+        diff_summary = commit_info.get("diff", "") # Assuming 'diff' might be part of commit_info
         
-        prompt = f"""You are a product manager. Update the spec.md to reflect the latest progress.
-
-Commit Message: {commit_msg}
-
-Current Spec:
-```markdown
-{current_spec}
-```
-
-Instructions:
-1. Update the "Progress & Milestones" or "Current Tasks" section based on the commit message.
-2. Mark completed tasks as done.
-3. Return the FULL updated spec.md content.
-4. Do not include any conversational text, just the markdown.
-
-Updated Spec:"""
+        prompt = f"""
+        Update the project specification (spec.md) based on the following commit:
+        
+        Commit Message: {commit_msg}
+        Diff Summary: {diff_summary[:2000]}...
+        
+        Current spec.md content:
+        {current_spec[:2000]}...
+        
+        Instructions:
+        1. Analyze the changes and how they affect the project status.
+        2. Generate a NEW entry for the "Development Log" section.
+        3. The entry should follow this format:
+           ### [YYYY-MM-DD] {commit_msg}
+           - **Summary**: Brief summary of changes.
+           - **Decisions**: Key architectural decisions (if any).
+           - **Next Steps**: Potential next steps (if any).
+        4. RETURN ONLY THE NEW ENTRY. DO NOT return the full file.
+        """
         return await self.generate(prompt, max_tokens=4000)
