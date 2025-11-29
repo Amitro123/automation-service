@@ -107,7 +107,6 @@ async def test_update_spec(mock_env_openai, mock_openai_client):
         call_args = mock_openai_client.chat.completions.create.call_args[1]
         assert "feat: new feature" in call_args["messages"][0]["content"]
         assert spec in call_args["messages"][0]["content"]
-
 @pytest.fixture
 def mock_env_gemini(monkeypatch):
     monkeypatch.setenv("GEMINI_API_KEY", "test_gemini_key")
