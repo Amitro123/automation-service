@@ -212,3 +212,45 @@ async def test_spec_update_failed(orchestrator, mock_spec_updater):
     
     assert result["success"] is False
     assert result["status"] == "failed"
+
+@pytest.mark.asyncio
+async def test_readme_update_auto_commit(orchestrator, mock_readme_updater, mock_github_client, mock_config):
+    """Test README update with AUTO_COMMIT enabled."""
+    # Configure mocks
+    mock_config.CREATE_PR = False
+    mock_config.AUTO_COMMIT = True
+    mock_readme_updater.update_readme.return_value = "Updated README"
+    mock_github_client.update_file.return_value = True
+
+    result = await orchestrator._run_readme_update("sha123", "main")
+
+    assert result["success"] is True
+    assert result["status"] == "completed"
+    assert result["auto_committed"] is True
+    mock_github_client.update_file.assert_called_once_with(
+        file_path="README.md",
+        content="Updated README",
+        message="docs: Auto-update README.md from sha123",
+        branch="main"
+    )
+
+@pytest.mark.asyncio
+async def test_spec_update_auto_commit(orchestrator, mock_spec_updater, mock_github_client, mock_config):
+    """Test spec update with AUTO_COMMIT enabled."""
+    # Configure mocks
+    mock_config.CREATE_PR = False
+    mock_config.AUTO_COMMIT = True
+    mock_spec_updater.update_spec.return_value = "Updated Spec"
+    mock_github_client.update_file.return_value = True
+
+    result = await orchestrator._run_spec_update("sha123", "main")
+
+    assert result["success"] is True
+    assert result["status"] == "completed"
+    assert result["auto_committed"] is True
+    mock_github_client.update_file.assert_called_once_with(
+        file_path="spec.md",
+        content="Updated Spec",
+        message="docs: Auto-update spec.md from sha123",
+        branch="main"
+    )

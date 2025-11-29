@@ -43,3 +43,7 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
+
+# Generated Gemini Reports
+gemini_*.md
+verification_result.txt
