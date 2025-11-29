@@ -11,7 +11,7 @@ An autonomous GitHub automation system that triggers on push events to perform i
 ## ✨ Features
 
 ### 1. 🔍 Automated Code Review
-- **Intelligent Analysis**: Uses LLM (GPT-4o / Claude 3.5) to analyze code changes
+- **Intelligent Analysis**: Uses LLM (GPT-4o / Claude 3.5 / Gemini Pro) to analyze code changes
 - **Comprehensive Feedback**: Code quality, bugs, security, performance, best practices
 - **Flexible Output**: Commit comments, PR comments, or GitHub issues
 - **Structured Reviews**: Strengths, issues, suggestions, security concerns
@@ -118,16 +118,6 @@ GITHUB_WEBHOOK_SECRET=your_secret_here
 REPOSITORY_OWNER=your_username
 REPOSITORY_NAME=your_repo
 
-# LLM
-LLM_PROVIDER=openai
-OPENAI_API_KEY=sk-your_key_here
-LLM_MODEL=gpt-4o-mini
-
-# Behavior
-CREATE_PR=True
-AUTO_COMMIT=False
-POST_REVIEW_AS_ISSUE=False
-
 # Optional: Agent Platforms
 GRAVITY_ENABLED=False
 GRAVITY_API_KEY=
@@ -195,7 +185,7 @@ automation_agent/
 
 ## 🗺️ Roadmap
 
-- 🔄 Multi-LLM support (Gemini, local models)
+- ✅ Multi-LLM support (Gemini, local models)
 - 🔗 Multi-repo orchestration  
 - 🎛️ Per-branch policies (stricter main, relaxed feature branches)
 - 🔔 Integrations: Slack/Jira/n8n notifications

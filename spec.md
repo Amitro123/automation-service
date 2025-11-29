@@ -111,7 +111,7 @@ Next Steps
 
  Test large diff chunking (>10k lines)
 
- Multi-LLM support (Gemini)
+ Multi-LLM support (Gemini) - Done ✅
 
 ## 📊 Non-Functional Requirements
 

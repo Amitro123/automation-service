@@ -1,4 +1,4 @@
-"""LLM client supporting OpenAI and Anthropic."""
+"""LLM client supporting OpenAI, Anthropic, and Gemini."""
 
 import logging
 from typing import Optional, Dict, Any
@@ -15,7 +15,7 @@ class LLMClient:
         """Initialize LLM client.
 
         Args:
-            provider: LLM provider ("openai" or "anthropic")
+            provider: LLM provider ("openai", "anthropic", or "gemini")
             model: Model name (optional, uses provider defaults)
             api_key: API key (optional, reads from environment)
         """
@@ -31,6 +31,8 @@ class LLMClient:
             self._initialize_openai()
         elif self.provider == "anthropic":
             self._initialize_anthropic()
+        elif self.provider == "gemini":
+            self._initialize_gemini()
         else:
             raise ValueError(f"Unsupported LLM provider: {self.provider}")
 
@@ -62,6 +64,21 @@ class LLMClient:
         except ImportError:
             raise ImportError("Anthropic package not installed. Run: pip install anthropic")
 
+    def _initialize_gemini(self):
+        """Initialize Gemini client."""
+        try:
+            import google.generativeai as genai
+            self.api_key = self.api_key or os.getenv("GEMINI_API_KEY")
+            if not self.api_key:
+                raise ValueError("Gemini API key not provided")
+            
+            genai.configure(api_key=self.api_key)
+            self.model = self.model or "gemini-2.0-flash"
+            self._client = genai.GenerativeModel(self.model)
+            logger.info(f"Initialized Gemini client with model {self.model}")
+        except ImportError:
+            raise ImportError("Google Generative AI package not installed. Run: pip install google-generativeai")
+
     async def generate(self, prompt: str, max_tokens: int = 1000, temperature: float = 0.7) -> str:
         """Generate text using the configured LLM.
 
@@ -80,6 +97,8 @@ class LLMClient:
             return await self._generate_openai(prompt, max_tokens, temperature)
         elif self.provider == "anthropic":
             return await self._generate_anthropic(prompt, max_tokens, temperature)
+        elif self.provider == "gemini":
+            return await self._generate_gemini(prompt, max_tokens, temperature)
         else:
             raise ValueError(f"Unsupported provider: {self.provider}")
 
@@ -109,6 +128,24 @@ class LLMClient:
             return response.content[0].text
         except Exception as e:
             logger.error(f"Anthropic generation failed: {e}")
+            raise
+
+    async def _generate_gemini(self, prompt: str, max_tokens: int, temperature: float) -> str:
+        """Generate text using Gemini."""
+        try:
+            # Gemini doesn't support max_tokens directly in generate_content in the same way, 
+            # but we can pass generation_config.
+            generation_config = {
+                "max_output_tokens": max_tokens,
+                "temperature": temperature,
+            }
+            response = await self._client.generate_content_async(
+                prompt,
+                generation_config=generation_config
+            )
+            return response.text
+        except Exception as e:
+            logger.error(f"Gemini generation failed: {e}")
             raise
 
     async def analyze_code(self, diff: str) -> str:
