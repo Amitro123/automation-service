@@ -1,7 +1,9 @@
 import unittest
+import pytest
 import json
 import hashlib
 import hmac
+from flask import request
 from unittest.mock import MagicMock, patch, AsyncMock
 from src.automation_agent.webhook_server import WebhookServer
 from src.automation_agent.config import Config
@@ -106,3 +108,41 @@ class TestWebhookServer(unittest.TestCase):
         
         # Should not raise exception (logged only)
         self.server._run_background_task(payload)
+
+    @pytest.mark.asyncio
+    async def test_handle_push_event_success(self):
+        payload = {"commits": [{"id": "sha1"}]}
+        self.server.orchestrator.run_automation = AsyncMock(return_value={"success": True})
+        
+        await self.server._handle_push_event(payload)
+        
+        self.server.orchestrator.run_automation.assert_called_once_with(payload)
+
+    @pytest.mark.asyncio
+    async def test_handle_push_event_no_commits(self):
+        payload = {"commits": []}
+        self.server.orchestrator.run_automation = AsyncMock()
+        
+        await self.server._handle_push_event(payload)
+        
+        self.server.orchestrator.run_automation.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_handle_push_event_exception(self):
+        payload = {"commits": [{"id": "sha1"}]}
+        self.server.orchestrator.run_automation = AsyncMock(side_effect=Exception("Error"))
+        
+        # Should not raise exception
+        await self.server._handle_push_event(payload)
+
+    def test_verify_signature_missing_header(self):
+        with self.server.app.test_request_context('/webhook', headers={}):
+            self.assertFalse(self.server._verify_signature(request))
+
+    def test_verify_signature_invalid_format(self):
+        with self.server.app.test_request_context('/webhook', headers={'X-Hub-Signature-256': 'invalid_format'}):
+            self.assertFalse(self.server._verify_signature(request))
+
+    def test_verify_signature_wrong_algorithm(self):
+        with self.server.app.test_request_context('/webhook', headers={'X-Hub-Signature-256': 'sha1=123'}):
+            self.assertFalse(self.server._verify_signature(request))

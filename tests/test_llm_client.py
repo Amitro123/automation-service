@@ -107,3 +107,38 @@ async def test_update_spec(mock_env_openai, mock_openai_client):
         call_args = mock_openai_client.chat.completions.create.call_args[1]
         assert "feat: new feature" in call_args["messages"][0]["content"]
         assert spec in call_args["messages"][0]["content"]
+@pytest.fixture
+def mock_env_gemini(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "test_gemini_key")
+
+@pytest.mark.asyncio
+async def test_init_gemini_success(mock_env_gemini):
+    with patch("google.generativeai.configure") as mock_configure, \
+         patch("google.generativeai.GenerativeModel") as mock_model_cls:
+        
+        client = LLMClient(provider="gemini")
+        assert client.provider == "gemini"
+        assert client.api_key == "test_gemini_key"
+        mock_configure.assert_called_once_with(api_key="test_gemini_key")
+        mock_model_cls.assert_called_once_with("gemini-2.0-flash")
+
+@pytest.mark.asyncio
+async def test_generate_gemini(mock_env_gemini):
+    with patch("google.generativeai.configure"), \
+         patch("google.generativeai.GenerativeModel") as mock_model_cls:
+        
+        mock_model = MagicMock()
+        mock_response = MagicMock()
+        mock_response.text = "Mocked Gemini response"
+        # Mock async generate_content_async
+        mock_model.generate_content_async = AsyncMock(return_value=mock_response)
+        mock_model_cls.return_value = mock_model
+
+        client = LLMClient(provider="gemini")
+        response = await client.generate("Test prompt")
+        
+        assert response == "Mocked Gemini response"
+        mock_model.generate_content_async.assert_called_once()
+        args = mock_model.generate_content_async.call_args
+        assert args[0][0] == "Test prompt"
+        assert args[1]["generation_config"]["max_output_tokens"] == 1000
