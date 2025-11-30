@@ -260,19 +260,6 @@ class CoverageAnalyzer:
             # Stop coverage measurement
             self.cov.stop()
             self.cov.save()
-        
-        return self.cov
-    
-    def _run_custom_command(self, command: str):
-        """Run a custom test command"""
-        result = subprocess.run(
-            command,
-            shell=True,
-            cwd=self.project_root,
-            capture_output=True,
-            text=True
-        )
-        if result.returncode != 0:
             print(f"Warning: Test command failed with code {result.returncode}")
             print(f"STDERR: {result.stderr}")
     

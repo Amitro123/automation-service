@@ -17,7 +17,7 @@ def mock_config():
 
 @pytest.fixture
 def mock_github_client():
-    return MagicMock(spec=GitHubClient)
+    return AsyncMock(spec=GitHubClient)
 
 @pytest.fixture
 def mock_code_reviewer():

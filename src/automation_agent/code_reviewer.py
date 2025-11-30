@@ -21,7 +21,7 @@ class CodeReviewer:
         self.github = github_client
         self.llm = llm_client
 
-    async def review_commit(self, commit_sha: str, post_as_issue: bool = False) -> bool:
+    async def review_commit(self, commit_sha: str, post_as_issue: bool = False) -> Dict[str, Any]:
         """Review a commit and post findings.
 
         Args:
@@ -29,43 +29,48 @@ class CodeReviewer:
             post_as_issue: If True, post as issue; otherwise as commit comment
 
         Returns:
-            True if review was posted successfully
+            Dictionary with success status and review content
         """
         logger.info(f"Starting code review for commit {commit_sha}")
 
         # Fetch commit diff
-        diff = self.github.get_commit_diff(commit_sha)
+        diff = await self.github.get_commit_diff(commit_sha)
         if not diff:
             logger.error("Failed to fetch commit diff")
-            return False
+            return {"success": False, "review": None}
 
         # Fetch commit info for context
-        commit_info = self.github.get_commit_info(commit_sha)
+        commit_info = await self.github.get_commit_info(commit_sha)
         if not commit_info:
             logger.error("Failed to fetch commit info")
-            return False
+            return {"success": False, "review": None}
 
         # Generate code review
         try:
             review = await self.llm.analyze_code(diff)
             if not review:
                 logger.error("Failed to generate code review")
-                return False
+                return {"success": False, "review": None}
         except Exception as e:
             logger.error(f"LLM analysis failed: {e}")
-            return False
+            return {"success": False, "review": None}
+
+        formatted_review = self._format_review(review)
 
         # Post review
+        success = False
         if post_as_issue:
             title = f"🤖 Code Review: {commit_sha[:7]}"
-            issue_number = self.github.create_issue(
+            issue_number = await self.github.create_issue(
                 title=title,
-                body=self._format_review(review),
+                body=formatted_review,
                 labels=["automated-review", "code-quality"]
             )
-            return issue_number is not None
+            success = issue_number is not None
         else:
-            return self.github.post_commit_comment(commit_sha, self._format_review(review))
+            success = await self.github.post_commit_comment(commit_sha, formatted_review)
+            
+        return {"success": success, "review": formatted_review}
 
     def _format_review(self, analysis: str) -> str:
         """Format the LLM analysis into a GitHub-friendly review.

@@ -2,9 +2,7 @@
 
 import logging
 from typing import Optional, Dict, Any, List
-import requests
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
+import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -24,25 +22,18 @@ class GitHubClient:
         self.owner = owner
         self.repo = repo
         self.base_url = "https://api.github.com"
-        self.session = self._create_session()
-
-    def _create_session(self) -> requests.Session:
-        """Create requests session with retry logic."""
-        session = requests.Session()
-        retry_strategy = Retry(
-            total=3,
-            backoff_factor=1,
-            status_forcelist=[429, 500, 502, 503, 504],
-        )
-        adapter = HTTPAdapter(max_retries=retry_strategy)
-        session.mount("https://", adapter)
-        session.headers.update({
+        self.headers = {
             "Authorization": f"token {self.token}",
             "Accept": "application/vnd.github.v3+json",
-        })
-        return session
+            "User-Agent": "GitHub-Automation-Agent"
+        }
+        self.timeout = httpx.Timeout(30.0, connect=10.0)
 
-    def get_commit_diff(self, commit_sha: str) -> Optional[str]:
+    async def _get_client(self) -> httpx.AsyncClient:
+        """Create and return an httpx AsyncClient."""
+        return httpx.AsyncClient(headers=self.headers, timeout=self.timeout)
+
+    async def get_commit_diff(self, commit_sha: str) -> Optional[str]:
         """Get the diff for a specific commit.
 
         Args:
@@ -53,14 +44,15 @@ class GitHubClient:
         """
         url = f"{self.base_url}/repos/{self.owner}/{self.repo}/commits/{commit_sha}"
         try:
-            response = self.session.get(url, headers={"Accept": "application/vnd.github.v3.diff"})
-            response.raise_for_status()
-            return response.text
-        except requests.exceptions.RequestException as e:
+            async with httpx.AsyncClient(headers=self.headers, timeout=self.timeout) as client:
+                response = await client.get(url, headers={**self.headers, "Accept": "application/vnd.github.v3.diff"})
+                response.raise_for_status()
+                return response.text
+        except httpx.HTTPError as e:
             logger.error(f"Failed to fetch commit diff: {e}")
             return None
 
-    def get_commit_info(self, commit_sha: str) -> Optional[Dict[str, Any]]:
+    async def get_commit_info(self, commit_sha: str) -> Optional[Dict[str, Any]]:
         """Get commit information.
 
         Args:
@@ -71,14 +63,15 @@ class GitHubClient:
         """
         url = f"{self.base_url}/repos/{self.owner}/{self.repo}/commits/{commit_sha}"
         try:
-            response = self.session.get(url)
-            response.raise_for_status()
-            return response.json()
-        except requests.exceptions.RequestException as e:
+            async with httpx.AsyncClient(headers=self.headers, timeout=self.timeout) as client:
+                response = await client.get(url)
+                response.raise_for_status()
+                return response.json()
+        except httpx.HTTPError as e:
             logger.error(f"Failed to fetch commit info: {e}")
             return None
 
-    def post_commit_comment(self, commit_sha: str, body: str) -> bool:
+    async def post_commit_comment(self, commit_sha: str, body: str) -> bool:
         """Post a comment on a commit.
 
         Args:
@@ -90,15 +83,16 @@ class GitHubClient:
         """
         url = f"{self.base_url}/repos/{self.owner}/{self.repo}/commits/{commit_sha}/comments"
         try:
-            response = self.session.post(url, json={"body": body})
-            response.raise_for_status()
-            logger.info(f"Posted comment on commit {commit_sha}")
-            return True
-        except requests.exceptions.RequestException as e:
+            async with httpx.AsyncClient(headers=self.headers, timeout=self.timeout) as client:
+                response = await client.post(url, json={"body": body})
+                response.raise_for_status()
+                logger.info(f"Posted comment on commit {commit_sha}")
+                return True
+        except httpx.HTTPError as e:
             logger.error(f"Failed to post commit comment: {e}")
             return False
 
-    def create_issue(self, title: str, body: str, labels: Optional[List[str]] = None) -> Optional[int]:
+    async def create_issue(self, title: str, body: str, labels: Optional[List[str]] = None) -> Optional[int]:
         """Create a GitHub issue.
 
         Args:
@@ -115,16 +109,17 @@ class GitHubClient:
             payload["labels"] = labels
 
         try:
-            response = self.session.post(url, json=payload)
-            response.raise_for_status()
-            issue_number = response.json()["number"]
-            logger.info(f"Created issue #{issue_number}")
-            return issue_number
-        except requests.exceptions.RequestException as e:
+            async with httpx.AsyncClient(headers=self.headers, timeout=self.timeout) as client:
+                response = await client.post(url, json=payload)
+                response.raise_for_status()
+                issue_number = response.json()["number"]
+                logger.info(f"Created issue #{issue_number}")
+                return issue_number
+        except httpx.HTTPError as e:
             logger.error(f"Failed to create issue: {e}")
             return None
 
-    def get_file_content(self, file_path: str, ref: str = "main") -> Optional[str]:
+    async def get_file_content(self, file_path: str, ref: str = "main") -> Optional[str]:
         """Get content of a file from the repository.
 
         Args:
@@ -136,18 +131,19 @@ class GitHubClient:
         """
         url = f"{self.base_url}/repos/{self.owner}/{self.repo}/contents/{file_path}"
         try:
-            response = self.session.get(url, params={"ref": ref})
-            if response.status_code == 404:
-                return None
-            response.raise_for_status()
-            import base64
-            content = response.json()["content"]
-            return base64.b64decode(content).decode("utf-8")
-        except requests.exceptions.RequestException as e:
+            async with httpx.AsyncClient(headers=self.headers, timeout=self.timeout) as client:
+                response = await client.get(url, params={"ref": ref})
+                if response.status_code == 404:
+                    return None
+                response.raise_for_status()
+                import base64
+                content = response.json()["content"]
+                return base64.b64decode(content).decode("utf-8")
+        except httpx.HTTPError as e:
             logger.error(f"Failed to fetch file content: {e}")
             return None
 
-    def update_file(self, file_path: str, content: str, message: str, branch: str = "main") -> bool:
+    async def update_file(self, file_path: str, content: str, message: str, branch: str = "main") -> bool:
         """Update or create a file in the repository.
 
         Args:
@@ -165,10 +161,11 @@ class GitHubClient:
         # Get current file SHA if it exists
         sha = None
         try:
-            response = self.session.get(url, params={"ref": branch})
-            if response.status_code == 200:
-                sha = response.json()["sha"]
-        except requests.exceptions.RequestException:
+            async with httpx.AsyncClient(headers=self.headers, timeout=self.timeout) as client:
+                response = await client.get(url, params={"ref": branch})
+                if response.status_code == 200:
+                    sha = response.json()["sha"]
+        except httpx.HTTPError:
             pass
 
         payload = {
@@ -180,15 +177,16 @@ class GitHubClient:
             payload["sha"] = sha
 
         try:
-            response = self.session.put(url, json=payload)
-            response.raise_for_status()
-            logger.info(f"Updated file {file_path} on branch {branch}")
-            return True
-        except requests.exceptions.RequestException as e:
+            async with httpx.AsyncClient(headers=self.headers, timeout=self.timeout) as client:
+                response = await client.put(url, json=payload)
+                response.raise_for_status()
+                logger.info(f"Updated file {file_path} on branch {branch}")
+                return True
+        except httpx.HTTPError as e:
             logger.error(f"Failed to update file: {e}")
             return False
 
-    def create_branch(self, branch_name: str, from_branch: str = "main") -> bool:
+    async def create_branch(self, branch_name: str, from_branch: str = "main") -> bool:
         """Create a new branch.
 
         Args:
@@ -201,22 +199,23 @@ class GitHubClient:
         # Get SHA of source branch
         ref_url = f"{self.base_url}/repos/{self.owner}/{self.repo}/git/ref/heads/{from_branch}"
         try:
-            response = self.session.get(ref_url)
-            response.raise_for_status()
-            sha = response.json()["object"]["sha"]
+            async with httpx.AsyncClient(headers=self.headers, timeout=self.timeout) as client:
+                response = await client.get(ref_url)
+                response.raise_for_status()
+                sha = response.json()["object"]["sha"]
 
-            # Create new branch
-            create_url = f"{self.base_url}/repos/{self.owner}/{self.repo}/git/refs"
-            payload = {"ref": f"refs/heads/{branch_name}", "sha": sha}
-            response = self.session.post(create_url, json=payload)
-            response.raise_for_status()
-            logger.info(f"Created branch {branch_name}")
-            return True
-        except requests.exceptions.RequestException as e:
+                # Create new branch
+                create_url = f"{self.base_url}/repos/{self.owner}/{self.repo}/git/refs"
+                payload = {"ref": f"refs/heads/{branch_name}", "sha": sha}
+                response = await client.post(create_url, json=payload)
+                response.raise_for_status()
+                logger.info(f"Created branch {branch_name}")
+                return True
+        except httpx.HTTPError as e:
             logger.error(f"Failed to create branch: {e}")
             return False
 
-    def create_pull_request(
+    async def create_pull_request(
         self, title: str, body: str, head: str, base: str = "main"
     ) -> Optional[int]:
         """Create a pull request.
@@ -234,16 +233,17 @@ class GitHubClient:
         payload = {"title": title, "body": body, "head": head, "base": base}
 
         try:
-            response = self.session.post(url, json=payload)
-            response.raise_for_status()
-            pr_number = response.json()["number"]
-            logger.info(f"Created PR #{pr_number}")
-            return pr_number
-        except requests.exceptions.RequestException as e:
+            async with httpx.AsyncClient(headers=self.headers, timeout=self.timeout) as client:
+                response = await client.post(url, json=payload)
+                response.raise_for_status()
+                pr_number = response.json()["number"]
+                logger.info(f"Created PR #{pr_number}")
+                return pr_number
+        except httpx.HTTPError as e:
             logger.error(f"Failed to create pull request: {e}")
             return None
 
-    def get_recent_commits(self, limit: int = 10) -> List[Dict[str, Any]]:
+    async def get_recent_commits(self, limit: int = 10) -> List[Dict[str, Any]]:
         """Get recent commits from the repository.
 
         Args:
@@ -254,9 +254,10 @@ class GitHubClient:
         """
         url = f"{self.base_url}/repos/{self.owner}/{self.repo}/commits"
         try:
-            response = self.session.get(url, params={"per_page": limit})
-            response.raise_for_status()
-            return response.json()
-        except requests.exceptions.RequestException as e:
+            async with httpx.AsyncClient(headers=self.headers, timeout=self.timeout) as client:
+                response = await client.get(url, params={"per_page": limit})
+                response.raise_for_status()
+                return response.json()
+        except httpx.HTTPError as e:
             logger.error(f"Failed to fetch recent commits: {e}")
             return []

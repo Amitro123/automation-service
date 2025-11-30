@@ -15,6 +15,7 @@ An autonomous GitHub automation system that triggers on push events to perform i
 - **Comprehensive Feedback**: Code quality, bugs, security, performance, best practices
 - **Flexible Output**: Commit comments, PR comments, or GitHub issues
 - **Structured Reviews**: Strengths, issues, suggestions, security concerns
+- **Persistent Log**: Maintains a `code_review.md` history of all reviews
 
 ### 2. 📝 Automatic README Updates
 - **Smart Detection**: Identifies new functions, classes, APIs, dependencies
@@ -30,44 +31,73 @@ An autonomous GitHub automation system that triggers on push events to perform i
 
 ## 🏗️ Architecture
 
+```mermaid
+graph TD
+    %% Styles
+    classDef component fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
+    classDef memory fill:#fff9c4,stroke:#fbc02d,stroke-width:2px;
+    classDef external fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px;
+    classDef orchestrator fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
+
+    %% External Systems
+    subgraph External[External Systems]
+        GitHub[GitHub Push Event]:::external
+        GitHubAPI[GitHub API]:::external
+        LLM[LLM (Gemini/OpenAI/Anthropic)]:::external
+    end
+
+    %% Core System
+    subgraph System[Automation Agent]
+        Webhook[Webhook Server]:::component
+        Orchestrator[Async Orchestrator]:::orchestrator
+        
+        %% Parallel Tasks
+        subgraph Tasks[Parallel Tasks]
+            Reviewer[Code Reviewer]:::component
+            ReadmeUp[README Updater]:::component
+            SpecUp[Spec Updater]:::component
+            ReviewUp[Code Review Updater]:::component
+        end
+    end
+
+    %% Session Memory / Persistent Storage
+    subgraph Memory[Session Memory / Artifacts]
+        SpecMD[spec.md]:::memory
+        ReadmeMD[README.md]:::memory
+        ReviewMD[code_review.md]:::memory
+    end
+
+    %% Data Flow
+    GitHub -->|POST /webhook| Webhook
+    Webhook -->|Trigger| Orchestrator
+    Orchestrator -->|Parallel Exec| Reviewer
+    Orchestrator -->|Parallel Exec| ReadmeUp
+    Orchestrator -->|Parallel Exec| SpecUp
+    Orchestrator -->|Parallel Exec| ReviewUp
+
+    %% Component Interactions
+    Reviewer -->|Analyze Diff| LLM
+    Reviewer -->|Post Comment| GitHubAPI
+
+    ReadmeUp -->|Read Content| ReadmeMD
+    ReadmeUp -->|Generate Update| LLM
+    ReadmeUp -->|Create PR| GitHubAPI
+
+    SpecUp -->|Read History| SpecMD
+    SpecUp -->|Generate Entry| LLM
+    SpecUp -->|Append Entry| GitHubAPI
+
+    ReviewUp -->|Read Log| ReviewMD
+    ReviewUp -->|Summarize| LLM
+    ReviewUp -->|Append Log| GitHubAPI
+
+    %% Memory Updates
+    SpecUp -.->|Update| SpecMD
+    ReadmeUp -.->|Update| ReadmeMD
+    ReviewUp -.->|Update| ReviewMD
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     GitHub Push Event                        │
-└───────────────────────────┬─────────────────────────────────┘
-                            │
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│                    Webhook Server (Flask)                    │
-│                                                              │
-│  • Receives push events                                     │
-│  • Verifies HMAC-SHA256 signature                          │
-│  • Extracts commit information                              │
-└───────────────────────────┬─────────────────────────────────┘
-                            │
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│                   Automation Orchestrator                    │
-│                                                              │
-│  Coordinates three parallel tasks:                          │
-└───────────┬─────────────────┬────────────────┬──────────────┘
-            │                 │                │
-            ↓                 ↓                ↓
-    ┌───────────┐     ┌──────────┐    ┌──────────┐
-    │   Code    │     │ README   │    │  Spec    │
-    │  Review   │     │ Updater  │    │ Updater  │
-    └─────┬─────┘     └────┬─────┘    └────┬─────┘
-          │                │               │
-          ↓                ↓               ↓
-    ┌─────────────────────────────────────────┐
-    │          LLM Client (OpenAI/Anthropic)  │
-    └─────────────────────────────────────────┘
-          │                │               │
-          ↓                ↓               ↓
-    ┌──────────┐     ┌──────────┐    ┌──────────┐
-    │ Post     │     │ Create   │    │ Append   │
-    │ Comment  │     │ PR/Commit│    │ to spec  │
-    └──────────┘     └──────────┘    └──────────┘
-```
+
+For a detailed breakdown and maintenance instructions, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## 🚀 Quick Start
 
@@ -176,6 +206,7 @@ automation_agent/
 │       ├── webhook_server.py # Flask webhook endpoint
 │       ├── orchestrator.py # Coordinates 3 parallel tasks
 │       ├── code_reviewer.py # LLM-powered code analysis
+│       ├── code_review_updater.py # Persistent review logging
 │       ├── readme_updater.py # Smart README updates
 │       ├── spec_updater.py # Progress documentation
 │       ├── github_client.py # GitHub API wrapper
@@ -197,6 +228,11 @@ automation_agent/
 - Minimal GitHub token scopes
 - No logging of secrets/diffs
 - Environment-only credential storage
+
+### Security Guardrails
+- **Static Analysis**: Bandit scans run on every push to detect security issues in Python code.
+- **CI/CD Integration**: GitHub Actions workflow (`.github/workflows/security.yml`) enforces security checks.
+- **Secret Management**: All sensitive data (API keys, tokens) must be stored in environment variables or GitHub Secrets.
 
 ## 🌐 Deployment
 

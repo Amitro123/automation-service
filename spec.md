@@ -46,6 +46,7 @@ GitHub Push Event (JSON)
 │                webhook_server.py (Flask)                    │
 │       (HMAC verification + diff extraction)                 │
 └───────────────────────────┬─────────────────────────────────┘
+                            │
                             ↓
 ┌─────────────────────────────────────────────────────────────┐
 │                 orchestrator.py (asyncio)                   │
@@ -75,14 +76,28 @@ GitHub Push Event (JSON)
 
 ### 1. CodeReviewer
 **Input:** `git diff` + file context (500 lines around changes)  
-**Output:** Structured review JSON:
-{
-"strengths": ["Good test coverage", "Clean error handling"],
-"issues": [{"file": "x.py", "line": 42, "severity": "high", "message": "..."}],
-"suggestions": ["Consider async/await", "Add type hints"],
-"security": [],
-"performance": []
-}
+**Output:** Markdown-formatted review with structured sections:
+```markdown
+## Code Review
+
+### Strengths
+- Good test coverage
+- Clean error handling
+
+### Issues
+**File: x.py, Line: 42 (High Severity)**
+- Issue description and recommendation
+
+### Suggestions
+- Consider async/await for I/O operations
+- Add type hints for better IDE support
+
+### Security Concerns
+- (if any)
+
+### Performance Notes
+- (if any)
+```
 
 **Delivery:** Comment on commit OR issue (configurable)
 
@@ -113,6 +128,14 @@ Next Steps
 
  Multi-LLM support (Gemini) - Done ✅
 
+### 4. CodeReviewUpdater (`src/automation_agent/code_review_updater.py`)
+- **Input**: Commit SHA, Review Content, Branch
+- **Process**:
+  - Fetches current `code_review.md` (creates if missing).
+  - Uses LLM to summarize the full review into a concise log entry.
+  - Appends the new entry to the log.
+- **Output**: Updated `code_review.md` content.
+
 ## 📊 Non-Functional Requirements
 
 | Category | Requirement |
@@ -120,7 +143,7 @@ Next Steps
 | **Performance** | <60s end-to-end for 5k-line diff |
 | **Reliability** | 99% success rate, idempotent tasks |
 | **Cost** | <$0.10 per push (gpt-4o-mini) |
-| **Security** | HMAC webhook verification, no secret logging |
+| **Security** | HMAC webhook verification, no secret logging, Bandit static analysis |
 | **Observability** | Structured logs + GitHub artifact tracking |
 
 ## ✅ Progress & Milestones
@@ -136,6 +159,7 @@ Next Steps
 [x] Config from .env (verified)
 [x] Error handling + logging
 [x] Idempotency (handles retries)
+[x] Code Review Updater (persistent logs)
 
 ### Phase 3: Comprehensive Testing ✅ (2025-11-29)
 [x] Unit tests: 80% coverage (mock all external)
@@ -180,4 +204,3 @@ LOW: Polish
 ✅ Zero secret leaks in logs
 ✅ 100% test coverage
 ✅ README/spec.md accuracy >95%
-
