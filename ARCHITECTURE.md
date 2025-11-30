@@ -16,7 +16,7 @@ graph TD
     subgraph External[External Systems]
         GitHub[GitHub Push Event]:::external
         GitHubAPI[GitHub API]:::external
-        LLM[LLM (Gemini/OpenAI/Anthropic)]:::external
+        LLM["LLM (Gemini/OpenAI/Anthropic)"]:::external
     end
 
     %% Core System

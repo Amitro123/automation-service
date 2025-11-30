@@ -29,6 +29,7 @@ class TestWebhookServer(unittest.TestCase):
              patch('src.automation_agent.webhook_server.CodeReviewer'), \
              patch('src.automation_agent.webhook_server.ReadmeUpdater'), \
              patch('src.automation_agent.webhook_server.SpecUpdater'), \
+             patch('src.automation_agent.webhook_server.CodeReviewUpdater'), \
              patch('src.automation_agent.webhook_server.AutomationOrchestrator'):
 
             self.server = WebhookServer(self.config)

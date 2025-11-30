@@ -4,21 +4,23 @@ from unittest.mock import MagicMock, AsyncMock
 from automation_agent.orchestrator import AutomationOrchestrator
 
 @pytest.fixture
-def orchestrator(mock_github_client, mock_code_reviewer, mock_readme_updater, mock_spec_updater, mock_config):
+def orchestrator(mock_github_client, mock_code_reviewer, mock_readme_updater, mock_spec_updater, mock_code_review_updater, mock_config):
     return AutomationOrchestrator(
         github_client=mock_github_client,
         code_reviewer=mock_code_reviewer,
         readme_updater=mock_readme_updater,
         spec_updater=mock_spec_updater,
+        code_review_updater=mock_code_review_updater,
         config=mock_config
     )
 
 @pytest.mark.asyncio
-async def test_run_automation_success(orchestrator, mock_code_reviewer, mock_readme_updater, mock_spec_updater, mock_github_client):
+async def test_run_automation_success(orchestrator, mock_code_reviewer, mock_readme_updater, mock_spec_updater, mock_code_review_updater, mock_github_client):
     # Setup mocks
-    mock_code_reviewer.review_commit.return_value = True
+    mock_code_reviewer.review_commit.return_value = {"success": True, "review": "Review Content"}
     mock_readme_updater.update_readme.return_value = "Updated README"
     mock_spec_updater.update_spec.return_value = "Updated Spec"
+    mock_code_review_updater.update_review_log.return_value = "Updated Log"
     mock_github_client.create_branch.return_value = True
     mock_github_client.update_file.return_value = True
     mock_github_client.create_pull_request.return_value = 123
@@ -89,7 +91,7 @@ async def test_run_parallel_tasks_exception(orchestrator):
 
 @pytest.mark.asyncio
 async def test_code_review_failure(orchestrator, mock_code_reviewer):
-    mock_code_reviewer.review_commit.return_value = False
+    mock_code_reviewer.review_commit.return_value = {"success": False, "review": None}
     
     payload = {
         "ref": "refs/heads/main",
@@ -105,7 +107,7 @@ async def test_readme_update_skipped(orchestrator, mock_readme_updater):
     mock_readme_updater.update_readme.return_value = None
     
     # Setup other mocks to succeed so we can isolate readme check
-    orchestrator.code_reviewer.review_commit.return_value = True
+    orchestrator.code_reviewer.review_commit.return_value = {"success": True, "review": "Review"}
     orchestrator.spec_updater.update_spec.return_value = "Spec"
     orchestrator.github.create_branch.return_value = True
     orchestrator.github.update_file.return_value = True
@@ -124,7 +126,7 @@ async def test_create_documentation_pr_failure_branch(orchestrator, mock_github_
     """Test failure when creating branch."""
     mock_github_client.create_branch.return_value = False
     
-    result = orchestrator._create_documentation_pr(
+    result = await orchestrator._create_documentation_pr(
         branch="main", readme_content="content", commit_sha="123"
     )
     
@@ -137,7 +139,7 @@ async def test_create_documentation_pr_failure_update_readme(orchestrator, mock_
     mock_github_client.create_branch.return_value = True
     mock_github_client.update_file.return_value = False
     
-    result = orchestrator._create_documentation_pr(
+    result = await orchestrator._create_documentation_pr(
         branch="main", readme_content="content", commit_sha="123"
     )
     
@@ -150,7 +152,7 @@ async def test_create_documentation_pr_failure_update_spec(orchestrator, mock_gi
     mock_github_client.create_branch.return_value = True
     mock_github_client.update_file.return_value = False
     
-    result = orchestrator._create_documentation_pr(
+    result = await orchestrator._create_documentation_pr(
         branch="main", spec_content="content", commit_sha="123"
     )
     
@@ -164,7 +166,7 @@ async def test_create_documentation_pr_failure_create_pr(orchestrator, mock_gith
     mock_github_client.update_file.return_value = True
     mock_github_client.create_pull_request.return_value = None
     
-    result = orchestrator._create_documentation_pr(
+    result = await orchestrator._create_documentation_pr(
         branch="main", readme_content="content", commit_sha="123"
     )
     
@@ -176,7 +178,7 @@ async def test_create_documentation_pr_exception(orchestrator, mock_github_clien
     """Test exception during PR creation."""
     mock_github_client.create_branch.side_effect = Exception("Error")
     
-    result = orchestrator._create_documentation_pr(
+    result = await orchestrator._create_documentation_pr(
         branch="main", readme_content="content", commit_sha="123"
     )
     

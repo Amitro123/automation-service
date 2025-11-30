@@ -14,7 +14,7 @@ def mock_env_anthropic(monkeypatch):
 @pytest.mark.asyncio
 async def test_init_openai_success(mock_env_openai, mock_openai_client):
     with patch("openai.AsyncOpenAI", return_value=mock_openai_client):
-        client = LLMClient(provider="openai")
+        client = LLMClient(provider="openai", model="gpt-4")
         assert client.provider == "openai"
         assert client.api_key == "test_openai_key"
         assert client._client == mock_openai_client
@@ -22,24 +22,24 @@ async def test_init_openai_success(mock_env_openai, mock_openai_client):
 @pytest.mark.asyncio
 async def test_init_anthropic_success(mock_env_anthropic, mock_anthropic_client):
     with patch("anthropic.AsyncAnthropic", return_value=mock_anthropic_client):
-        client = LLMClient(provider="anthropic")
+        client = LLMClient(provider="anthropic", model="claude-3-opus")
         assert client.provider == "anthropic"
         assert client.api_key == "test_anthropic_key"
         assert client._client == mock_anthropic_client
 
 def test_init_invalid_provider():
     with pytest.raises(ValueError, match="Unsupported LLM provider"):
-        LLMClient(provider="invalid")
+        LLMClient(provider="invalid", model="gpt-4")
 
 def test_init_missing_api_key(monkeypatch):
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     with pytest.raises(ValueError, match="OpenAI API key not provided"):
-        LLMClient(provider="openai")
+        LLMClient(provider="openai", model="gpt-4")
 
 @pytest.mark.asyncio
 async def test_generate_openai(mock_env_openai, mock_openai_client):
     with patch("openai.AsyncOpenAI", return_value=mock_openai_client):
-        client = LLMClient(provider="openai")
+        client = LLMClient(provider="openai", model="gpt-4")
         response = await client.generate("Test prompt")
         assert response == "Mocked OpenAI response"
         mock_openai_client.chat.completions.create.assert_called_once()
@@ -49,7 +49,7 @@ async def test_generate_openai(mock_env_openai, mock_openai_client):
 @pytest.mark.asyncio
 async def test_generate_anthropic(mock_env_anthropic, mock_anthropic_client):
     with patch("anthropic.AsyncAnthropic", return_value=mock_anthropic_client):
-        client = LLMClient(provider="anthropic")
+        client = LLMClient(provider="anthropic", model="claude-3-opus")
         response = await client.generate("Test prompt")
         assert response == "Mocked Anthropic response"
         mock_anthropic_client.messages.create.assert_called_once()
@@ -60,14 +60,14 @@ async def test_generate_anthropic(mock_env_anthropic, mock_anthropic_client):
 async def test_generate_failure(mock_env_openai, mock_openai_client):
     mock_openai_client.chat.completions.create.side_effect = Exception("API Error")
     with patch("openai.AsyncOpenAI", return_value=mock_openai_client):
-        client = LLMClient(provider="openai")
+        client = LLMClient(provider="openai", model="gpt-4")
         with pytest.raises(Exception, match="API Error"):
             await client.generate("Test prompt")
 
 @pytest.mark.asyncio
 async def test_analyze_code(mock_env_openai, mock_openai_client):
     with patch("openai.AsyncOpenAI", return_value=mock_openai_client):
-        client = LLMClient(provider="openai")
+        client = LLMClient(provider="openai", model="gpt-4")
         diff = "diff --git a/file.py b/file.py\n+new line"
         response = await client.analyze_code(diff)
         assert response == "Mocked OpenAI response"
@@ -78,7 +78,7 @@ async def test_analyze_code(mock_env_openai, mock_openai_client):
 @pytest.mark.asyncio
 async def test_analyze_code_truncated(mock_env_openai, mock_openai_client):
     with patch("openai.AsyncOpenAI", return_value=mock_openai_client):
-        client = LLMClient(provider="openai")
+        client = LLMClient(provider="openai", model="gpt-4")
         long_diff = "a" * 10000
         await client.analyze_code(long_diff)
         call_args = mock_openai_client.chat.completions.create.call_args[1]
@@ -87,7 +87,7 @@ async def test_analyze_code_truncated(mock_env_openai, mock_openai_client):
 @pytest.mark.asyncio
 async def test_update_readme(mock_env_openai, mock_openai_client):
     with patch("openai.AsyncOpenAI", return_value=mock_openai_client):
-        client = LLMClient(provider="openai")
+        client = LLMClient(provider="openai", model="gpt-4")
         diff = "diff content"
         readme = "# Old Readme"
         response = await client.update_readme(diff, readme)
@@ -99,10 +99,11 @@ async def test_update_readme(mock_env_openai, mock_openai_client):
 @pytest.mark.asyncio
 async def test_update_spec(mock_env_openai, mock_openai_client):
     with patch("openai.AsyncOpenAI", return_value=mock_openai_client):
-        client = LLMClient(provider="openai")
+        client = LLMClient(provider="openai", model="gpt-4")
         commit_info = {"message": "feat: new feature"}
         spec = "# Old Spec"
-        response = await client.update_spec(commit_info, spec)
+        diff = "diff content"
+        response = await client.update_spec(commit_info, diff, spec)
         assert response == "Mocked OpenAI response"
         call_args = mock_openai_client.chat.completions.create.call_args[1]
         assert "feat: new feature" in call_args["messages"][0]["content"]
@@ -116,7 +117,7 @@ async def test_init_gemini_success(mock_env_gemini):
     with patch("google.generativeai.configure") as mock_configure, \
          patch("google.generativeai.GenerativeModel") as mock_model_cls:
         
-        client = LLMClient(provider="gemini")
+        client = LLMClient(provider="gemini", model="gemini-2.0-flash")
         assert client.provider == "gemini"
         assert client.api_key == "test_gemini_key"
         mock_configure.assert_called_once_with(api_key="test_gemini_key")
@@ -134,7 +135,7 @@ async def test_generate_gemini(mock_env_gemini):
         mock_model.generate_content_async = AsyncMock(return_value=mock_response)
         mock_model_cls.return_value = mock_model
 
-        client = LLMClient(provider="gemini")
+        client = LLMClient(provider="gemini", model="gemini-2.0-flash")
         response = await client.generate("Test prompt")
         
         assert response == "Mocked Gemini response"
