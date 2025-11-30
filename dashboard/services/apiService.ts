@@ -1,5 +1,12 @@
-// API Service for connecting to automation-service backend
-const API_BASE_URL = 'http://localhost:8080/api';
+/**
+ * API Service for connecting to GitHub Automation Agent FastAPI backend
+ * 
+ * Backend runs on port 8080 by default (configurable via .env)
+ * Dashboard runs on port 5173 (Vite dev server)
+ */
+
+// Use environment variable or default to localhost:8080
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
 
 export interface DashboardMetrics {
   coverage: {
@@ -44,6 +51,24 @@ export interface DashboardMetrics {
   };
 }
 
+export interface RepositoryStatus {
+  name: string;
+  hasReadme: boolean;
+  hasSpec: boolean;
+  branch: string;
+  isSecure: boolean;
+  lastPush?: string;
+  openIssues: number;
+  openPRs: number;
+}
+
+export interface HealthStatus {
+  status: string;
+  service: string;
+  version: string;
+  uptime: string;
+}
+
 export async function fetchDashboardMetrics(): Promise<DashboardMetrics> {
   try {
     const response = await fetch(`${API_BASE_URL}/metrics`);
@@ -71,7 +96,7 @@ export async function fetchLogs(limit: number = 50): Promise<Array<{timestamp: s
   }
 }
 
-export async function fetchRepositoryStatus(repoName: string) {
+export async function fetchRepositoryStatus(repoName: string): Promise<RepositoryStatus | null> {
   try {
     const response = await fetch(`${API_BASE_URL}/repository/${repoName}/status`);
     if (!response.ok) {
@@ -81,6 +106,28 @@ export async function fetchRepositoryStatus(repoName: string) {
   } catch (error) {
     console.error('Failed to fetch repository status:', error);
     return null;
+  }
+}
+
+export async function fetchHealthStatus(): Promise<HealthStatus | null> {
+  try {
+    const response = await fetch(`${API_BASE_URL.replace('/api', '')}/`);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch health status:', error);
+    return null;
+  }
+}
+
+export async function checkBackendConnection(): Promise<boolean> {
+  try {
+    const health = await fetchHealthStatus();
+    return health?.status === 'healthy';
+  } catch {
+    return false;
   }
 }
 

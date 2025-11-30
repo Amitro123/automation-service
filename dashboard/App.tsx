@@ -29,6 +29,7 @@ import {
 } from './constants';
 import { Repository, LogEntry } from './types';
 import { generateProjectFile } from './services/geminiService';
+import { fetchDashboardMetrics } from './services/apiService';
 
 function App() {
   // State
@@ -38,32 +39,44 @@ function App() {
   const [apiKey, setApiKey] = useState('');
   const [showKeyModal, setShowKeyModal] = useState(false);
   
-  // Real-time Simulation State
+  // Real-time State from API
   const [metrics, setMetrics] = useState(INITIAL_METRICS);
+  const [coverage, setCoverage] = useState(COVERAGE_DATA);
+  const [isConnected, setIsConnected] = useState(false);
 
-  // Simulate real-time data updates
+  // Fetch real data from FastAPI backend
   useEffect(() => {
-    const interval = setInterval(() => {
-      // Randomly fluctuate memory and tokens
-      setMetrics(prev => ({
-        ...prev,
-        sessionMemoryUsage: Math.min(100, Math.max(10, prev.sessionMemoryUsage + (Math.random() * 6 - 3))),
-        tokensUsed: prev.tokensUsed + Math.floor(Math.random() * 50),
-      }));
-
-      // Randomly add logs
-      if (Math.random() > 0.8) {
-        const newLog: LogEntry = {
-          timestamp: new Date().toLocaleTimeString(),
-          level: Math.random() > 0.9 ? 'WARN' : 'INFO',
-          message: `Periodic check completed for ${selectedRepo.name} [Simulated]`
-        };
-        setLogs(prev => [...prev.slice(-49), newLog]);
+    const fetchData = async () => {
+      try {
+        const data = await fetchDashboardMetrics();
+        if (data) {
+          setIsConnected(true);
+          setCoverage({
+            total: data.coverage.total,
+            uncoveredLines: data.coverage.uncoveredLines,
+            mutationScore: data.coverage.mutationScore,
+          });
+          setMetrics({
+            tokensUsed: data.llm.tokensUsed,
+            estimatedCost: data.llm.estimatedCost,
+            efficiencyScore: data.llm.efficiencyScore,
+            sessionMemoryUsage: data.llm.sessionMemoryUsage,
+          });
+          if (data.logs.length > 0) {
+            setLogs(data.logs.map(l => ({ ...l, level: l.level as 'INFO' | 'WARN' | 'ERROR' })));
+          }
+          setSelectedRepo(prev => ({ ...prev, isSecure: data.security.isSecure }));
+        }
+      } catch (error) {
+        console.error('API fetch failed:', error);
+        setIsConnected(false);
       }
-    }, 2000);
+    };
 
+    fetchData();
+    const interval = setInterval(fetchData, 5000);
     return () => clearInterval(interval);
-  }, [selectedRepo]);
+  }, []);
 
   const handleGenerateFile = async (type: 'README' | 'SPEC') => {
     if (!apiKey) {
@@ -226,7 +239,7 @@ function App() {
            {/* Left Column: Metrics & Logs */}
            <div className="flex flex-col gap-8 xl:col-span-1 h-full overflow-hidden">
                <div className="flex-shrink-0">
-                  <MetricsPanel coverage={COVERAGE_DATA} llm={metrics} />
+                  <MetricsPanel coverage={coverage} llm={metrics} />
                </div>
                <div className="flex-1 min-h-[300px] flex flex-col">
                   <LogViewer logs={logs} />
