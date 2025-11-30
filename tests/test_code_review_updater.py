@@ -55,3 +55,17 @@ async def test_update_review_log_llm_failure(updater, mock_github_client, mock_l
     
     # Verify
     assert result is None
+
+@pytest.mark.asyncio
+async def test_update_review_log_sanitization(updater, mock_github_client, mock_llm_client):
+    # Setup
+    mock_github_client.get_file_content.return_value = "# Old Log"
+    # LLM returns content wrapped in markdown code block
+    mock_llm_client.summarize_review.return_value = "```markdown\n### New Entry\n```"
+    
+    # Execute
+    result = await updater.update_review_log("sha123", "Review Content", "main")
+    
+    # Verify
+    assert result == "# Old Log\n\n### New Entry\n"
+    mock_llm_client.summarize_review.assert_called_once()

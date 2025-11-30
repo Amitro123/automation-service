@@ -1,6 +1,7 @@
 """Automated code review logging module."""
 
 import logging
+import re
 from typing import Optional
 from .llm_client import LLMClient
 from .github_client import GitHubClient
@@ -51,6 +52,9 @@ class CodeReviewUpdater:
             logger.error("Failed to generate review summary entry")
             return None
 
+        # Clean up entry
+        entry = self._clean_review_entry(entry)
+
         # Append to log
         updated_log = current_log.strip() + "\n\n" + entry.strip() + "\n"
         
@@ -64,3 +68,22 @@ This document tracks the history of automated code reviews.
 
 ## Review History
 """
+
+    def _clean_review_entry(self, entry: str) -> str:
+        """Clean up LLM output to extract pure review entry.
+
+        Args:
+            entry: Raw LLM output
+
+        Returns:
+            Cleaned review entry
+        """
+        # Remove markdown code block wrappers if present
+        entry = re.sub(r'^```markdown\s*\n', '', entry, flags=re.MULTILINE)
+        entry = re.sub(r'^```\s*\n', '', entry, flags=re.MULTILINE)
+        entry = re.sub(r'\n```\s*$', '', entry, flags=re.MULTILINE)
+        
+        # Remove any leading/trailing whitespace
+        entry = entry.strip()
+        
+        return entry

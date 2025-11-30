@@ -4,7 +4,12 @@ Script to generate a Mermaid architecture diagram for the GitHub Automation Agen
 This script can be run in CI/CD to ensure the diagram stays up-to-date.
 """
 
-def generate_mermaid():
+def generate_mermaid() -> str:
+    """Generate Mermaid architecture diagram for GitHub Automation Agent.
+    
+    Returns:
+        Mermaid diagram string representation of the system architecture.
+    """
     diagram = """graph TD
     %% Styles
     classDef component fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
