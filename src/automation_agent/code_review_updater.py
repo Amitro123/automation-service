@@ -79,7 +79,6 @@ This document tracks the history of automated code reviews.
             Cleaned review entry
         """
         # Remove markdown code block wrappers if present
-        # Remove markdown code block wrappers if present
         entry = re.sub(r'\A```markdown\s*\n', '', entry)
         entry = re.sub(r'\A```\s*\n', '', entry)
         entry = re.sub(r'\n```\s*\Z', '', entry)

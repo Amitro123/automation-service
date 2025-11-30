@@ -81,7 +81,7 @@ class SpecUpdater:
         """
         return f"""# Project Specification & Progress
 
-*Last Updated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}*
+**Last Updated:** {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}
 
 ## Overview
 
@@ -105,10 +105,12 @@ This document tracks the project's development progress, architectural decisions
         """
         # Update the "Last Updated" timestamp
         updated_timestamp = datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')
-        current_spec = current_spec.replace(
-            '*Last Updated:',
-            f'*Last Updated: {updated_timestamp}*\n\n*Previous Update:'
-        )
+
+        # Use regex to replace the existing timestamp line, supporting both bold and italic
+        pattern = r'(\*\*|\*)Last Updated:(\*\*|\*).*'
+        replacement = f"**Last Updated:** {updated_timestamp}"
+
+        current_spec = re.sub(pattern, replacement, current_spec)
 
         # Append the new entry
         return current_spec + "\n\n" + entry
