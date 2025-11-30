@@ -28,6 +28,7 @@ src/automation_agent/ # Core package
 └── utils.py # Shared utilities
 
 tests/ # pytest tests (mock external services)
+dashboard/ # React + Vite dashboard (NEW)
 .env.example # Configuration template
 requirements.txt # Dependencies
 README.md # User documentation
@@ -87,7 +88,7 @@ When working on this repo, focus on these **in order**:
 ### 3. **Configuration & Extensibility**
 ✅ Add multi-LLM support (Gemini, local models)
 ✅ Per-branch policies (stricter on main)
-✅ Agent platform integration (Windsurf/Gravity hooks)
+✅ Agent platform integration (Windsurf/AntiGravity hooks)
 
 
 ## 🧪 Testing Rules

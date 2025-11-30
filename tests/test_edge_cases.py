@@ -115,14 +115,15 @@ async def test_missing_readme(mock_config):
 @pytest.mark.asyncio
 async def test_missing_spec(mock_config):
     """Test spec update when spec.md doesn't exist."""
-    mock_github = MagicMock()
+    mock_github = AsyncMock()
     mock_github.get_commit_info = AsyncMock(return_value={
         "sha": "abc123",
         "commit": {"message": "test", "author": {"name": "User"}}
     })
+    mock_github.get_commit_diff = AsyncMock(return_value="diff content")
     mock_github.get_file_content = AsyncMock(return_value=None)  # spec.md doesn't exist
     
-    mock_llm = MagicMock()
+    mock_llm = AsyncMock()
     mock_llm.update_spec = AsyncMock(return_value="New entry")
     
     updater = SpecUpdater(mock_github, mock_llm)

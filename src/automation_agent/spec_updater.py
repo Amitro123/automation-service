@@ -2,7 +2,7 @@
 
 import logging
 import re
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Optional, List, Dict, Any
 from .llm_client import LLMClient
 from .github_client import GitHubClient
@@ -81,7 +81,7 @@ class SpecUpdater:
         """
         return f"""# Project Specification & Progress
 
-**Last Updated:** {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}
+**Last Updated:** {datetime.now(UTC).strftime('%Y-%m-%d %H:%M UTC')}
 
 ## Overview
 
@@ -104,7 +104,7 @@ This document tracks the project's development progress, architectural decisions
             Updated spec content
         """
         # Update the "Last Updated" timestamp
-        updated_timestamp = datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')
+        updated_timestamp = datetime.now(UTC).strftime('%Y-%m-%d %H:%M UTC')
 
         # Use regex to replace the existing timestamp line, supporting both bold and italic
         pattern = r'(\*\*|\*)Last Updated:(\*\*|\*).*'

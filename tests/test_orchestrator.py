@@ -206,14 +206,15 @@ async def test_spec_update_exception(orchestrator, mock_spec_updater):
     assert result["status"] == "error"
 
 @pytest.mark.asyncio
-async def test_spec_update_failed(orchestrator, mock_spec_updater):
-    """Test spec update returning None."""
+async def test_spec_update_skipped(orchestrator, mock_spec_updater):
+    """Test spec update returning None (skipped - no update needed)."""
     mock_spec_updater.update_spec.return_value = None
     
     result = await orchestrator._run_spec_update("sha", "branch")
     
-    assert result["success"] is False
-    assert result["status"] == "failed"
+    assert result["success"] is True
+    assert result["status"] == "skipped"
+    assert result["reason"] == "No updates needed"
 
 @pytest.mark.asyncio
 async def test_readme_update_auto_commit(orchestrator, mock_readme_updater, mock_github_client, mock_config):

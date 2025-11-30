@@ -1,0 +1,5 @@
+{
+  "name": "StudioAI Dashboard",
+  "description": "A comprehensive GitHub automation dashboard featuring real-time test coverage, project progress tracking, architecture visualization, and Gemini-powered file generation.",
+  "requestFramePermissions": []
+}
