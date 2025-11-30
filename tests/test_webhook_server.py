@@ -8,7 +8,9 @@ from unittest.mock import MagicMock, patch, AsyncMock
 from src.automation_agent.webhook_server import WebhookServer
 from src.automation_agent.config import Config
 
-class TestWebhookServer(unittest.TestCase):
+
+class TestWebhookServerSync(unittest.TestCase):
+    """Synchronous tests for WebhookServer."""
 
     def setUp(self):
         # Mock Config
@@ -110,32 +112,6 @@ class TestWebhookServer(unittest.TestCase):
         # Should not raise exception (logged only)
         self.server._run_background_task(payload)
 
-    @pytest.mark.asyncio
-    async def test_handle_push_event_success(self):
-        payload = {"commits": [{"id": "sha1"}]}
-        self.server.orchestrator.run_automation = AsyncMock(return_value={"success": True})
-        
-        await self.server._handle_push_event(payload)
-        
-        self.server.orchestrator.run_automation.assert_called_once_with(payload)
-
-    @pytest.mark.asyncio
-    async def test_handle_push_event_no_commits(self):
-        payload = {"commits": []}
-        self.server.orchestrator.run_automation = AsyncMock()
-        
-        await self.server._handle_push_event(payload)
-        
-        self.server.orchestrator.run_automation.assert_not_called()
-
-    @pytest.mark.asyncio
-    async def test_handle_push_event_exception(self):
-        payload = {"commits": [{"id": "sha1"}]}
-        self.server.orchestrator.run_automation = AsyncMock(side_effect=Exception("Error"))
-        
-        # Should not raise exception
-        await self.server._handle_push_event(payload)
-
     def test_verify_signature_missing_header(self):
         with self.server.app.test_request_context('/webhook', headers={}):
             self.assertFalse(self.server._verify_signature(request))
@@ -147,3 +123,61 @@ class TestWebhookServer(unittest.TestCase):
     def test_verify_signature_wrong_algorithm(self):
         with self.server.app.test_request_context('/webhook', headers={'X-Hub-Signature-256': 'sha1=123'}):
             self.assertFalse(self.server._verify_signature(request))
+
+
+# Async tests - standalone pytest functions (not in unittest.TestCase)
+@pytest.fixture
+def webhook_server():
+    """Create a WebhookServer instance with mocked dependencies."""
+    config = MagicMock(spec=Config)
+    config.GITHUB_TOKEN = "token"
+    config.GITHUB_WEBHOOK_SECRET = "secret"
+    config.REPOSITORY_OWNER = "owner"
+    config.REPOSITORY_NAME = "repo"
+    config.LLM_PROVIDER = "openai"
+    config.OPENAI_API_KEY = "key"
+    config.HOST = "0.0.0.0"
+    config.PORT = 8080
+    config.DEBUG = False
+
+    with patch('src.automation_agent.webhook_server.GitHubClient'), \
+         patch('src.automation_agent.webhook_server.LLMClient'), \
+         patch('src.automation_agent.webhook_server.CodeReviewer'), \
+         patch('src.automation_agent.webhook_server.ReadmeUpdater'), \
+         patch('src.automation_agent.webhook_server.SpecUpdater'), \
+         patch('src.automation_agent.webhook_server.CodeReviewUpdater'), \
+         patch('src.automation_agent.webhook_server.AutomationOrchestrator'):
+        server = WebhookServer(config)
+        yield server
+
+
+@pytest.mark.asyncio
+async def test_handle_push_event_success(webhook_server):
+    """Test successful push event handling."""
+    payload = {"commits": [{"id": "sha1"}]}
+    webhook_server.orchestrator.run_automation = AsyncMock(return_value={"success": True})
+    
+    await webhook_server._handle_push_event(payload)
+    
+    webhook_server.orchestrator.run_automation.assert_called_once_with(payload)
+
+
+@pytest.mark.asyncio
+async def test_handle_push_event_no_commits(webhook_server):
+    """Test push event with no commits."""
+    payload = {"commits": []}
+    webhook_server.orchestrator.run_automation = AsyncMock()
+    
+    await webhook_server._handle_push_event(payload)
+    
+    webhook_server.orchestrator.run_automation.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_handle_push_event_exception(webhook_server):
+    """Test push event handling with exception."""
+    payload = {"commits": [{"id": "sha1"}]}
+    webhook_server.orchestrator.run_automation = AsyncMock(side_effect=Exception("Error"))
+    
+    # Should not raise exception
+    await webhook_server._handle_push_event(payload)
