@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  automation-agent:
+    build: .
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    volumes:
+      - ./src:/app/src
+      - ./spec.md:/app/spec.md
+      - ./README.md:/app/README.md
+      - ./code_review.md:/app/code_review.md
+    restart: unless-stopped

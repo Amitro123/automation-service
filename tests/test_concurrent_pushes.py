@@ -14,16 +14,21 @@ def mock_config():
     return config
 
 @pytest.fixture
-def orchestrator(mock_config):
+def orchestrator_setup(mock_config):
     mock_github = MagicMock()
-    mock_github.get_commit_diff.return_value = "diff"
-    mock_github.get_commit_info.return_value = {
+    mock_github.get_commit_diff = AsyncMock(return_value="diff")
+    mock_github.get_commit_info = AsyncMock(return_value={
         "sha": "abc123",
         "commit": {"message": "test", "author": {"name": "User"}}
-    }
+    })
+    mock_github.get_file_content = AsyncMock(return_value="content")
+    mock_github.create_branch = AsyncMock(return_value=True)
+    mock_github.update_file = AsyncMock(return_value=True)
+    mock_github.create_pull_request = AsyncMock(return_value=123)
+    mock_github.post_commit_comment = AsyncMock(return_value=True)
     
     code_reviewer = MagicMock()
-    code_reviewer.review_commit = AsyncMock(return_value=True)
+    code_reviewer.review_commit = AsyncMock(return_value={"success": True, "review": "Review"})
     
     readme_updater = MagicMock()
     readme_updater.update_readme = AsyncMock(return_value=None)  # No updates
@@ -31,17 +36,25 @@ def orchestrator(mock_config):
     spec_updater = MagicMock()
     spec_updater.update_spec = AsyncMock(return_value=None)  # No updates
     
-    return AutomationOrchestrator(
+    code_review_updater = MagicMock()
+    code_review_updater.update_review_log = AsyncMock(return_value="Updated log")
+    
+    orch = AutomationOrchestrator(
         github_client=mock_github,
         code_reviewer=code_reviewer,
         readme_updater=readme_updater,
         spec_updater=spec_updater,
+        code_review_updater=code_review_updater,
         config=mock_config
     )
+    
+    return orch, code_reviewer, readme_updater, spec_updater, mock_github
 
 @pytest.mark.asyncio
-async def test_concurrent_pushes(orchestrator):
+async def test_concurrent_pushes(orchestrator_setup):
     """Test handling 10 concurrent push events."""
+    orch, _, _, _, _ = orchestrator_setup
+    
     payloads = [
         {
             "ref": "refs/heads/main",
@@ -53,7 +66,7 @@ async def test_concurrent_pushes(orchestrator):
     
     # Run all orchestrations concurrently
     results = await asyncio.gather(
-        *[orchestrator.run_automation(payload) for payload in payloads],
+        *[orch.run_automation(payload) for payload in payloads],
         return_exceptions=True
     )
     
@@ -64,14 +77,17 @@ async def test_concurrent_pushes(orchestrator):
         assert result["success"] is True
 
 @pytest.mark.asyncio
-async def test_concurrent_pushes_with_delays(orchestrator):
+async def test_concurrent_pushes_with_delays(orchestrator_setup):
     """Test concurrent pushes with simulated API delays."""
+    orch, code_reviewer, _, _, _ = orchestrator_setup
+    
     # Add delay to simulate slow API calls
     async def slow_review(*args, **kwargs):
         await asyncio.sleep(0.1)
-        return True
+        return {"success": True, "review": "Review"}
     
-    orchestrator.code_reviewer.review_commit = slow_review
+    # Use side_effect to override the mock behavior
+    code_reviewer.review_commit.side_effect = slow_review
     
     payloads = [
         {
@@ -86,7 +102,7 @@ async def test_concurrent_pushes_with_delays(orchestrator):
     import time
     start = time.time()
     results = await asyncio.gather(
-        *[orchestrator.run_automation(payload) for payload in payloads]
+        *[orch.run_automation(payload) for payload in payloads]
     )
     duration = time.time() - start
     

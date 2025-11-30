@@ -15,16 +15,16 @@ def mock_config():
 @pytest.fixture
 def mock_github_client():
     mock = MagicMock()
-    mock.get_commit_diff.return_value = "diff content"
-    mock.get_commit_info.return_value = {
+    mock.get_commit_diff = AsyncMock(return_value="diff content")
+    mock.get_commit_info = AsyncMock(return_value={
         "sha": "abc123",
         "commit": {"message": "feat: test", "author": {"name": "User"}}
-    }
-    mock.get_file_content.return_value = "Old content"
-    mock.create_branch.return_value = True
-    mock.update_file.return_value = True
-    mock.create_pull_request.return_value = 100
-    mock.post_commit_comment.return_value = True
+    })
+    mock.get_file_content = AsyncMock(return_value="Old content")
+    mock.create_branch = AsyncMock(return_value=True)
+    mock.update_file = AsyncMock(return_value=True)
+    mock.create_pull_request = AsyncMock(return_value=100)
+    mock.post_commit_comment = AsyncMock(return_value=True)
     return mock
 
 @pytest.fixture
@@ -39,7 +39,7 @@ def mock_llm_client():
 def orchestrator(mock_config, mock_github_client, mock_llm_client):
     # Create mock components
     code_reviewer = MagicMock()
-    code_reviewer.review_commit = AsyncMock(return_value=True)
+    code_reviewer.review_commit = AsyncMock(return_value={"success": True, "review": "Code review content"})
     
     readme_updater = MagicMock()
     readme_updater.update_readme = AsyncMock(return_value="New README")
@@ -47,19 +47,23 @@ def orchestrator(mock_config, mock_github_client, mock_llm_client):
     spec_updater = MagicMock()
     spec_updater.update_spec = AsyncMock(return_value="New spec")
     
+    code_review_updater = MagicMock()
+    code_review_updater.update_review_log = AsyncMock(return_value="Updated log")
+    
     # Create orchestrator with mocked dependencies
     orch = AutomationOrchestrator(
         github_client=mock_github_client,
         code_reviewer=code_reviewer,
         readme_updater=readme_updater,
         spec_updater=spec_updater,
+        code_review_updater=code_review_updater,
         config=mock_config
     )
-    return orch, code_reviewer, readme_updater, spec_updater, mock_github_client
+    return orch, code_reviewer, readme_updater, spec_updater, mock_github_client, code_review_updater
 
 @pytest.mark.asyncio
 async def test_orchestrator_runs_all_tasks(orchestrator):
-    orch, code_reviewer, readme_updater, spec_updater, mock_github = orchestrator
+    orch, code_reviewer, readme_updater, spec_updater, _, code_review_updater = orchestrator
     
     payload = {
         "ref": "refs/heads/main",
@@ -73,6 +77,7 @@ async def test_orchestrator_runs_all_tasks(orchestrator):
     code_reviewer.review_commit.assert_called_once_with(commit_sha="abc123", post_as_issue=False)
     readme_updater.update_readme.assert_called_once_with(commit_sha="abc123", branch="main")
     spec_updater.update_spec.assert_called_once_with(commit_sha="abc123", branch="main")
+    code_review_updater.update_review_log.assert_called_once()
     
     # Verify result structure
     assert result["success"] is True
@@ -81,7 +86,7 @@ async def test_orchestrator_runs_all_tasks(orchestrator):
 
 @pytest.mark.asyncio
 async def test_orchestrator_creates_pr_for_docs(orchestrator):
-    orch, code_reviewer, readme_updater, spec_updater, mock_github = orchestrator
+    orch, _, _, _, mock_github, _ = orchestrator
     
     payload = {
         "ref": "refs/heads/main",
@@ -96,7 +101,7 @@ async def test_orchestrator_creates_pr_for_docs(orchestrator):
 
 @pytest.mark.asyncio
 async def test_orchestrator_handles_no_commits(orchestrator):
-    orch, code_reviewer, readme_updater, spec_updater, mock_github = orchestrator
+    orch, code_reviewer, readme_updater, spec_updater, _, _ = orchestrator
     
     payload = {
         "ref": "refs/heads/main",
@@ -113,7 +118,7 @@ async def test_orchestrator_handles_no_commits(orchestrator):
 
 @pytest.mark.asyncio
 async def test_orchestrator_task_failure_doesnt_block_others(orchestrator):
-    orch, code_reviewer, readme_updater, spec_updater, mock_github = orchestrator
+    orch, code_reviewer, readme_updater, spec_updater, _, _ = orchestrator
     
     # Make code reviewer fail
     code_reviewer.review_commit.side_effect = Exception("Review failed")

@@ -20,11 +20,11 @@ def mock_config():
 async def test_empty_diff(mock_config):
     """Test handling of empty diff."""
     mock_github = MagicMock()
-    mock_github.get_commit_diff.return_value = ""  # Empty diff
-    mock_github.get_commit_info.return_value = {
+    mock_github.get_commit_diff = AsyncMock(return_value="")  # Empty diff
+    mock_github.get_commit_info = AsyncMock(return_value={
         "sha": "abc123",
         "commit": {"message": "empty", "author": {"name": "User"}}
-    }
+    })
     
     mock_llm = MagicMock()
     mock_llm.analyze_code = AsyncMock(return_value="No changes to review")
@@ -33,19 +33,19 @@ async def test_empty_diff(mock_config):
     result = await reviewer.review_commit("abc123")
     
     # Should handle gracefully
-    assert result is False  # No diff means no review posted
+    assert result["success"] is False  # No diff means no review posted
 
 @pytest.mark.asyncio
 async def test_huge_diff(mock_config):
     """Test handling of very large diff."""
     mock_github = MagicMock()
     # Simulate huge diff (100k lines)
-    mock_github.get_commit_diff.return_value = "+" + ("line\n" * 100000)
-    mock_github.get_commit_info.return_value = {
+    mock_github.get_commit_diff = AsyncMock(return_value="+" + ("line\n" * 100000))
+    mock_github.get_commit_info = AsyncMock(return_value={
         "sha": "abc123",
         "commit": {"message": "huge", "author": {"name": "User"}}
-    }
-    mock_github.post_commit_comment.return_value = True
+    })
+    mock_github.post_commit_comment = AsyncMock(return_value=True)
     
     mock_llm = MagicMock()
     mock_llm.analyze_code = AsyncMock(return_value="Review of large diff")
@@ -54,14 +54,14 @@ async def test_huge_diff(mock_config):
     result = await reviewer.review_commit("abc123")
     
     # Should still process (LLM client may truncate internally)
-    assert result is True
+    assert result["success"] is True
 
 @pytest.mark.asyncio
 async def test_github_rate_limit(mock_config):
     """Test handling of GitHub API rate limit."""
     mock_github = MagicMock()
-    # Simulate rate limit error - use generic Exception since HTTPError needs response object
-    mock_github.get_commit_diff.side_effect = Exception("403 rate limit exceeded")
+    # Simulate rate limit error - GitHubClient returns None on error
+    mock_github.get_commit_diff = AsyncMock(return_value=None)
     
     mock_llm = MagicMock()
     
@@ -69,17 +69,17 @@ async def test_github_rate_limit(mock_config):
     result = await reviewer.review_commit("abc123")
     
     # Should return False on error
-    assert result is False
+    assert result["success"] is False
 
 @pytest.mark.asyncio
 async def test_llm_api_failure(mock_config):
     """Test handling of LLM API failure."""
     mock_github = MagicMock()
-    mock_github.get_commit_diff.return_value = "diff"
-    mock_github.get_commit_info.return_value = {
+    mock_github.get_commit_diff = AsyncMock(return_value="diff")
+    mock_github.get_commit_info = AsyncMock(return_value={
         "sha": "abc123",
         "commit": {"message": "test", "author": {"name": "User"}}
-    }
+    })
     
     mock_llm = MagicMock()
     # Simulate LLM API error
@@ -89,18 +89,18 @@ async def test_llm_api_failure(mock_config):
     result = await reviewer.review_commit("abc123")
     
     # Should handle exception gracefully
-    assert result is False
+    assert result["success"] is False
 
 @pytest.mark.asyncio
 async def test_missing_readme(mock_config):
     """Test README update when README.md doesn't exist."""
     mock_github = MagicMock()
-    mock_github.get_commit_diff.return_value = "diff"
-    mock_github.get_commit_info.return_value = {
+    mock_github.get_commit_diff = AsyncMock(return_value="diff")
+    mock_github.get_commit_info = AsyncMock(return_value={
         "sha": "abc123",
         "commit": {"message": "test", "author": {"name": "User"}}
-    }
-    mock_github.get_file_content.return_value = None  # README doesn't exist
+    })
+    mock_github.get_file_content = AsyncMock(return_value=None)  # README doesn't exist
     
     mock_llm = MagicMock()
     mock_llm.update_readme = AsyncMock(return_value="# New README\n\nContent")
@@ -116,11 +116,11 @@ async def test_missing_readme(mock_config):
 async def test_missing_spec(mock_config):
     """Test spec update when spec.md doesn't exist."""
     mock_github = MagicMock()
-    mock_github.get_commit_info.return_value = {
+    mock_github.get_commit_info = AsyncMock(return_value={
         "sha": "abc123",
         "commit": {"message": "test", "author": {"name": "User"}}
-    }
-    mock_github.get_file_content.return_value = None  # spec.md doesn't exist
+    })
+    mock_github.get_file_content = AsyncMock(return_value=None)  # spec.md doesn't exist
     
     mock_llm = MagicMock()
     mock_llm.update_spec = AsyncMock(return_value="New entry")
@@ -137,11 +137,16 @@ async def test_invalid_payload(mock_config):
     """Test orchestrator with invalid webhook payload."""
     mock_github = MagicMock()
     code_reviewer = MagicMock()
+    code_reviewer.review_commit = AsyncMock(return_value={"success": False})
     readme_updater = MagicMock()
+    readme_updater.update_readme = AsyncMock(return_value=None)
     spec_updater = MagicMock()
+    spec_updater.update_spec = AsyncMock(return_value=None)
+    code_review_updater = MagicMock()
+    code_review_updater.update_review_log = AsyncMock(return_value=None)
     
     orch = AutomationOrchestrator(
-        mock_github, code_reviewer, readme_updater, spec_updater, mock_config
+        mock_github, code_reviewer, readme_updater, spec_updater, code_review_updater, mock_config
     )
     
     # Invalid payload (missing required fields)
@@ -154,8 +159,8 @@ async def test_invalid_payload(mock_config):
 async def test_malformed_commit_info(mock_config):
     """Test handling of malformed commit info."""
     mock_github = MagicMock()
-    mock_github.get_commit_diff.return_value = "diff"
-    mock_github.get_commit_info.return_value = None  # Malformed response
+    mock_github.get_commit_diff = AsyncMock(return_value="diff")
+    mock_github.get_commit_info = AsyncMock(return_value=None)  # Malformed response
     
     mock_llm = MagicMock()
     
@@ -163,4 +168,4 @@ async def test_malformed_commit_info(mock_config):
     result = await reviewer.review_commit("abc123")
     
     # Should handle gracefully
-    assert result is False
+    assert result["success"] is False

@@ -5,6 +5,7 @@ from automation_agent.github_client import GitHubClient
 from automation_agent.code_reviewer import CodeReviewer
 from automation_agent.readme_updater import ReadmeUpdater
 from automation_agent.spec_updater import SpecUpdater
+from automation_agent.code_review_updater import CodeReviewUpdater
 from automation_agent.llm_client import LLMClient
 
 @pytest.fixture
@@ -30,6 +31,10 @@ def mock_readme_updater():
 @pytest.fixture
 def mock_spec_updater():
     return MagicMock(spec=SpecUpdater)
+
+@pytest.fixture
+def mock_code_review_updater():
+    return AsyncMock(spec=CodeReviewUpdater)
 
 @pytest.fixture
 def mock_session():
