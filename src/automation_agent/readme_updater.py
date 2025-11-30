@@ -35,18 +35,18 @@ class ReadmeUpdater:
         logger.info(f"Analyzing commit {commit_sha} for README updates")
 
         # Fetch commit diff and info
-        diff = self.github.get_commit_diff(commit_sha)
+        diff = await self.github.get_commit_diff(commit_sha)
         if not diff:
             logger.error("Failed to fetch commit diff")
             return None
 
-        commit_info = self.github.get_commit_info(commit_sha)
+        commit_info = await self.github.get_commit_info(commit_sha)
         if not commit_info:
             logger.error("Failed to fetch commit info")
             return None
 
         # Fetch current README
-        current_readme = self.github.get_file_content("README.md", ref=branch)
+        current_readme = await self.github.get_file_content("README.md", ref=branch)
         if current_readme is None:
             logger.warning("README.md not found, will create new one")
             current_readme = "# Project\n\nProject description.\n"

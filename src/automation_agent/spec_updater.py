@@ -1,6 +1,7 @@
 """Automated spec.md project documentation module."""
 
 import logging
+import re
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from .llm_client import LLMClient
@@ -34,21 +35,28 @@ class SpecUpdater:
         """
         logger.info(f"Generating spec.md update for commit {commit_sha}")
 
-        # Fetch commit info and diff
-        commit_info = self.github.get_commit_info(commit_sha)
+        # Fetch commit info
+        commit_info = await self.github.get_commit_info(commit_sha)
         if not commit_info:
             logger.error("Failed to fetch commit info")
             return None
 
+        # Fetch commit diff (Fix Issue 3)
+        diff = await self.github.get_commit_diff(commit_sha)
+        if not diff:
+            logger.warning("Failed to fetch commit diff, proceeding with empty diff")
+            diff = ""
+
         # Fetch current spec.md
-        current_spec = self.github.get_file_content("spec.md", ref=branch)
+        current_spec = await self.github.get_file_content("spec.md", ref=branch)
         if current_spec is None:
             logger.info("spec.md not found, creating new one")
             current_spec = self._create_initial_spec()
 
         # Generate spec update
         try:
-            updated_spec = await self.llm.update_spec(commit_info, current_spec)
+            # Pass diff explicitly
+            updated_spec = await self.llm.update_spec(commit_info, diff, current_spec)
         except Exception as e:
             logger.error(f"Failed to generate spec update: {e}")
             return None
@@ -56,6 +64,9 @@ class SpecUpdater:
         if not updated_spec:
             logger.error("Failed to generate spec update")
             return None
+
+        # Clean up entry (Fix Issue 4)
+        updated_spec = self._clean_spec_entry(updated_spec)
 
         # Append to spec
         updated_spec = self._append_to_spec(current_spec, updated_spec)
@@ -70,7 +81,7 @@ class SpecUpdater:
         """
         return f"""# Project Specification & Progress
 
-*Last Updated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}*
+**Last Updated:** {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}
 
 ## Overview
 
@@ -94,10 +105,31 @@ This document tracks the project's development progress, architectural decisions
         """
         # Update the "Last Updated" timestamp
         updated_timestamp = datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')
-        current_spec = current_spec.replace(
-            '*Last Updated:',
-            f'*Last Updated: {updated_timestamp}*\n\n*Previous Update:'
-        )
+
+        # Use regex to replace the existing timestamp line, supporting both bold and italic
+        pattern = r'(\*\*|\*)Last Updated:(\*\*|\*).*'
+        replacement = f"**Last Updated:** {updated_timestamp}"
+
+        current_spec = re.sub(pattern, replacement, current_spec)
 
         # Append the new entry
         return current_spec + "\n\n" + entry
+
+    def _clean_spec_entry(self, entry: str) -> str:
+        """Clean up LLM output to extract pure spec entry.
+
+        Args:
+            entry: Raw LLM output
+
+        Returns:
+            Cleaned spec entry
+        """
+        # Remove markdown code block wrappers if present
+        entry = re.sub(r'^```markdown\s*\n', '', entry, flags=re.MULTILINE)
+        entry = re.sub(r'^```\s*\n', '', entry, flags=re.MULTILINE)
+        entry = re.sub(r'\n```\s*$', '', entry, flags=re.MULTILINE)
+        
+        # Remove any leading/trailing whitespace
+        entry = entry.strip()
+        
+        return entry

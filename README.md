@@ -15,6 +15,7 @@ An autonomous GitHub automation system that triggers on push events to perform i
 - **Comprehensive Feedback**: Code quality, bugs, security, performance, best practices
 - **Flexible Output**: Commit comments, PR comments, or GitHub issues
 - **Structured Reviews**: Strengths, issues, suggestions, security concerns
+- **Persistent Log**: Maintains a `code_review.md` history of all reviews
 
 ### 2. 📝 Automatic README Updates
 - **Smart Detection**: Identifies new functions, classes, APIs, dependencies
@@ -30,44 +31,17 @@ An autonomous GitHub automation system that triggers on push events to perform i
 
 ## 🏗️ Architecture
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     GitHub Push Event                        │
-└───────────────────────────┬─────────────────────────────────┘
-                            │
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│                    Webhook Server (Flask)                    │
-│                                                              │
-│  • Receives push events                                     │
-│  • Verifies HMAC-SHA256 signature                          │
-│  • Extracts commit information                              │
-└───────────────────────────┬─────────────────────────────────┘
-                            │
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│                   Automation Orchestrator                    │
-│                                                              │
-│  Coordinates three parallel tasks:                          │
-└───────────┬─────────────────┬────────────────┬──────────────┘
-            │                 │                │
-            ↓                 ↓                ↓
-    ┌───────────┐     ┌──────────┐    ┌──────────┐
-    │   Code    │     │ README   │    │  Spec    │
-    │  Review   │     │ Updater  │    │ Updater  │
-    └─────┬─────┘     └────┬─────┘    └────┬─────┘
-          │                │               │
-          ↓                ↓               ↓
-    ┌─────────────────────────────────────────┐
-    │          LLM Client (OpenAI/Anthropic)  │
-    └─────────────────────────────────────────┘
-          │                │               │
-          ↓                ↓               ↓
-    ┌──────────┐     ┌──────────┐    ┌──────────┐
-    │ Post     │     │ Create   │    │ Append   │
-    │ Comment  │     │ PR/Commit│    │ to spec  │
-    └──────────┘     └──────────┘    └──────────┘
-```
+The system architecture is defined in code and visualized using Mermaid.
+
+[**View the full Architecture Diagram in ARCHITECTURE.md**](ARCHITECTURE.md)
+
+The architecture consists of:
+- **Webhook Server**: Handles GitHub events.
+- **Orchestrator**: Manages parallel execution of tasks.
+- **Agents**: Code Reviewer, README Updater, Spec Updater, Code Review Updater.
+- **Memory**: Persistent storage in markdown files.
+
+For a detailed breakdown and maintenance instructions, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## 🚀 Quick Start
 
@@ -176,6 +150,7 @@ automation_agent/
 │       ├── webhook_server.py # Flask webhook endpoint
 │       ├── orchestrator.py # Coordinates 3 parallel tasks
 │       ├── code_reviewer.py # LLM-powered code analysis
+│       ├── code_review_updater.py # Persistent review logging
 │       ├── readme_updater.py # Smart README updates
 │       ├── spec_updater.py # Progress documentation
 │       ├── github_client.py # GitHub API wrapper
@@ -197,6 +172,11 @@ automation_agent/
 - Minimal GitHub token scopes
 - No logging of secrets/diffs
 - Environment-only credential storage
+
+### Security Guardrails
+- **Static Analysis**: Bandit scans run on every push to detect security issues in Python code.
+- **CI/CD Integration**: GitHub Actions workflow (`.github/workflows/security.yml`) enforces security checks.
+- **Secret Management**: All sensitive data (API keys, tokens) must be stored in environment variables or GitHub Secrets.
 
 ## 🌐 Deployment
 

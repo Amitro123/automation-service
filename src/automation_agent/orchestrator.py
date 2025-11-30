@@ -5,6 +5,7 @@ from .github_client import GitHubClient
 from .code_reviewer import CodeReviewer
 from .readme_updater import ReadmeUpdater
 from .spec_updater import SpecUpdater
+from .code_review_updater import CodeReviewUpdater
 from .config import Config
 
 logger = logging.getLogger(__name__)
@@ -19,6 +20,7 @@ class AutomationOrchestrator:
         code_reviewer: CodeReviewer,
         readme_updater: ReadmeUpdater,
         spec_updater: SpecUpdater,
+        code_review_updater: CodeReviewUpdater,
         config: Config,
     ):
         """Initialize orchestrator.
@@ -28,12 +30,14 @@ class AutomationOrchestrator:
             code_reviewer: Code review module
             readme_updater: README update module
             spec_updater: Spec update module
+            code_review_updater: Code review log updater
             config: Application configuration
         """
         self.github = github_client
         self.code_reviewer = code_reviewer
         self.readme_updater = readme_updater
         self.spec_updater = spec_updater
+        self.code_review_updater = code_review_updater
         self.config = config
 
     async def run_automation(self, event_payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -55,7 +59,7 @@ class AutomationOrchestrator:
 
         # Define tasks to run in parallel
         tasks = [
-            self._run_code_review(commit_sha),
+            self._run_code_review(commit_sha, branch),
             self._run_readme_update(commit_sha, branch),
             self._run_spec_update(commit_sha, branch),
         ]
@@ -117,19 +121,43 @@ class AutomationOrchestrator:
         """
         return await asyncio.gather(*tasks, return_exceptions=True)
 
-    async def _run_code_review(self, commit_sha: str) -> Dict[str, Any]:
+    async def _run_code_review(self, commit_sha: str, branch: str) -> Dict[str, Any]:
         """Run code review task."""
         try:
             logger.info("Task 1: Running code review...")
             # Call async method directly
-            review_success = await self.code_reviewer.review_commit(
+            review_result = await self.code_reviewer.review_commit(
                 commit_sha=commit_sha,
                 post_as_issue=self.config.POST_REVIEW_AS_ISSUE,
             )
+            
+            review_success = review_result.get("success", False)
+            review_content = review_result.get("review", "")
+            
+            log_updated = False
+            if review_success and review_content:
+                updated_log = await self.code_review_updater.update_review_log(
+                    commit_sha=commit_sha,
+                    review_content=review_content,
+                    branch=branch
+                )
+                
+                if updated_log:
+                    if self.config.AUTO_COMMIT:
+                        log_updated = await self.github.update_file(
+                            file_path="code_review.md",
+                            content=updated_log,
+                            message=f"docs: Update code review log for {commit_sha[:7]}",
+                            branch=branch
+                        )
+                    else:
+                        log_updated = True # Generated but not committed
+
             return {
                 "success": review_success,
                 "status": "completed" if review_success else "failed",
                 "posted_as_issue": self.config.POST_REVIEW_AS_ISSUE,
+                "log_updated": log_updated
             }
         except Exception as e:
             logger.error(f"Code review failed: {e}", exc_info=True)
@@ -146,8 +174,7 @@ class AutomationOrchestrator:
 
             if updated_readme:
                 if self.config.CREATE_PR:
-                    pr_result = await asyncio.to_thread(
-                        self._create_documentation_pr,
+                    pr_result = await self._create_documentation_pr(
                         branch=branch,
                         readme_content=updated_readme,
                         commit_sha=commit_sha,
@@ -159,8 +186,7 @@ class AutomationOrchestrator:
                         "pr_number": pr_result.get("pr_number"),
                     }
                 elif self.config.AUTO_COMMIT:
-                    commit_success = await asyncio.to_thread(
-                        self.github.update_file,
+                    commit_success = await self.github.update_file(
                         file_path="README.md",
                         content=updated_readme,
                         message=f"docs: Auto-update README.md from {commit_sha[:7]}",
@@ -202,8 +228,7 @@ class AutomationOrchestrator:
                     # because we don't know if it exists yet.
                     # For simplicity in this async version, we'll create a separate PR or
                     # try to find an existing one (omitted for brevity, creating new one).
-                    pr_result = await asyncio.to_thread(
-                        self._create_documentation_pr,
+                    pr_result = await self._create_documentation_pr(
                         branch=branch,
                         spec_content=updated_spec,
                         commit_sha=commit_sha,
@@ -215,8 +240,7 @@ class AutomationOrchestrator:
                         "pr_number": pr_result.get("pr_number"),
                     }
                 elif self.config.AUTO_COMMIT:
-                    commit_success = await asyncio.to_thread(
-                        self.github.update_file,
+                    commit_success = await self.github.update_file(
                         file_path="spec.md",
                         content=updated_spec,
                         message=f"docs: Auto-update spec.md from {commit_sha[:7]}",
@@ -243,7 +267,7 @@ class AutomationOrchestrator:
             logger.error(f"Spec update failed: {e}", exc_info=True)
             return {"success": False, "status": "error", "error": str(e)}
 
-    def _create_documentation_pr(
+    async def _create_documentation_pr(
         self,
         branch: str,
         readme_content: str = None,
@@ -267,12 +291,12 @@ class AutomationOrchestrator:
 
         try:
             # Create branch
-            if not self.github.create_branch(pr_branch, from_branch=branch):
+            if not await self.github.create_branch(pr_branch, from_branch=branch):
                 return {"success": False, "error": "Failed to create branch"}
 
             # Commit files
             if readme_content:
-                if not self.github.update_file(
+                if not await self.github.update_file(
                     file_path="README.md",
                     content=readme_content,
                     message=f"docs: Auto-update README.md from {commit_sha[:7]}",
@@ -281,7 +305,7 @@ class AutomationOrchestrator:
                     return {"success": False, "error": "Failed to update README.md"}
 
             if spec_content:
-                if not self.github.update_file(
+                if not await self.github.update_file(
                     file_path="spec.md",
                     content=spec_content,
                     message=f"docs: Auto-update spec.md from {commit_sha[:7]}",
@@ -309,7 +333,7 @@ This PR contains automated documentation updates generated from commit `{commit_
 *This PR was created automatically by the GitHub Automation Agent.*
 """
 
-            pr_number = self.github.create_pull_request(
+            pr_number = await self.github.create_pull_request(
                 title=pr_title, body=pr_body, head=pr_branch, base=branch
             )
 

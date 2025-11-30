@@ -13,6 +13,7 @@ from .llm_client import LLMClient
 from .code_reviewer import CodeReviewer
 from .readme_updater import ReadmeUpdater
 from .spec_updater import SpecUpdater
+from .code_review_updater import CodeReviewUpdater
 from .orchestrator import AutomationOrchestrator
 
 logger = logging.getLogger(__name__)
@@ -51,6 +52,7 @@ class WebhookServer:
         self.code_reviewer = CodeReviewer(self.github_client, self.llm_client)
         self.readme_updater = ReadmeUpdater(self.github_client, self.llm_client)
         self.spec_updater = SpecUpdater(self.github_client, self.llm_client)
+        self.code_review_updater = CodeReviewUpdater(self.github_client, self.llm_client)
 
         # Initialize orchestrator
         self.orchestrator = AutomationOrchestrator(
@@ -58,6 +60,7 @@ class WebhookServer:
             code_reviewer=self.code_reviewer,
             readme_updater=self.readme_updater,
             spec_updater=self.spec_updater,
+            code_review_updater=self.code_review_updater,
             config=self.config,
         )
 

@@ -19,6 +19,7 @@ src/automation_agent/ # Core package
 ├── webhook_server.py # Flask webhook endpoint
 ├── orchestrator.py # Coordinates 3 parallel tasks
 ├── code_reviewer.py # LLM-powered code analysis
+├── code_review_updater.py # Persistent review logging
 ├── readme_updater.py # Smart README updates from diffs
 ├── spec_updater.py # Progress documentation
 ├── github_client.py # GitHub API wrapper
@@ -143,6 +144,8 @@ Use minimal GitHub token scopes
 
 Validate/sanitize LLM outputs before posting
 
+Run `bandit -r src/` to check for security issues before pushing code
+
 
 ## 🎯 Current spec.md Tasks
 
@@ -170,4 +173,13 @@ Your changes are successful if:
 ✅ Logs are structured + no secrets exposed
 ✅ README/spec.md stay accurate after changes
 
-undefined
+### 4. CodeReviewUpdater
+- **Purpose**: Maintains a persistent log of all code reviews in `code_review.md`.
+- **Logic**:
+  - Runs after `CodeReviewer` completes successfully.
+  - Summarizes the full review into a concise entry (Score, Key Issues, Action Items).
+  - Appends to `code_review.md`.
+- **Rules**:
+  - Never overwrite the log, always append.
+  - If `code_review.md` is missing, create it.
+  - Use `LLMClient.summarize_review` for consistency.

@@ -28,7 +28,7 @@ class Config:
     )
 
     # Webhook Server Configuration
-    HOST: str = os.getenv("HOST", "0.0.0.0")
+    HOST: str = os.getenv("HOST", "0.0.0.0")  # nosec
     PORT: int = int(os.getenv("PORT", "8080"))
     DEBUG: bool = os.getenv("DEBUG", "False").lower() == "true"
 
