@@ -79,9 +79,10 @@ This document tracks the history of automated code reviews.
             Cleaned review entry
         """
         # Remove markdown code block wrappers if present
-        entry = re.sub(r'^```markdown\s*\n', '', entry, flags=re.MULTILINE)
-        entry = re.sub(r'^```\s*\n', '', entry, flags=re.MULTILINE)
-        entry = re.sub(r'\n```\s*$', '', entry, flags=re.MULTILINE)
+        # Remove markdown code block wrappers if present
+        entry = re.sub(r'\A```markdown\s*\n', '', entry)
+        entry = re.sub(r'\A```\s*\n', '', entry)
+        entry = re.sub(r'\n```\s*\Z', '', entry)
         
         # Remove any leading/trailing whitespace
         entry = entry.strip()
