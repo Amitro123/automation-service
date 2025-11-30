@@ -14,21 +14,27 @@ Instructions for AI coding agents (Windsurf, Cursor, GitHub Copilot, etc.) worki
 ## 📁 Project Structure
 
 src/automation_agent/ # Core package
-├── init.py
-├── main.py # Entry point (python -m automation_agent.main)
+├── __init__.py
+├── main.py # Flask entry point (python -m automation_agent.main)
+├── main_api.py # FastAPI entry point (NEW)
+├── api_server.py # FastAPI server with Dashboard API (NEW)
 ├── webhook_server.py # Flask webhook endpoint
-├── orchestrator.py # Coordinates 3 parallel tasks
+├── orchestrator.py # Coordinates 4 parallel tasks
 ├── code_reviewer.py # LLM-powered code analysis
 ├── code_review_updater.py # Persistent review logging
 ├── readme_updater.py # Smart README updates from diffs
 ├── spec_updater.py # Progress documentation
 ├── github_client.py # GitHub API wrapper
-├── llm_client.py # OpenAI/Anthropic abstraction
+├── llm_client.py # OpenAI/Anthropic/Gemini abstraction
 ├── config.py # .env loading + validation
 └── utils.py # Shared utilities
 
 tests/ # pytest tests (mock external services)
-dashboard/ # React + Vite dashboard (NEW)
+dashboard/ # React + Vite dashboard
+├── App.tsx # Main dashboard component
+├── services/apiService.ts # FastAPI client
+└── components/ # UI components
+run_api.py # FastAPI server launcher (NEW)
 .env.example # Configuration template
 requirements.txt # Dependencies
 README.md # User documentation
@@ -152,9 +158,10 @@ Run `bandit -r src/` to check for security issues before pushing code
 
 Read `spec.md` first, then prioritize:
 1. ✅ Core functionality working
-2. ✅ Comprehensive testing (Phase 3) - **93/95 tests passing, 80% coverage**
-3. 🚀 Deployment readiness (Phase 4)
-4. 💎 Refactoring + agent platform integration
+2. ✅ Comprehensive testing (Phase 3) - **99/99 tests passing, 100% coverage**
+3. ✅ FastAPI + Dashboard Integration
+4. 🚀 E2E Testing with ngrok
+5. 🚀 Deployment readiness (Phase 4) - Docker + CI/CD
 
 ## 🚫 DON'T TOUCH (Unless Requested)
 

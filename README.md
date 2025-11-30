@@ -73,13 +73,24 @@ cp .env.example .env
 Edit `.env` with your credentials.
 
 ### Run Locally
+
+#### Option 1: FastAPI Server (Recommended - includes Dashboard API)
 ```bash
-# Ensure src is in PYTHONPATH
+# Windows (PowerShell)
+.venv\Scripts\python.exe run_api.py
+
+# Linux/Mac
+python run_api.py
+```
+
+#### Option 2: Flask Server (Legacy webhook-only)
+```bash
 # Windows (PowerShell)
 $env:PYTHONPATH = "$PWD/src"
+python -m automation_agent.main
+
 # Linux/Mac
 export PYTHONPATH=$PYTHONPATH:$(pwd)/src
-
 python -m automation_agent.main
 ```
 
@@ -214,7 +225,7 @@ npm install  # First time only
 npm run dev
 ```
 
-Dashboard runs on: **http://localhost:3000**
+Dashboard runs on: **http://localhost:5173**
 
 **Features:**
 - 📊 Live test coverage and mutation scores
