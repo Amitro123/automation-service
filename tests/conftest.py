@@ -34,7 +34,7 @@ def mock_spec_updater():
 
 @pytest.fixture
 def mock_code_review_updater():
-    return MagicMock(spec=CodeReviewUpdater)
+    return AsyncMock(spec=CodeReviewUpdater)
 
 @pytest.fixture
 def mock_session():

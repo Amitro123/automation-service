@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
 import httpx
+import base64
 from src.automation_agent.github_client import GitHubClient
 
 @pytest.fixture
@@ -92,7 +93,6 @@ async def test_create_issue_failure(github_client, mock_httpx_client):
 @pytest.mark.asyncio
 async def test_get_file_content_success(github_client, mock_httpx_client):
     content = "hello world"
-    import base64
     encoded = base64.b64encode(content.encode()).decode()
     mock_response = MagicMock()
     mock_response.json.return_value = {"content": encoded}
@@ -152,9 +152,8 @@ async def test_update_file_existing(github_client, mock_httpx_client):
     assert result is True
     
     # Verify SHA was included in payload
-    args, kwargs = mock_httpx_client.put.call_args
+    _, kwargs = mock_httpx_client.put.call_args
     assert kwargs["json"]["sha"] == "old_sha"
-
 @pytest.mark.asyncio
 async def test_update_file_failure(github_client, mock_httpx_client):
     mock_httpx_client.put.side_effect = httpx.HTTPError("Error")

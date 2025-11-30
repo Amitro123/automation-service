@@ -63,7 +63,7 @@ def orchestrator(mock_config, mock_github_client, mock_llm_client):
 
 @pytest.mark.asyncio
 async def test_orchestrator_runs_all_tasks(orchestrator):
-    orch, code_reviewer, readme_updater, spec_updater, mock_github, code_review_updater = orchestrator
+    orch, code_reviewer, readme_updater, spec_updater, _, code_review_updater = orchestrator
     
     payload = {
         "ref": "refs/heads/main",
@@ -86,7 +86,7 @@ async def test_orchestrator_runs_all_tasks(orchestrator):
 
 @pytest.mark.asyncio
 async def test_orchestrator_creates_pr_for_docs(orchestrator):
-    orch, code_reviewer, readme_updater, spec_updater, mock_github, _ = orchestrator
+    orch, _, _, _, mock_github, _ = orchestrator
     
     payload = {
         "ref": "refs/heads/main",
@@ -101,7 +101,7 @@ async def test_orchestrator_creates_pr_for_docs(orchestrator):
 
 @pytest.mark.asyncio
 async def test_orchestrator_handles_no_commits(orchestrator):
-    orch, code_reviewer, readme_updater, spec_updater, mock_github, _ = orchestrator
+    orch, code_reviewer, readme_updater, spec_updater, _, _ = orchestrator
     
     payload = {
         "ref": "refs/heads/main",
@@ -118,7 +118,7 @@ async def test_orchestrator_handles_no_commits(orchestrator):
 
 @pytest.mark.asyncio
 async def test_orchestrator_task_failure_doesnt_block_others(orchestrator):
-    orch, code_reviewer, readme_updater, spec_updater, mock_github, _ = orchestrator
+    orch, code_reviewer, readme_updater, spec_updater, _, _ = orchestrator
     
     # Make code reviewer fail
     code_reviewer.review_commit.side_effect = Exception("Review failed")

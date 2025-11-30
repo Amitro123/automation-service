@@ -53,7 +53,7 @@ def orchestrator_setup(mock_config):
 @pytest.mark.asyncio
 async def test_concurrent_pushes(orchestrator_setup):
     """Test handling 10 concurrent push events."""
-    orch, code_reviewer, _, _, _ = orchestrator_setup
+    orch, _, _, _, _ = orchestrator_setup
     
     payloads = [
         {

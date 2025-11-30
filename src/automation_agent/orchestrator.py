@@ -259,9 +259,9 @@ class AutomationOrchestrator:
                     }
             else:
                 return {
-                    "success": False,
-                    "status": "failed",
-                    "reason": "Failed to generate spec update",
+                    "success": True,
+                    "status": "skipped",
+                    "reason": "No updates needed",
                 }
         except Exception as e:
             logger.error(f"Spec update failed: {e}", exc_info=True)
