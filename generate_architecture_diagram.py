@@ -45,6 +45,11 @@ def generate_mermaid() -> str:
         ReviewMD[code_review.md]:::memory
     end
 
+    %% Dashboard
+    subgraph Frontend[Frontend]
+        Dashboard[React Dashboard]:::component
+    end
+
     %% Data Flow
     GitHub -->|POST /webhook| Webhook
     Webhook -->|Trigger| Orchestrator
@@ -52,6 +57,10 @@ def generate_mermaid() -> str:
     Orchestrator -->|Parallel Exec| ReadmeUp
     Orchestrator -->|Parallel Exec| SpecUp
     Orchestrator -->|Parallel Exec| ReviewUp
+
+    %% Dashboard Interactions
+    Dashboard -->|Fetch Metrics| Webhook
+    Dashboard -->|View Logs| Webhook
 
     %% Component Interactions
     Reviewer -->|Analyze Diff| LLM
