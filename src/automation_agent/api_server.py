@@ -262,7 +262,7 @@ def create_api_server(config: Config) -> FastAPI:
                 if match:
                     return {"diagram": match.group(1)}
                 return {"diagram": "graph TD\nError[Could not parse diagram]"}
-        except (FileNotFoundError, IOError, OSError) as e:
+        except (FileNotFoundError, IOError, OSError):
             logger.exception("Failed to read architecture file")
             return {"diagram": "graph TD\nError[Failed to read architecture file]"}
     

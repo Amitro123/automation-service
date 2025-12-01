@@ -140,14 +140,13 @@ export interface RunHistoryItem {
   id: string;
   commit_sha: string;
   branch: string;
-  status: string;
+  status: 'completed' | 'running' | 'failed' | 'pending';
   start_time: string;
   end_time?: string;
   summary?: string;
-  tasks: Record<string, any>;
+  tasks: Record<string, unknown>;
   metrics: Record<string, number>;
 }
-
 export async function fetchHistory(limit: number = 50): Promise<Array<RunHistoryItem>> {
   try {
     const response = await fetch(`${API_BASE_URL}/history?limit=${limit}`);

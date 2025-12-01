@@ -29,14 +29,7 @@ import {
 } from './constants';
 import { Repository, LogEntry, Task, Status } from './types';
 import { generateProjectFile } from './services/geminiService';
-import { fetchDashboardMetrics, fetchArchitecture, fetchHistory } from './services/apiService';
-
-interface HistoryRun {
-  id: string;
-  commit_sha: string;
-  branch: string;
-  status: 'completed' | 'running' | 'failed' | 'pending';
-}
+import { fetchDashboardMetrics, fetchArchitecture, fetchHistory, RunHistoryItem } from './services/apiService';
 
 function App() {
   // State
@@ -86,7 +79,7 @@ function App() {
         // Fetch History (map to Tasks)
         const historyData = await fetchHistory();
         if (historyData && historyData.length > 0) {
-          const historyTasks: Task[] = (historyData as unknown as HistoryRun[]).map((run: HistoryRun) => ({
+          const historyTasks: Task[] = historyData.map((run: RunHistoryItem) => ({
             id: run.id,
             title: `Run ${run.commit_sha.substring(0, 7)} (${run.branch})`,
             status: run.status === 'completed' ? Status.Completed :
