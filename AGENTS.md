@@ -188,7 +188,6 @@ Your changes are successful if:
 ✅ Logs are structured + no secrets exposed
 ✅ README/spec.md stay accurate after changes
 
-<<<<<<< HEAD
 ### 1. CodeReviewer (`code_reviewer.py`)
 - **Role**: Senior Software Engineer / Security Auditor
 - **Responsibility**: Analyze git diffs for bugs, security flaws, and style issues.
@@ -202,7 +201,7 @@ Your changes are successful if:
   - Calls `ReviewProvider.review_code()`.
   - Formats output as markdown.
   - Posts to GitHub.
-=======
+
 ### 4. CodeReviewUpdater
 - **Purpose**: Maintains a persistent log of all code reviews in `AUTOMATED_REVIEWS.md`.
 - **Logic**:
@@ -214,4 +213,3 @@ Your changes are successful if:
   - If `AUTOMATED_REVIEWS.md` is missing, create it.
   - Use `LLMClient.summarize_review` for consistency.
   - Note: Uses `AUTOMATED_REVIEWS.md` (not `code_review.md`) to avoid collision with `CODE_REVIEW.md` on case-insensitive filesystems.
->>>>>>> 1bcb61de9ee81f445cb6f8e1d9774fa2664d738f
