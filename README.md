@@ -23,9 +23,10 @@ An autonomous GitHub automation system that triggers on push events to perform i
 - **Code Review Updater**: Appends review summaries to persistent logs
 
 ### 3. 📊 Real-Time Dashboard
-- **Live Metrics**: Test coverage, LLM usage, token costs, efficiency scores
-- **Visual Progress**: Task tracking, bug status, PR monitoring
-- **Architecture Visualization**: Interactive Mermaid diagrams
+- **Live Metrics**: Real test coverage from coverage.xml, LLM usage tracking, token costs, calculated efficiency scores
+- **Real Data Integration**: Fetches live bugs from GitHub issues, open PRs with check status, session memory metrics
+- **Visual Progress**: Task tracking with real statuses from automation runs
+- **Architecture Visualization**: Interactive Mermaid diagrams with clear component descriptions
 - **System Logs**: Real-time log viewer with filtering
 - **Security Status**: Bandit scan results and vulnerability tracking
 - **Multi-Repository**: Switch between repositories with live updates
@@ -211,7 +212,39 @@ Dashboard runs on: **http://localhost:5173**
 - 🗺️ Interactive architecture diagrams (Live from `ARCHITECTURE.md`)
 - 📜 Session History & Run Logs
 
-See [`dashboard/DASHBOARD_SETUP.md`](dashboard/DASHBOARD_SETUP.md) for detailed setup and API integration instructions.
+See [`dashboard/DASHBOARD_SETUP.md`](dashboard/DASHBOARD_SETUP.md)
+
+
+**Note:** Mutation testing requires Linux/Mac or WSL.
+
+### Running Mutation Tests in CI
+
+Mutation testing is integrated with GitHub Actions for automated quality checks:
+
+```bash
+# Workflow triggers:
+# - Push to main branch
+# - Manual trigger via Actions tab
+# - (Optional) Pull requests to main
+```
+
+**Workflow does:**
+1. Runs on Ubuntu (Linux) runner
+2. Executes pytest with coverage
+3. Runs mutation tests with mutmut
+4. Saves `mutation_results.json` as artifact
+5. Displays results in Actions summary
+6. (Optional) Comments on PRs with scores
+
+**Using CI results in dashboard:**
+1. Download `mutation_results.json` from workflow artifacts
+2. Copy to repo root
+3. Restart API server: `python run_api.py`
+4. Dashboard displays real mutation score
+
+See [`.github/workflows/MUTATION_TESTING.md`](.github/workflows/MUTATION_TESTING.md) for details.
+ On Windows, the feature will show as "skipped" with instructions. Run mutation tests in CI for best results.
+ for detailed setup and API integration instructions.
 
 ## 🌐 Deployment
 

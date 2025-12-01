@@ -55,6 +55,11 @@ class Config:
     AUTO_COMMIT: bool = os.getenv("AUTO_COMMIT", "False").lower() == "true"
     ARCHITECTURE_FILE: str = os.getenv("ARCHITECTURE_FILE", "ARCHITECTURE.md")
 
+    # Mutation Testing Configuration
+    ENABLE_MUTATION_TESTS: bool = os.getenv("ENABLE_MUTATION_TESTS", "False").lower() == "true"
+    MUTATION_MAX_RUNTIME_SECONDS: int = int(os.getenv("MUTATION_MAX_RUNTIME_SECONDS", "600"))
+    MUTATION_MIN_DIFF_LINES: int = int(os.getenv("MUTATION_MIN_DIFF_LINES", "10"))
+
     @classmethod
     def validate(cls) -> list[str]:
         """Validate required configuration values.

@@ -1,0 +1,9 @@
+import requests
+import json
+
+try:
+    response = requests.get("http://localhost:8080/api/metrics")
+    response.raise_for_status()
+    print(json.dumps(response.json(), indent=2))
+except Exception as e:
+    print(f"Error: {e}")

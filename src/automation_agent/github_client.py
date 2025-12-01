@@ -261,3 +261,49 @@ class GitHubClient:
         except httpx.HTTPError as e:
             logger.error(f"Failed to fetch recent commits: {e}")
             return []
+    async def list_issues(self, state: str = "open", labels: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+        """List issues from the repository.
+
+        Args:
+            state: Issue state filter ("open", "closed", or "all")
+            labels: Optional list of label names to filter by
+
+        Returns:
+            List of issue dictionaries
+        """
+        url = f"{self.base_url}/repos/{self.owner}/{self.repo}/issues"
+        params = {"state": state, "per_page": 100}
+        if labels:
+            params["labels"] = ",".join(labels)
+
+        try:
+            async with httpx.AsyncClient(headers=self.headers, timeout=self.timeout) as client:
+                response = await client.get(url, params=params)
+                response.raise_for_status()
+                # Filter out pull requests (GitHub API returns PRs as issues)
+                issues = [issue for issue in response.json() if "pull_request" not in issue]
+                return issues
+        except httpx.HTTPError as e:
+            logger.error(f"Failed to fetch issues: {e}")
+            return []
+
+    async def list_pull_requests(self, state: str = "open") -> List[Dict[str, Any]]:
+        """List pull requests from the repository.
+
+        Args:
+            state: PR state filter ("open", "closed", or "all")
+
+        Returns:
+            List of pull request dictionaries
+        """
+        url = f"{self.base_url}/repos/{self.owner}/{self.repo}/pulls"
+        params = {"state": state, "per_page": 100}
+
+        try:
+            async with httpx.AsyncClient(headers=self.headers, timeout=self.timeout) as client:
+                response = await client.get(url, params=params)
+                response.raise_for_status()
+                return response.json()
+        except httpx.HTTPError as e:
+            logger.error(f"Failed to fetch pull requests: {e}")
+            return []

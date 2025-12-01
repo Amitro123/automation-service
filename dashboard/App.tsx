@@ -45,6 +45,8 @@ function App() {
   const [isConnected, setIsConnected] = useState(false);
   const [architectureDiagram, setArchitectureDiagram] = useState(ARCHITECTURE_DIAGRAM);
   const [tasks, setTasks] = useState<Task[]>(MOCK_TASKS);
+  const [bugs, setBugs] = useState(MOCK_BUGS);
+  const [prs, setPrs] = useState(MOCK_PRS);
 
   // Fetch real data from FastAPI backend
   useEffect(() => {
@@ -87,6 +89,14 @@ function App() {
                 run.status === 'failed' ? Status.Failed : Status.Pending
           }));
           setTasks(historyTasks);
+        }
+        
+        // Set bugs and PRs from API
+        if (data.bugs) {
+          setBugs(data.bugs);
+        }
+        if (data.prs) {
+          setPrs(data.prs);
         }
 
       } catch (error) {
@@ -279,7 +289,7 @@ function App() {
 
           {/* Right Column: Issues & PRs */}
           <div className="flex flex-col gap-8 xl:col-span-1 h-full overflow-hidden">
-            <IssuesPanel bugs={MOCK_BUGS} prs={MOCK_PRS} />
+            <IssuesPanel bugs={bugs} prs={prs} />
           </div>
         </div>
       </main>

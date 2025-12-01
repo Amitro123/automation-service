@@ -164,8 +164,45 @@ Read `spec.md` first, then prioritize:
 2. ✅ Comprehensive testing (Phase 3) - **99/99 tests passing, 100% coverage**
 3. ✅ FastAPI + Dashboard Integration
 4. ✅ Session Memory & Architecture Diagram
-5. 🚀 E2E Testing with ngrok
-6. 🚀 Deployment readiness (Phase 4) - Docker + CI/CD
+5. ✅ Dashboard Real Data Integration (bugs, PRs, LLM metrics from GitHub API)
+6. ✅ Mutation Testing Integration (Linux/Mac/CI only - Windows shows helpful skip message)
+7. ✅ GitHub Actions Workflow for Mutation Testing in CI
+6. 🚀 E2E Testing with ngrok
+7. 🚀 Deployment readiness (Phase 4) - Docker + CI/CD
+
+
+## 🧬 Mutation Testing (Linux/Mac/CI Only)
+
+**Platform Support:**
+- ✅ **Linux/Mac**: Full support with mutmut
+- ✅ **CI/CD**: Run in Linux runners (GitHub Actions, GitLab CI, etc.)
+- ⚠️  **Windows**: Not supported (mutmut requires Unix `resource` module)
+  - API returns: `{"status": "skipped", "reason": "Use WSL or CI"}`
+  - Dashboard shows mutation tests are skipped
+  - **Solution**: Use WSL, Docker, or run tests in CI
+
+**Configuration:**
+```bash
+ENABLE_MUTATION_TESTS=True  # Enable feature
+MUTATION_MAX_RUNTIME_SECONDS=600  # 10 minute timeout
+```
+
+**API Endpoints:**
+- `POST /api/mutation/run` - Trigger tests (background task)
+- `GET /api/mutation/results` - Fetch latest results
+- `GET /api/metrics` - Includes mutation score from cached results
+
+**Results:**
+- Cached in `mutation_results.json`
+- Displayed in dashboard Code Quality card
+- Updated when tests run locally (Linux/Mac) or via CI
+
+**CI/CD Integration:**
+- GitHub Actions workflow: `.github/workflows/mutation-tests.yml`
+- Runs on push to main or manual trigger
+- Saves results as artifacts (30 days)
+- Download and copy to repo root for dashboard display
+- See `.github/workflows/MUTATION_TESTING.md` for details
 
 ## 🚫 DON'T TOUCH (Unless Requested)
 

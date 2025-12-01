@@ -214,6 +214,91 @@ Next Steps
 [ ] Multi-repo support
 [ ] Per-branch policies
 
+
+---
+
+**2025-12-01 14:35 UTC | Dashboard Real Data Integration**
+
+**Changes:**
+- Added `list_issues()` and `list_pull_requests()` methods to `github_client.py`
+- Created `_fetch_bugs()` and `_fetch_prs()` helpers in `api_server.py`
+- Updated LLM metrics to calculate real session memory usage and efficiency scores
+- Added Live Architecture panel description explaining system components
+- Updated dashboard frontend to display real bugs and PRs from API
+
+**Decisions:**
+- Use GitHub API to fetch real bugs (issues labeled "bug") and PRs
+- Calculate session memory usage as percentage (count/1000 * 100)
+- Calculate efficiency score from success rate of last 10 runs
+- Add fallback to empty lists when GitHub API unavailable
+
+**Next Steps:**
+- Monitor dashboard performance with real data
+- Consider caching GitHub API responses to reduce rate limit usage
+- Add more detailed PR check status (individual check runs)
+
+
+---
+
+**2025-12-01 15:28 UTC | Mutation Testing Integration (Linux/CI Only)**
+
+**Changes:**
+- Added `mutation_service.py` with mutmut integration
+- Created API endpoints: `POST /api/mutation/run`, `GET /api/mutation/results`
+- Updated `/api/metrics` to read real mutation scores from `mutation_results.json`
+- Added OS detection: Windows returns "skipped" status with helpful message
+- Added configuration: `ENABLE_MUTATION_TESTS`, `MUTATION_MAX_RUNTIME_SECONDS`
+
+**Decisions:**
+- Mutation testing is Linux/Mac only (mutmut requires Unix `resource` module)
+- On Windows, API returns clear "skipped" message directing users to WSL or CI
+- Results cached in JSON file to avoid re-running on every API call
+- Background task execution prevents API blocking during long-running tests
+
+**Platform Support:**
+- ✅ Linux/Mac: Full mutation testing with mutmut
+- ✅ CI/CD: Run mutation tests in Linux runners
+- ⚠️  Windows: Feature disabled, shows helpful message
+- 💡 Windows users: Use WSL or run tests in CI
+
+**Next Steps:**
+- Add "Run Mutation Tests" button to dashboard
+- Document mutation testing in CI/CD workflows
+- Consider adding mutation score badges to README
+
+
+---
+
+**2025-12-01 15:40 UTC | GitHub Actions Mutation Testing Workflow**
+
+**Changes:**
+- Created `.github/workflows/mutation-tests.yml` for CI mutation testing
+- Created `.github/workflows/MUTATION_TESTING.md` documentation
+- Workflow runs on Ubuntu (Linux) with full mutmut support
+- Saves mutation_results.json as artifact (30 day retention)
+- Displays results in GitHub Actions summary
+- Optional PR commenting with mutation scores
+
+**Workflow Features:**
+- Triggers: Push to main, manual dispatch, optional PRs
+- Installs requirements.txt + requirements-dev.txt
+- Runs pytest --cov for coverage
+- Executes mutation tests via mutation_service.py
+- Uploads artifacts: mutation_results.json, coverage.xml
+- Auto-comments on PRs with mutation score table
+
+**Integration with Dashboard:**
+1. Download mutation_results.json from workflow artifacts
+2. Copy to repo root (overwrites local file)
+3. Restart API server
+4. Dashboard displays real CI mutation score
+
+**Benefits:**
+- Windows users can see real mutation scores from CI
+- Automated quality checks on every push to main
+- PR reviewers see mutation coverage before merging
+- Historical results stored as artifacts
+
 ## 🔍 Current Tasks (Agent Priorities)
 
 HIGH: Complete E2E Testing
