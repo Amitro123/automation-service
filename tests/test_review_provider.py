@@ -32,6 +32,12 @@ async def test_jules_review_success(mock_config, mock_fallback_provider):
         
         assert "Jules Review Content" in review
         assert "Jules / Google Code Review API" in review
+        
+        # Verify timeout was passed
+        args, kwargs = mock_post.call_args
+        assert "timeout" in kwargs
+        assert kwargs["timeout"].total == 30
+        
         mock_fallback_provider.review_code.assert_not_called()
 
 @pytest.mark.asyncio

@@ -67,7 +67,12 @@ class JulesReviewProvider(ReviewProvider):
                     "Authorization": f"Bearer {self.api_key}",
                     "Content-Type": "application/json"
                 }
-                async with session.post(self.api_url, json=payload, headers=headers) as response:
+                async with session.post(
+                    self.api_url,
+                    json=payload,
+                    headers=headers,
+                    timeout=aiohttp.ClientTimeout(total=30)
+                ) as response:
                     if response.status == 200:
                         data = await response.json()
                         review = data.get("review", "")
@@ -75,7 +80,8 @@ class JulesReviewProvider(ReviewProvider):
                             logger.info("Successfully received review from Jules")
                             return self._format_jules_review(review)
                     
-                    logger.warning(f"Jules API failed with status {response.status}: {await response.text()}")
+                    error_text = await response.text()
+                    logger.warning(f"Jules API failed with status {response.status}: {error_text[:200] if error_text else 'No response body'}")
                     raise Exception(f"Jules API error: {response.status}")
 
         except Exception as e:
