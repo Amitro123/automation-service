@@ -160,9 +160,9 @@ class AutomationOrchestrator:
                 if updated_log:
                     if self.config.AUTO_COMMIT:
                         log_updated = await self.github.update_file(
-                            file_path="code_review.md",
+                            file_path=CodeReviewUpdater.LOG_FILE,
                             content=updated_log,
-                            message=f"docs: Update code review log for {commit_sha[:7]}",
+                            message=f"docs: Update automated review log for {commit_sha[:7]}",
                             branch=branch
                         )
                     else:

@@ -27,7 +27,7 @@ async def test_update_review_log_success(updater, mock_github_client, mock_llm_c
     
     # Verify
     assert result == "# Old Log\n\n### New Entry\n"
-    mock_github_client.get_file_content.assert_called_once_with("code_review.md", ref="main")
+    mock_github_client.get_file_content.assert_called_once_with(CodeReviewUpdater.LOG_FILE, ref="main")
     mock_llm_client.summarize_review.assert_called_once()
 
 @pytest.mark.asyncio
