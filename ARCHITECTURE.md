@@ -265,3 +265,4 @@ React Dashboard (Real-time visualization)
 - GitHub Actions (CI/CD)
 - Session Memory (JSON-based persistence)
 - GitHub API (issues, PRs, commits)
+

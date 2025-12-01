@@ -110,6 +110,18 @@ def update_architecture_file(output_path: str = "ARCHITECTURE.md"):
     """Update ARCHITECTURE.md with the generated diagram."""
     diagram = generate_mermaid()
     
+    # Read existing file to preserve Recent Enhancements section
+    recent_enhancements = ""
+    try:
+        with open(output_path, "r", encoding="utf-8") as f:
+            existing_content = f.read()
+            # Extract everything after "## Recent Enhancements"
+            if "## Recent Enhancements" in existing_content:
+                parts = existing_content.split("## Recent Enhancements", 1)
+                recent_enhancements = "\n---\n\n## Recent Enhancements" + parts[1]
+    except FileNotFoundError:
+        pass  # File doesn't exist yet, that's okay
+    
     content = f"""# System Architecture
 
 This document describes the high-level architecture of the GitHub Automation Agent.
@@ -152,12 +164,15 @@ python generate_architecture_diagram.py
 
 ### CI/CD Integration
 This file is automatically updated on every push to main via GitHub Actions.
+{recent_enhancements}
 """
     
     try:
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(content)
         print(f"Successfully updated {output_path}")
+        if recent_enhancements:
+            print("✓ Preserved Recent Enhancements section")
     except (IOError, OSError) as e:
         print(f"Error: Failed to write {output_path}: {e}")
         raise
