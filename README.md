@@ -279,5 +279,6 @@ graph TD
 
 The diagram updates automatically as the project evolves.
 
+
 ## 📄 License
 MIT
