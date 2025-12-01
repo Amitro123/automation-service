@@ -186,12 +186,13 @@ Your changes are successful if:
 ✅ README/spec.md stay accurate after changes
 
 ### 4. CodeReviewUpdater
-- **Purpose**: Maintains a persistent log of all code reviews in `code_review.md`.
+- **Purpose**: Maintains a persistent log of all code reviews in `AUTOMATED_REVIEWS.md`.
 - **Logic**:
   - Runs after `CodeReviewer` completes successfully.
   - Summarizes the full review into a concise entry (Score, Key Issues, Action Items).
-  - Appends to `code_review.md`.
+  - Appends to `AUTOMATED_REVIEWS.md`.
 - **Rules**:
   - Never overwrite the log, always append.
-  - If `code_review.md` is missing, create it.
+  - If `AUTOMATED_REVIEWS.md` is missing, create it.
   - Use `LLMClient.summarize_review` for consistency.
+  - Note: Uses `AUTOMATED_REVIEWS.md` (not `code_review.md`) to avoid collision with `CODE_REVIEW.md` on case-insensitive filesystems.
