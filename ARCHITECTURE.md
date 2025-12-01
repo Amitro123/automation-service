@@ -135,3 +135,133 @@ python generate_architecture_diagram.py
 
 ### CI/CD Integration
 This file is automatically updated on every push to main via GitHub Actions.
+
+---
+
+## Recent Enhancements
+
+### Dashboard Real Data Integration
+
+The React Dashboard now displays **real, live data** instead of mocks:
+
+**Data Sources:**
+- **Coverage**: Real metrics from `coverage.xml` (pytest --cov)
+- **LLM Metrics**: Token usage, cost, efficiency from `SessionMemoryStore`
+- **Bugs**: Real GitHub issues labeled "bug" via GitHub API
+- **PRs**: Real open pull requests with check status via GitHub API
+- **Tasks**: Real task statuses from automation run history
+- **Architecture**: Live Mermaid diagram from `ARCHITECTURE.md`
+
+**API Endpoints:**
+- `GET /api/metrics` - Aggregated dashboard metrics
+- `GET /api/history` - Session memory run history
+- `GET /api/architecture` - Live architecture diagram
+- `POST /webhook` - GitHub webhook receiver
+
+**Implementation:**
+- `github_client.py`: Added `list_issues()` and `list_pull_requests()` methods
+- `api_server.py`: Helper functions `_fetch_bugs()`, `_fetch_prs()`, `_parse_coverage()`
+- `App.tsx`: Fetches and displays real data from API
+
+### Mutation Testing (Linux/Mac/CI Only)
+
+**Platform Support:**
+- ✅ **Linux/Mac**: Full mutation testing with mutmut
+- ✅ **CI/CD**: GitHub Actions workflow on Ubuntu runners
+- ⚠️ **Windows**: Gracefully skipped (mutmut requires Unix `resource` module)
+
+**Components:**
+- `mutation_service.py`: Core mutation testing service
+  - `run_mutation_tests()`: Executes mutmut and parses results
+  - `get_latest_results()`: Reads cached results from JSON
+  - OS detection: Returns "skipped" status on Windows
+
+**API Endpoints:**
+- `POST /api/mutation/run` - Trigger mutation tests (background task)
+- `GET /api/mutation/results` - Fetch latest mutation test results
+- `GET /api/metrics` - Includes mutation score from cached results
+
+**Results Storage:**
+- `mutation_results.json`: Cached mutation test results
+  - mutation_score (0-100%)
+  - mutants_total, killed, survived, timeout, suspicious
+  - last_run_time, runtime_seconds
+  - status (for Windows: "skipped")
+
+**CI/CD Integration:**
+- `.github/workflows/mutation-tests.yml`: Automated mutation testing
+  - Runs on push to main or manual trigger
+  - Executes pytest + mutmut on Ubuntu
+  - Saves results as artifacts (30 days)
+  - Optional PR comments with mutation scores
+
+**Configuration:**
+```bash
+ENABLE_MUTATION_TESTS=True  # Feature flag
+MUTATION_MAX_RUNTIME_SECONDS=600  # 10 minute timeout
+```
+
+### Security Enhancements
+
+**XML Parsing:**
+- Replaced `xml.etree.ElementTree` with `defusedxml` for secure XML parsing
+- Prevents XXE (XML External Entity) attacks
+- Used in `_parse_coverage()` to read `coverage.xml`
+
+**Bandit Compliance:**
+- 0 Medium/High severity issues
+- All security best practices followed
+- `# nosec` comments for intentional exceptions
+
+## Data Flow Summary
+
+```
+GitHub Push Event
+    ↓
+Webhook Server (FastAPI)
+    ↓
+Orchestrator (Async)
+    ↓
+┌─────────────┬──────────────┬─────────────┬──────────────┐
+│             │              │             │              │
+Code Review   README Update  Spec Update   Review Logger
+│             │              │             │              │
+└─────────────┴──────────────┴─────────────┴──────────────┘
+    ↓
+Session Memory Store
+    ↓
+Dashboard API (/api/metrics, /api/history)
+    ↓
+React Dashboard (Real-time visualization)
+```
+
+## Technology Stack
+
+**Backend:**
+- FastAPI (API server + webhook receiver)
+- Flask (legacy webhook support)
+- httpx (async HTTP client)
+- defusedxml (secure XML parsing)
+
+**Frontend:**
+- React + TypeScript
+- Vite (build tool)
+- Mermaid (architecture diagrams)
+- Lucide React (icons)
+
+**Testing:**
+- pytest (unit/integration tests)
+- pytest-cov (coverage reporting)
+- mutmut (mutation testing - Linux/Mac/CI only)
+- bandit (security scanning)
+
+**LLM Providers:**
+- Google Gemini (primary)
+- OpenAI GPT-4
+- Anthropic Claude
+- Jules / Google Code Review API (specialized reviews)
+
+**Infrastructure:**
+- GitHub Actions (CI/CD)
+- Session Memory (JSON-based persistence)
+- GitHub API (issues, PRs, commits)
