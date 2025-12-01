@@ -30,3 +30,4 @@ coverage>=7.3.0
 
 # Security
 bandit>=1.7.0
+defusedxml>=0.7.1

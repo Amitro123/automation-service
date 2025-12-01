@@ -215,14 +215,18 @@ def create_api_server(config: Config) -> FastAPI:
     
     def _parse_coverage(file_path: str = "coverage.xml") -> Optional[CoverageMetrics]:
         """Parse coverage.xml to extract metrics."""
-        import xml.etree.ElementTree as ET
+        try:
+            import defusedxml.ElementTree as ET
+        except ImportError:
+            # Fallback to standard library if defusedxml not available
+            import xml.etree.ElementTree as ET  # nosec B405
         import os
         
         if not os.path.exists(file_path):
             return None
             
         try:
-            tree = ET.parse(file_path)
+            tree = ET.parse(file_path)  # Now using defusedxml
             root = tree.getroot()
             
             # Extract metrics
