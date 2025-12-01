@@ -20,6 +20,7 @@ src/automation_agent/ # Core package
 ├── api_server.py # FastAPI server with Dashboard API (NEW)
 ├── webhook_server.py # Flask webhook endpoint
 ├── orchestrator.py # Coordinates 4 parallel tasks
+├── session_memory.py # Session Memory Store (NEW)
 ├── code_reviewer.py # LLM-powered code analysis
 ├── code_review_updater.py # Persistent review logging
 ├── readme_updater.py # Smart README updates from diffs
@@ -72,6 +73,7 @@ orchestrator.py → run 3 tasks IN PARALLEL:
 ↳ spec_updater.py → append to spec.md
 
 Log results + GitHub artifacts created
+**All tasks log execution to `session_memory.py`**
 
 ## 📋 Agent Task Priorities
 
@@ -113,6 +115,7 @@ text
 - `github_client.py` (GitHub API)
 - `llm_client.py` (OpenAI/Anthropic)  
 - `requests` (webhook simulation)
+- `session_memory.py` (Persistence layer)
 
 ## 💻 Coding Standards
 
@@ -160,8 +163,9 @@ Read `spec.md` first, then prioritize:
 1. ✅ Core functionality working
 2. ✅ Comprehensive testing (Phase 3) - **99/99 tests passing, 100% coverage**
 3. ✅ FastAPI + Dashboard Integration
-4. 🚀 E2E Testing with ngrok
-5. 🚀 Deployment readiness (Phase 4) - Docker + CI/CD
+4. ✅ Session Memory & Architecture Diagram
+5. 🚀 E2E Testing with ngrok
+6. 🚀 Deployment readiness (Phase 4) - Docker + CI/CD
 
 ## 🚫 DON'T TOUCH (Unless Requested)
 

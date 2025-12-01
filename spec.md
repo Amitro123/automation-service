@@ -52,23 +52,6 @@ GitHub Push Event (JSON)
 │                 orchestrator.py (asyncio)                   │
 │             (Coordinates 3 PARALLEL tasks)                  │
 └───────────┬───────────────┼──────────────────┬──────────────┘
-            │               │                  │
-            ↓               ↓                  ↓
-    ┌──────────────┐ ┌──────────────┐ ┌──────────────┐
-    │code_reviewer.│ │readme_updater│ │spec_updater. │
-    │      py      │ │      py      │ │      py      │
-    └──────┬───────┘ └──────┬───────┘ └──────┬───────┘
-           ↓                ↓                ↓
-    ┌──────────────┐ ┌──────────────┐ ┌──────────────┐
-    │  GitHub API  │ │  GitHub API  │ │   spec.md    │
-    │  (comment/   │ │ (PR create)  │ │   (append)   │
-    │   issue)     │ │              │ │              │
-    └──────────────┘ └──────────────┘ └──────────────┘
-
-**Key invariants (NEVER CHANGE):**
-- Tasks run **PARALLEL** via `asyncio.gather()` [web:55]
-- Each task is **idempotent** (safe for webhook retries)
-- One task failure **doesn't block** others
 - All side-effects create **traceable GitHub artifacts**
 - All side-effects logged with GitHub artifact IDs
 
@@ -178,6 +161,21 @@ Next Steps
   - Configure ngrok for E2E webhook testing
   - Test full automation flow with live GitHub pushes
 
+### [2025-12-01] Session Memory & Architecture Visualization
+- **Summary**: Implemented Session Memory Store and live Architecture Diagram integration.
+- **Features**:
+  - `SessionMemoryStore`: Persists run history, metrics, and logs to JSON.
+  - `ARCHITECTURE.md`: Live Mermaid diagram updated via script.
+  - **Dashboard**: Displays live architecture and run history.
+  - **Verification**: Added unit tests for Session Memory (100% pass rate).
+- **Decisions**:
+  - Used JSON for simple, portable persistence.
+  - Modeled Backend as "Brain" and Frontend as "Consumer" in architecture.
+  - Added `architecture_preview.html` for local viewing.
+- **Next Steps**:
+  - E2E Testing with ngrok.
+  - Docker containerization.
+
 ### 4. CodeReviewUpdater (`src/automation_agent/code_review_updater.py`)
 - **Input**: Commit SHA, Review Content, Branch
 - **Process**:
@@ -221,6 +219,7 @@ Next Steps
 ### Phase 4: Production Ready 🚀 (IN PROGRESS)
 [x] FastAPI backend with Dashboard API endpoints
 [x] Dashboard Integration (React + Vite) connected to live API
+[x] Session Memory & Live Architecture Diagram
 [x] GitHub Actions CI/CD (security.yml fixed)
 [ ] Docker container + health checks
 [ ] Agent platform hooks (Windsurf/AntiGravity)

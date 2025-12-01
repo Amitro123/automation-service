@@ -37,6 +37,45 @@ An autonomous GitHub automation system that triggers on push events to perform i
 - Security guardrails integrated with Bandit scans and CI/CD enforcement
 - Multi-repository support with auto-detection of required files (README.md, spec.md)
 
+# 🤖 GitHub Automation Agent
+
+An autonomous GitHub automation system that triggers on push events to perform intelligent code review, automatic README and code_review.md updates, and project progress documentation.
+
+## 💡 Why This Agent?
+
+- **Reduces repetitive code review work** — highlights risky changes and suggests fixes automatically
+- **Keeps docs always fresh** — README, spec.md, and code_review.md stay in sync with actual code changes
+- **Intelligent layer over GitHub** — uses advanced LLMs + async orchestration instead of rigid YAML workflows
+
+## ✨ Features
+
+### 1. 🔍 Automated Code Review
+- **Intelligent Analysis**: Uses LLMs (GPT-4o / Claude 3.5 / Gemini Pro) to analyze code changes
+- **Comprehensive Feedback**: Code quality, bugs, security, performance, best practices
+- **Flexible Output**: Commit comments, PR comments, GitHub issues, and persistent code_review.md logging
+- **Structured Reviews**: Strengths, issues, suggestions, security concerns
+- **Session Memory**: Maintains historic context for continuous improvement
+
+### 2. 📝 Automatic Documentation Updates
+- **README Updater**: Context-aware, analyzes diffs to update docs
+- **Spec Updater**: Dynamically appends development progress logs
+- **Code Review Updater**: Appends review summaries to persistent logs
+
+### 3. 📊 Real-Time Dashboard
+- **Live Metrics**: Test coverage, LLM usage, token costs, efficiency scores
+- **Visual Progress**: Task tracking, bug status, PR monitoring
+- **Architecture Visualization**: Interactive Mermaid diagrams
+- **System Logs**: Real-time log viewer with filtering
+- **Security Status**: Bandit scan results and vulnerability tracking
+- **Multi-Repository**: Switch between repositories with live updates
+
+### 4. 📊 Project Progress & Metrics
+- Visual progress tracking with real-time updates
+- Test coverage and mutation testing integration using tools like mutmut
+- LLM usage stats: token consumption, cost estimation, efficiency
+- Security guardrails integrated with Bandit scans and CI/CD enforcement
+- Multi-repository support with auto-detection of required files (README.md, spec.md)
+
 ### 5. 🛡️ Security Features
 - HMAC-SHA256 verification of webhook signatures
 - Minimal GitHub token scopes
@@ -46,6 +85,7 @@ An autonomous GitHub automation system that triggers on push events to perform i
 ### 6. 🗺️ Dynamic Architecture Diagram
 - ARCHITECTURE.md includes a live Mermaid diagram reflecting system components and project progress
 - Automatically updated via scripts/CI when system or specs change
+- **Visualized in the Dashboard**
 
 ## 🚀 Quick Start
 
@@ -180,6 +220,7 @@ automation_agent/
 │   └── automation_agent/
 │       ├── webhook_server.py          # Flask webhook endpoint
 │       ├── orchestrator.py            # Coordinates 4 parallel tasks
+│       ├── session_memory.py          # Session Memory Store (NEW)
 │       ├── code_reviewer.py           # LLM-powered code analysis
 │       ├── code_review_updater.py     # Persistent review logging
 │       ├── readme_updater.py          # Smart README updates
@@ -233,7 +274,8 @@ Dashboard runs on: **http://localhost:5173**
 - 📋 Task progress and bug tracking
 - 🔐 Security status from Bandit scans
 - 📝 Real-time system logs
-- 🗺️ Interactive architecture diagrams
+- 🗺️ Interactive architecture diagrams (Live from `ARCHITECTURE.md`)
+- 📜 Session History & Run Logs
 
 See [`dashboard/DASHBOARD_SETUP.md`](dashboard/DASHBOARD_SETUP.md) for detailed setup and API integration instructions.
 
@@ -261,34 +303,30 @@ The project includes an ARCHITECTURE.md file with a live Mermaid diagram illustr
 
 ```mermaid
 graph TD
-  subgraph Webhook_Server
-    A[Flask Webhook Server]
-  end
+    %% Backend Core (The Brain)
+    subgraph Backend["Backend Core (The Brain)"]
+        Webhook[Webhook Server]:::component
+        Orchestrator[Async Orchestrator]:::orchestrator
+        SessionMem[Session Memory Store]:::memory
+        
+        %% Parallel Tasks
+        subgraph Tasks["Parallel Tasks"]
+            Reviewer[Code Reviewer]:::component
+            ReadmeUp[README Updater]:::component
+            SpecUp[Spec Updater]:::component
+            ReviewUp[Code Review Updater]:::component
+        end
+    end
 
-  subgraph Orchestrator
-    B1[Code Reviewer]
-    B2[README Updater]
-    B3[Spec Updater]
-    B4[Code Review Updater]
-  end
+    %% Frontend (Consumer)
+    subgraph Frontend["Frontend (Consumer)"]
+        Dashboard[React Dashboard]:::frontend
+    end
 
-  A -->|Push Event| Orchestrator
-  B1 --> GitHub_API[GitHub API]
-  B2 --> GitHub_API
-  B3 --> GitHub_API
-  B4 --> CodeReviewMD[code_review.md]
-
-  subgraph LLM
-    Gemini[Gemini LLM]
-  end
-
-  B1 --> Gemini
-  B2 --> Gemini
-  B3 --> Gemini
-  B4 --> SessionMemory[Session Memory]
-
-  classDef async fill:#f9f,stroke:#333,stroke-width:2px;
-  class B1,B2,B3,B4 async;
+    Webhook -->|Trigger| Orchestrator
+    Orchestrator -->|Init Run| SessionMem
+    Dashboard -->|Fetch Metrics/History| Webhook
+    Webhook -.->|Read| SessionMem
 ```
 
 The diagram updates automatically as the project evolves.

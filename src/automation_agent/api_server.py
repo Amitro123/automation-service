@@ -5,7 +5,7 @@ import hmac
 import hashlib
 import asyncio
 from datetime import datetime, timezone
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from collections import deque
 from contextlib import asynccontextmanager
 
@@ -22,6 +22,7 @@ from .readme_updater import ReadmeUpdater
 from .spec_updater import SpecUpdater
 from .code_review_updater import CodeReviewUpdater
 from .orchestrator import AutomationOrchestrator
+from .session_memory import SessionMemoryStore
 
 logger = logging.getLogger(__name__)
 
@@ -99,15 +100,11 @@ class RepositoryStatus(BaseModel):
 # ============== Application State ==============
 
 class AppState:
-    """Application state for tracking metrics and logs."""
+    """Application state for tracking ephemeral logs."""
     
     def __init__(self):
         self.logs: deque = deque(maxlen=100)
-        self.tokens_used: int = 0
-        self.estimated_cost: float = 0.0
         self.start_time: datetime = datetime.now(timezone.utc)
-        self.last_push: Optional[datetime] = None
-        self.active_tasks: List[dict] = []
         
     def add_log(self, level: str, message: str):
         entry = LogEntry(
@@ -116,14 +113,11 @@ class AppState:
             message=message
         )
         self.logs.append(entry)
-    
-    def update_llm_usage(self, tokens: int, cost: float):
-        self.tokens_used += tokens
-        self.estimated_cost += cost
 
 
 # Global state instance
 app_state = AppState()
+session_memory = SessionMemoryStore()
 
 
 def create_api_server(config: Config) -> FastAPI:
@@ -184,6 +178,7 @@ def create_api_server(config: Config) -> FastAPI:
         readme_updater=readme_updater,
         spec_updater=spec_updater,
         code_review_updater=code_review_updater,
+        session_memory=session_memory,
         config=config,
     )
     
@@ -206,11 +201,13 @@ def create_api_server(config: Config) -> FastAPI:
     
     @app.get("/api/metrics", response_model=DashboardMetrics)
     async def get_metrics():
+        global_metrics = session_memory.get_global_metrics()
+        
         return DashboardMetrics(
             coverage=CoverageMetrics(total=98.0, uncoveredLines=24, mutationScore=75.0),
             llm=LLMMetrics(
-                tokensUsed=app_state.tokens_used,
-                estimatedCost=app_state.estimated_cost,
+                tokensUsed=global_metrics.get("total_tokens", 0),
+                estimatedCost=global_metrics.get("total_cost", 0.0),
                 efficiencyScore=88.0,
                 sessionMemoryUsage=45.0
             ),
@@ -233,6 +230,10 @@ def create_api_server(config: Config) -> FastAPI:
     async def get_logs(limit: int = 50):
         logs = list(app_state.logs)
         return logs[-limit:]
+
+    @app.get("/api/history")
+    async def get_history(limit: int = 50):
+        return session_memory.get_history(limit)
     
     @app.get("/api/repository/{repo_name}/status", response_model=RepositoryStatus)
     async def get_repository_status(repo_name: str):
@@ -248,6 +249,22 @@ def create_api_server(config: Config) -> FastAPI:
             openIssues=0,
             openPRs=0
         )
+
+    @app.get("/api/architecture")
+    async def get_architecture():
+        """Get the current architecture diagram."""
+        try:
+            with open("ARCHITECTURE.md", "r", encoding="utf-8") as f:
+                content = f.read()
+                # Extract mermaid block
+                import re
+                match = re.search(r"```mermaid\n(.*?)\n```", content, re.DOTALL)
+                if match:
+                    return {"diagram": match.group(1)}
+                return {"diagram": "graph TD\nError[Could not parse diagram]"}
+        except Exception as e:
+            logger.error(f"Failed to read architecture file: {e}")
+            return {"diagram": "graph TD\nError[Failed to read architecture file]"}
     
     @app.post("/webhook")
     async def webhook(request: Request, background_tasks: BackgroundTasks):

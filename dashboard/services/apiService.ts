@@ -6,7 +6,8 @@
  */
 
 // Use environment variable or default to localhost:8080
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+// Use relative path to leverage Vite proxy (configured in vite.config.ts)
+const API_BASE_URL = '/api';
 
 export interface DashboardMetrics {
   coverage: {
@@ -83,7 +84,7 @@ export async function fetchDashboardMetrics(): Promise<DashboardMetrics> {
   }
 }
 
-export async function fetchLogs(limit: number = 50): Promise<Array<{timestamp: string; level: string; message: string}>> {
+export async function fetchLogs(limit: number = 50): Promise<Array<{ timestamp: string; level: string; message: string }>> {
   try {
     const response = await fetch(`${API_BASE_URL}/logs?limit=${limit}`);
     if (!response.ok) {
@@ -119,6 +120,32 @@ export async function fetchHealthStatus(): Promise<HealthStatus | null> {
   } catch (error) {
     console.error('Failed to fetch health status:', error);
     return null;
+  }
+}
+
+export async function fetchArchitecture(): Promise<{ diagram: string } | null> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/architecture`);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch architecture:', error);
+    return null;
+  }
+}
+
+export async function fetchHistory(limit: number = 50): Promise<Array<any>> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/history?limit=${limit}`);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch history:', error);
+    return [];
   }
 }
 

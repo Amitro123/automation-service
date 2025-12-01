@@ -39,12 +39,18 @@ def orchestrator_setup(mock_config):
     code_review_updater = MagicMock()
     code_review_updater.update_review_log = AsyncMock(return_value="Updated log")
     
+    session_memory = MagicMock()
+    session_memory.add_run = MagicMock()
+    session_memory.update_run_status = MagicMock()
+    session_memory.update_task_result = MagicMock()
+
     orch = AutomationOrchestrator(
         github_client=mock_github,
         code_reviewer=code_reviewer,
         readme_updater=readme_updater,
         spec_updater=spec_updater,
         code_review_updater=code_review_updater,
+        session_memory=session_memory,
         config=mock_config
     )
     

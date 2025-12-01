@@ -7,6 +7,7 @@ from .readme_updater import ReadmeUpdater
 from .spec_updater import SpecUpdater
 from .code_review_updater import CodeReviewUpdater
 from .config import Config
+from .session_memory import SessionMemoryStore
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,7 @@ class AutomationOrchestrator:
         readme_updater: ReadmeUpdater,
         spec_updater: SpecUpdater,
         code_review_updater: CodeReviewUpdater,
+        session_memory: SessionMemoryStore,
         config: Config,
     ):
         """Initialize orchestrator.
@@ -31,6 +33,7 @@ class AutomationOrchestrator:
             readme_updater: README update module
             spec_updater: Spec update module
             code_review_updater: Code review log updater
+            session_memory: Session memory store
             config: Application configuration
         """
         self.github = github_client
@@ -38,6 +41,7 @@ class AutomationOrchestrator:
         self.readme_updater = readme_updater
         self.spec_updater = spec_updater
         self.code_review_updater = code_review_updater
+        self.session_memory = session_memory
         self.config = config
 
     async def run_automation(self, event_payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -55,13 +59,18 @@ class AutomationOrchestrator:
 
         commit_sha = diff_info["commit_sha"]
         branch = diff_info["branch"]
-        logger.info(f"Starting automation orchestration for commit {commit_sha[:7]}")
+        
+        # Start session tracking
+        run_id = f"run_{commit_sha[:7]}_{int(asyncio.get_event_loop().time())}"
+        self.session_memory.add_run(run_id, commit_sha, branch)
+        
+        logger.info(f"Starting automation orchestration for commit {commit_sha[:7]} (Run ID: {run_id})")
 
         # Define tasks to run in parallel
         tasks = [
-            self._run_code_review(commit_sha, branch),
-            self._run_readme_update(commit_sha, branch),
-            self._run_spec_update(commit_sha, branch),
+            self._run_code_review(commit_sha, branch, run_id),
+            self._run_readme_update(commit_sha, branch, run_id),
+            self._run_spec_update(commit_sha, branch, run_id),
         ]
 
         # Execute tasks
@@ -71,12 +80,18 @@ class AutomationOrchestrator:
             "success": all(r.get("success", False) for r in task_results),
             "commit_sha": commit_sha,
             "branch": branch,
+            "run_id": run_id,
             "tasks": {
                 "code_review": task_results[0],
                 "readme_update": task_results[1],
                 "spec_update": task_results[2],
             },
         }
+
+        # Update final status
+        status = "completed" if results["success"] else "failed"
+        summary = "All tasks completed successfully" if results["success"] else "Some tasks failed"
+        self.session_memory.update_run_status(run_id, status, summary)
 
         logger.info(f"Automation orchestration completed. Success: {results['success']}")
         return results
@@ -121,7 +136,7 @@ class AutomationOrchestrator:
         """
         return await asyncio.gather(*tasks, return_exceptions=True)
 
-    async def _run_code_review(self, commit_sha: str, branch: str) -> Dict[str, Any]:
+    async def _run_code_review(self, commit_sha: str, branch: str, run_id: str) -> Dict[str, Any]:
         """Run code review task."""
         try:
             logger.info("Task 1: Running code review...")
@@ -153,17 +168,21 @@ class AutomationOrchestrator:
                     else:
                         log_updated = True # Generated but not committed
 
-            return {
+            result = {
                 "success": review_success,
                 "status": "completed" if review_success else "failed",
                 "posted_as_issue": self.config.POST_REVIEW_AS_ISSUE,
                 "log_updated": log_updated
             }
+            self.session_memory.update_task_result(run_id, "code_review", result)
+            return result
         except Exception as e:
             logger.error(f"Code review failed: {e}", exc_info=True)
-            return {"success": False, "status": "error", "error": str(e)}
+            result = {"success": False, "status": "error", "error": str(e)}
+            self.session_memory.update_task_result(run_id, "code_review", result)
+            return result
 
-    async def _run_readme_update(self, commit_sha: str, branch: str) -> Dict[str, Any]:
+    async def _run_readme_update(self, commit_sha: str, branch: str, run_id: str) -> Dict[str, Any]:
         """Run README update task."""
         try:
             logger.info("Task 2: Checking README updates...")
@@ -179,7 +198,7 @@ class AutomationOrchestrator:
                         readme_content=updated_readme,
                         commit_sha=commit_sha,
                     )
-                    return {
+                    result = {
                         "success": pr_result["success"],
                         "status": "completed",
                         "pr_created": pr_result["success"],
@@ -192,28 +211,33 @@ class AutomationOrchestrator:
                         message=f"docs: Auto-update README.md from {commit_sha[:7]}",
                         branch=branch,
                     )
-                    return {
+                    result = {
                         "success": commit_success,
                         "status": "completed" if commit_success else "failed",
                         "auto_committed": commit_success,
                     }
                 else:
-                    return {
+                    result = {
                         "success": True,
                         "status": "completed",
                         "note": "Updates generated but not committed",
                     }
             else:
-                return {
+                result = {
                     "success": True,
                     "status": "skipped",
                     "reason": "No updates needed",
                 }
+            
+            self.session_memory.update_task_result(run_id, "readme_update", result)
+            return result
         except Exception as e:
             logger.error(f"README update failed: {e}", exc_info=True)
-            return {"success": False, "status": "error", "error": str(e)}
+            result = {"success": False, "status": "error", "error": str(e)}
+            self.session_memory.update_task_result(run_id, "readme_update", result)
+            return result
 
-    async def _run_spec_update(self, commit_sha: str, branch: str) -> Dict[str, Any]:
+    async def _run_spec_update(self, commit_sha: str, branch: str, run_id: str) -> Dict[str, Any]:
         """Run spec.md update task."""
         try:
             logger.info("Task 3: Updating spec.md...")
@@ -233,7 +257,7 @@ class AutomationOrchestrator:
                         spec_content=updated_spec,
                         commit_sha=commit_sha,
                     )
-                    return {
+                    result = {
                         "success": pr_result["success"],
                         "status": "completed",
                         "pr_created": pr_result["success"],
@@ -246,26 +270,31 @@ class AutomationOrchestrator:
                         message=f"docs: Auto-update spec.md from {commit_sha[:7]}",
                         branch=branch,
                     )
-                    return {
+                    result = {
                         "success": commit_success,
                         "status": "completed" if commit_success else "failed",
                         "auto_committed": commit_success,
                     }
                 else:
-                    return {
+                    result = {
                         "success": True,
                         "status": "completed",
                         "note": "Updates generated but not committed",
                     }
             else:
-                return {
+                result = {
                     "success": True,
                     "status": "skipped",
                     "reason": "No updates needed",
                 }
+            
+            self.session_memory.update_task_result(run_id, "spec_update", result)
+            return result
         except Exception as e:
             logger.error(f"Spec update failed: {e}", exc_info=True)
-            return {"success": False, "status": "error", "error": str(e)}
+            result = {"success": False, "status": "error", "error": str(e)}
+            self.session_memory.update_task_result(run_id, "spec_update", result)
+            return result
 
     async def _create_documentation_pr(
         self,
