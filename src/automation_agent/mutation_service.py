@@ -52,6 +52,22 @@ def run_mutation_tests(max_runtime_seconds: int = 600) -> Dict[str, Any]:
             "last_run_time": datetime.now(timezone.utc).isoformat(),
             "runtime_seconds": 0.0
         }
+
+    # Check for Python files
+    if not _has_python_files():
+        logger.info("No Python files found in repository. Skipping mutation tests.")
+        return {
+            "status": "skipped",
+            "reason": "No Python files (.py) found in the repository.",
+            "mutation_score": 0.0,
+            "mutants_total": 0,
+            "mutants_killed": 0,
+            "mutants_survived": 0,
+            "mutants_timeout": 0,
+            "mutants_suspicious": 0,
+            "last_run_time": datetime.now(timezone.utc).isoformat(),
+            "runtime_seconds": 0.0
+        }
     
     logger.info("Starting mutation tests with mutmut...")
     start_time = time.time()
@@ -209,3 +225,20 @@ def get_latest_results() -> Optional[Dict[str, Any]]:
     except Exception as e:
         logger.error(f"Error reading mutation results: {e}")
         return None
+
+
+def _has_python_files() -> bool:
+    """Check if there are any .py files in the repository."""
+    import os
+    for root, dirs, files in os.walk("."):
+        if "venv" in dirs:
+            dirs.remove("venv")
+        if ".git" in dirs:
+            dirs.remove(".git")
+        if "__pycache__" in dirs:
+            dirs.remove("__pycache__")
+            
+        for file in files:
+            if file.endswith(".py"):
+                return True
+    return False

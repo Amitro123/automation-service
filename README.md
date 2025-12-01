@@ -214,25 +214,6 @@ Dashboard runs on: **http://localhost:5173**
 
 See [`dashboard/DASHBOARD_SETUP.md`](dashboard/DASHBOARD_SETUP.md)
 
-
-**Note:** Mutation testing requires Linux/Mac or WSL.
-
-### Running Mutation Tests in CI
-
-Mutation testing is integrated with GitHub Actions for automated quality checks:
-
-```bash
-# Workflow triggers:
-# - Push to main branch
-# - Manual trigger via Actions tab
-# - (Optional) Pull requests to main
-```
-
-**Workflow does:**
-1. Runs on Ubuntu (Linux) runner
-2. Executes pytest with coverage
-3. Runs mutation tests with mutmut
-4. Saves `mutation_results.json` as artifact
 5. Displays results in Actions summary
 6. (Optional) Comments on PRs with scores
 

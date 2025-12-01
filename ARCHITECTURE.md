@@ -23,13 +23,19 @@ graph TD
     classDef frontend fill:#ffe0b2,stroke:#f57c00,stroke-width:2px;
     classDef primary fill:#d1c4e9,stroke:#512da8,stroke-width:3px;
     classDef fallback fill:#f5f5f5,stroke:#9e9e9e,stroke-width:2px,stroke-dasharray: 5,5;
+    classDef ci fill:#e0f7fa,stroke:#006064,stroke-width:2px;
+    classDef api fill:#ffecb3,stroke:#ff6f00,stroke-width:2px;
 
     %% External Systems
     subgraph External["External Systems"]
         GitHub[GitHub Push Event]:::external
         GitHubAPI[GitHub API]:::external
-        LLM["LLM (Gemini/OpenAI/Anthropic)"]:::fallback
-        Jules["Jules / Google Code Review API"]:::primary
+    end
+
+    %% CI/Automation Layer
+    subgraph CI["CI/Automation (Linux Runner)"]
+        Pytest[pytest]:::ci
+        Mutmut[mutmut]:::ci
     end
 
     %% Backend Core (The Brain)
@@ -37,6 +43,7 @@ graph TD
         Webhook[Webhook Server]:::component
         Orchestrator[Async Orchestrator]:::orchestrator
         SessionMem[Session Memory Store]:::memory
+        MutationService[Mutation Service]:::component
         
         %% Review Providers Abstraction
         subgraph ReviewAbstraction["Review Providers"]
@@ -52,11 +59,18 @@ graph TD
         end
     end
 
+    %% API Gateway Layer
+    subgraph APILayer["API Gateway Layer"]
+        APIServer[FastAPI API Server]:::api
+    end
+
     %% Artifacts
     subgraph Artifacts["Repo Artifacts"]
         SpecMD[spec.md]:::memory
         ReadmeMD[README.md]:::memory
         ReviewMD[code_review.md]:::memory
+        MutationRes[mutation_results.json]:::memory
+        CoverageXML[coverage.xml]:::memory
     end
 
     %% Frontend (Consumer)
@@ -64,9 +78,17 @@ graph TD
         Dashboard[React Dashboard]:::frontend
     end
 
-    %% Data Flow
+    %% Review Providers Implementation
+    subgraph Providers["Review Engines"]
+        Jules["Jules API (Primary)"]:::primary
+        LLM["LLMs (Gemini/OpenAI/Anthropic) Fallback"]:::fallback
+    end
+
+    %% Data Flow - Ingress
     GitHub -->|POST /webhook| Webhook
     Webhook -->|Trigger| Orchestrator
+    
+    %% Orchestration
     Orchestrator -->|Init Run| SessionMem
     Orchestrator -->|Parallel Exec| Reviewer
     Orchestrator -->|Parallel Exec| ReadmeUp
@@ -74,18 +96,33 @@ graph TD
     Orchestrator -->|Parallel Exec| ReviewUp
     Orchestrator -->|Update Status| SessionMem
 
-    %% Dashboard Interactions
-    Dashboard -->|Fetch Metrics/History| Webhook
-    Webhook -.->|Read| SessionMem
+    %% Mutation & CI Flow
+    Webhook -->|Run /api/mutation/run| MutationService
+    MutationService -->|Exec| Mutmut
+    Mutmut -->|Write| MutationRes
+    Pytest -->|Write| CoverageXML
+    
+    %% Metrics Flow
+    MutationRes -->|Read| APIServer
+    CoverageXML -->|Read| APIServer
+    SessionMem -->|Read Metrics| APIServer
+
+    %% API Layer
+    APIServer -->|/api/metrics| Dashboard
+    APIServer -->|/api/architecture| Dashboard
+    APIServer -->|/api/history| Dashboard
+    APIServer -->|/api/mutation/results| Dashboard
 
     %% Component Interactions
     Reviewer -->|Delegate| ReviewProv
     ReadmeUp -->|Delegate| ReviewProv
     SpecUp -->|Delegate| ReviewProv
     
-    ReviewProv -->|Primary| Jules
-    ReviewProv -.->|Fallback| LLM
+    %% Review Provider Logic
+    ReviewProv -->|Primary Selection| Jules
+    ReviewProv -.->|Fallback if Failed| LLM
     
+    %% External Interactions
     Reviewer -->|Post Comment| GitHubAPI
     Reviewer -->|Log Result| SessionMem
 
@@ -106,9 +143,12 @@ graph TD
     ReadmeUp -.->|Update| ReadmeMD
     ReviewUp -.->|Update| ReviewMD
 
-    %% Note
-    note[Review Providers are pluggable.<br/>Uses Jules API when available,<br/>falls back to LLM.]
-    ReviewProv --- note
+    %% Notes
+    note1[Mutation testing supported only on<br/>Linux/Mac/CI. Skipped on Windows.]
+    Mutmut --- note1
+    
+    note2[Review engine configurable via<br/>environment variables.]
+    ReviewProv --- note2
     
 ```
 
@@ -265,4 +305,6 @@ React Dashboard (Real-time visualization)
 - GitHub Actions (CI/CD)
 - Session Memory (JSON-based persistence)
 - GitHub API (issues, PRs, commits)
+
+
 
