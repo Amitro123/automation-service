@@ -4,7 +4,7 @@ import logging
 import re
 from datetime import datetime, UTC
 from typing import Optional, List, Dict, Any
-from .llm_client import LLMClient
+from .review_provider import ReviewProvider
 from .github_client import GitHubClient
 
 logger = logging.getLogger(__name__)
@@ -13,15 +13,15 @@ logger = logging.getLogger(__name__)
 class SpecUpdater:
     """Automated spec.md project progress documentation."""
 
-    def __init__(self, github_client: GitHubClient, llm_client: LLMClient):
+    def __init__(self, github_client: GitHubClient, review_provider: ReviewProvider):
         """Initialize spec updater.
 
         Args:
             github_client: GitHub API client
-            llm_client: LLM client for analysis
+            review_provider: Provider for analysis and updates
         """
         self.github = github_client
-        self.llm = llm_client
+        self.provider = review_provider
 
     async def update_spec(self, commit_sha: str, branch: str = "main") -> Optional[str]:
         """Update spec.md with project progress documentation.
@@ -56,7 +56,7 @@ class SpecUpdater:
         # Generate spec update
         try:
             # Pass diff explicitly
-            updated_spec = await self.llm.update_spec(commit_info, diff, current_spec)
+            updated_spec = await self.provider.update_spec(commit_info, diff, current_spec)
         except Exception as e:
             logger.error(f"Failed to generate spec update: {e}")
             return None

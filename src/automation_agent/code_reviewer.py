@@ -1,8 +1,8 @@
-"""Automated code review module using LLM analysis."""
+"""Automated code review module using review provider abstraction."""
 
 import logging
 from typing import Optional, Dict, Any
-from .llm_client import LLMClient
+from .review_provider import ReviewProvider
 from .github_client import GitHubClient
 
 logger = logging.getLogger(__name__)
@@ -11,15 +11,15 @@ logger = logging.getLogger(__name__)
 class CodeReviewer:
     """Automated code review with quality, security, and best practices analysis."""
 
-    def __init__(self, github_client: GitHubClient, llm_client: LLMClient):
+    def __init__(self, github_client: GitHubClient, review_provider: ReviewProvider):
         """Initialize code reviewer.
 
         Args:
             github_client: GitHub API client
-            llm_client: LLM client for analysis
+            review_provider: Provider for code review analysis
         """
         self.github = github_client
-        self.llm = llm_client
+        self.provider = review_provider
 
     async def review_commit(self, commit_sha: str, post_as_issue: bool = False) -> Dict[str, Any]:
         """Review a commit and post findings.
@@ -47,12 +47,12 @@ class CodeReviewer:
 
         # Generate code review
         try:
-            review = await self.llm.analyze_code(diff)
+            review = await self.provider.review_code(diff)
             if not review:
                 logger.error("Failed to generate code review")
                 return {"success": False, "review": None}
         except Exception as e:
-            logger.error(f"LLM analysis failed: {e}")
+            logger.error(f"Review analysis failed: {e}")
             return {"success": False, "review": None}
 
         formatted_review = self._format_review(review)
@@ -73,14 +73,18 @@ class CodeReviewer:
         return {"success": success, "review": formatted_review}
 
     def _format_review(self, analysis: str) -> str:
-        """Format the LLM analysis into a GitHub-friendly review.
+        """Format the analysis into a GitHub-friendly review.
 
         Args:
-            analysis: Raw LLM analysis text
+            analysis: Raw analysis text
 
         Returns:
             Formatted review with header and footer
         """
+        # If the analysis already contains the header (e.g. from JulesReviewProvider), don't add it again
+        if "# 🤖" in analysis:
+            return analysis
+
         header = """# 🤖 Automated Code Review
 
 *This review was generated automatically by the GitHub Automation Agent.*

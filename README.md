@@ -91,33 +91,6 @@ $env:PYTHONPATH = "$PWD/src"
 python -m automation_agent.main
 
 # Linux/Mac
-export PYTHONPATH=$PYTHONPATH:$(pwd)/src
-python -m automation_agent.main
-```
-
-Server runs on http://localhost:8080/
-
-## ⚙️ Configuration
-
-**.env file example:**
-
-```ini
-# GitHub
-GITHUB_TOKEN=ghp_your_token_here
-GITHUB_WEBHOOK_SECRET=your_secret_here
-REPOSITORY_OWNER=your_username
-REPOSITORY_NAME=your_repo
-
-# Optional: Agent Platforms
-GRAVITY_ENABLED=False
-GRAVITY_API_KEY=
-GRAVITY_WORKFLOW_ID=
-
-# LLM Provider Example
-LLM_PROVIDER=gemini
-GEMINI_API_KEY=your_key_here
-```
-
 ## 🧲 Agent Platform Integration (Optional)
 
 Compatible with **Windsurf**, **AntiGravity**, **n8n**, or any agent orchestrator:

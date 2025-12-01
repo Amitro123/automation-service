@@ -167,10 +167,23 @@ def create_api_server(config: Config) -> FastAPI:
         api_key=api_key,
     )
     
-    code_reviewer = CodeReviewer(github_client, llm_client)
-    readme_updater = ReadmeUpdater(github_client, llm_client)
-    spec_updater = SpecUpdater(github_client, llm_client)
-    code_review_updater = CodeReviewUpdater(github_client, llm_client)
+    # Initialize Review Provider
+    from .review_provider import LLMReviewProvider, JulesReviewProvider
+    
+    # Default to LLM provider
+    review_provider = LLMReviewProvider(llm_client)
+    
+    # If Jules is configured, wrap the LLM provider as fallback
+    if config.REVIEW_PROVIDER == "jules":
+        review_provider = JulesReviewProvider(config, fallback_provider=review_provider)
+        app_state.add_log("INFO", "Using Jules Review Provider")
+    else:
+        app_state.add_log("INFO", f"Using LLM Review Provider ({config.LLM_PROVIDER})")
+    
+    code_reviewer = CodeReviewer(github_client, review_provider)
+    readme_updater = ReadmeUpdater(github_client, review_provider)
+    spec_updater = SpecUpdater(github_client, review_provider)
+    code_review_updater = CodeReviewUpdater(github_client, llm_client) # Keep using LLM for summary generation
     
     orchestrator = AutomationOrchestrator(
         github_client=github_client,

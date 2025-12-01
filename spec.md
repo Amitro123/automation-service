@@ -28,18 +28,6 @@ WHEN: Agent analyzes diff
 THEN:
 ✅ README PR created (if changes detected)
 ✅ Only relevant sections updated (preserves tone/structure)
-✅ PR title: "docs: sync README with latest changes"
-
-### As a Team → Project progress is tracked
-GIVEN: Push contains meaningful changes
-WHEN: Agent runs spec updater
-THEN:
-✅ New entry appended to this file
-✅ Entry includes: timestamp + summary + decisions + next steps
-✅ Historical context preserved
-
-## 🏗️ System Architecture (NEVER CHANGE)
-
 GitHub Push Event (JSON)
             ↓
 ┌─────────────────────────────────────────────────────────────┐

@@ -10,6 +10,18 @@ load_dotenv()
 class Config:
     """Application configuration loaded from environment variables."""
 
+"""Configuration management for GitHub Automation Agent."""
+
+import os
+from typing import Optional
+from dotenv import load_dotenv
+
+load_dotenv()
+
+
+class Config:
+    """Application configuration loaded from environment variables."""
+
     # GitHub Configuration
     GITHUB_TOKEN: str = os.getenv("GITHUB_TOKEN", "")
     GITHUB_WEBHOOK_SECRET: str = os.getenv("GITHUB_WEBHOOK_SECRET", "")
@@ -20,12 +32,17 @@ class Config:
     OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")
     ANTHROPIC_API_KEY: Optional[str] = os.getenv("ANTHROPIC_API_KEY")
     GEMINI_API_KEY: Optional[str] = os.getenv("GEMINI_API_KEY")
-    LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "openai")  # "openai" or "anthropic"
+    LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "openai")  # "openai", "anthropic", "gemini"
     LLM_MODEL: str = os.getenv(
         "LLM_MODEL",
         "gpt-4-turbo-preview" if LLM_PROVIDER == "openai" else
         ("claude-3-opus-20240229" if LLM_PROVIDER == "anthropic" else "gemini-2.0-flash")
     )
+
+    # Review Provider Configuration
+    REVIEW_PROVIDER: str = os.getenv("REVIEW_PROVIDER", "llm").lower()  # "llm" or "jules"
+    JULES_API_KEY: Optional[str] = os.getenv("JULES_API_KEY")
+    JULES_API_URL: str = os.getenv("JULES_API_URL", "https://code-review.googleapis.com/v1/review")
 
     # Webhook Server Configuration
     HOST: str = os.getenv("HOST", "0.0.0.0")  # nosec
@@ -64,6 +81,10 @@ class Config:
             errors.append("GEMINI_API_KEY is required when using Gemini")
         elif cls.LLM_PROVIDER not in ["openai", "anthropic", "gemini"]:
             errors.append("LLM_PROVIDER must be 'openai', 'anthropic', or 'gemini'")
+
+        if cls.REVIEW_PROVIDER == "jules":
+            if not cls.JULES_API_KEY:
+                errors.append("JULES_API_KEY is required when using Jules review provider")
 
         return errors
 

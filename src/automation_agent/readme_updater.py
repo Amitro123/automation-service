@@ -3,7 +3,7 @@
 import logging
 import re
 from typing import Optional, Dict, List
-from .llm_client import LLMClient
+from .review_provider import ReviewProvider
 from .github_client import GitHubClient
 
 logger = logging.getLogger(__name__)
@@ -12,15 +12,15 @@ logger = logging.getLogger(__name__)
 class ReadmeUpdater:
     """Automated README.md updates based on code changes."""
 
-    def __init__(self, github_client: GitHubClient, llm_client: LLMClient):
+    def __init__(self, github_client: GitHubClient, review_provider: ReviewProvider):
         """Initialize README updater.
 
         Args:
             github_client: GitHub API client
-            llm_client: LLM client for analysis
+            review_provider: Provider for analysis and updates
         """
         self.github = github_client
-        self.llm = llm_client
+        self.provider = review_provider
 
     async def update_readme(self, commit_sha: str, branch: str = "main") -> Optional[str]:
         """Update README.md based on code changes.
@@ -53,7 +53,7 @@ class ReadmeUpdater:
 
         # Generate updated README
         try:
-            updated_readme = await self.llm.update_readme(diff, current_readme)
+            updated_readme = await self.provider.update_readme(diff, current_readme)
             updated_readme = self._clean_readme_output(updated_readme)
         except Exception as e:
             logger.error(f"Failed to generate README updates: {e}")

@@ -21,12 +21,15 @@ graph TD
     classDef external fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px;
     classDef orchestrator fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
     classDef frontend fill:#ffe0b2,stroke:#f57c00,stroke-width:2px;
+    classDef primary fill:#d1c4e9,stroke:#512da8,stroke-width:3px;
+    classDef fallback fill:#f5f5f5,stroke:#9e9e9e,stroke-width:2px,stroke-dasharray: 5,5;
 
     %% External Systems
     subgraph External["External Systems"]
         GitHub[GitHub Push Event]:::external
         GitHubAPI[GitHub API]:::external
-        LLM["LLM (Gemini/OpenAI/Anthropic)"]:::external
+        LLM["LLM (Gemini/OpenAI/Anthropic)"]:::fallback
+        Jules["Jules / Google Code Review API"]:::primary
     end
 
     %% Backend Core (The Brain)
@@ -35,6 +38,11 @@ graph TD
         Orchestrator[Async Orchestrator]:::orchestrator
         SessionMem[Session Memory Store]:::memory
         
+        %% Review Providers Abstraction
+        subgraph ReviewAbstraction["Review Providers"]
+            ReviewProv[ReviewProvider Interface]:::component
+        end
+
         %% Parallel Tasks
         subgraph Tasks["Parallel Tasks"]
             Reviewer[Code Reviewer]:::component
@@ -71,30 +79,49 @@ graph TD
     Webhook -.->|Read| SessionMem
 
     %% Component Interactions
-    Reviewer -->|Analyze Diff| LLM
+    Reviewer -->|Delegate| ReviewProv
+    ReadmeUp -->|Delegate| ReviewProv
+    SpecUp -->|Delegate| ReviewProv
+    
+    ReviewProv -->|Primary| Jules
+    ReviewProv -.->|Fallback| LLM
+    
     Reviewer -->|Post Comment| GitHubAPI
     Reviewer -->|Log Result| SessionMem
 
     ReadmeUp -->|Read Content| ReadmeMD
-    ReadmeUp -->|Generate Update| LLM
     ReadmeUp -->|Create PR| GitHubAPI
     ReadmeUp -->|Log Result| SessionMem
 
     SpecUp -->|Read History| SpecMD
-    SpecUp -->|Generate Entry| LLM
     SpecUp -->|Append Entry| GitHubAPI
     SpecUp -->|Log Result| SessionMem
 
     ReviewUp -->|Read Log| ReviewMD
     ReviewUp -->|Summarize| LLM
     ReviewUp -->|Append Log| GitHubAPI
-    ReviewUp -->|Log Result| SessionMem
-        %% Memory Updates
+    
+    %% Memory Updates
     SpecUp -.->|Update| SpecMD
     ReadmeUp -.->|Update| ReadmeMD
     ReviewUp -.->|Update| ReviewMD
+
+    %% Note
+    note[Review Providers are pluggable.<br/>Uses Jules API when available,<br/>falls back to LLM.]
+    ReviewProv --- note
     
 ```
+
+## Pluggable Review Architecture
+
+The system features a **Pluggable Review Provider** layer that abstracts the underlying review engine.
+
+**Flow:**
+`GitHub Push → Orchestrator → Code Reviewer → Review Providers → (Jules API / LLM) → GitHub Feedback`
+
+- **Primary**: **Jules / Google Code Review API** is used for high-quality, specialized code reviews.
+- **Fallback**: If Jules is unavailable or fails, the system automatically falls back to **LLM Providers** (Gemini, OpenAI, Anthropic) to ensure continuity.
+- **Abstraction**: The `ReviewProvider` interface ensures that `CodeReviewer`, `ReadmeUpdater`, and `SpecUpdater` are agnostic to the underlying engine.
 
 ## Live Updates
 

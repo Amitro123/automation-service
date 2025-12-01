@@ -6,6 +6,7 @@ from src.automation_agent.code_reviewer import CodeReviewer
 from src.automation_agent.readme_updater import ReadmeUpdater
 from src.automation_agent.spec_updater import SpecUpdater
 from src.automation_agent.config import Config
+from src.automation_agent.review_provider import ReviewProvider
 
 @pytest.fixture
 def mock_config():
@@ -26,10 +27,10 @@ async def test_empty_diff(mock_config):
         "commit": {"message": "empty", "author": {"name": "User"}}
     })
     
-    mock_llm = MagicMock()
-    mock_llm.analyze_code = AsyncMock(return_value="No changes to review")
+    mock_provider = MagicMock(spec=ReviewProvider)
+    mock_provider.review_code = AsyncMock(return_value="No changes to review")
     
-    reviewer = CodeReviewer(mock_github, mock_llm)
+    reviewer = CodeReviewer(mock_github, mock_provider)
     result = await reviewer.review_commit("abc123")
     
     # Should handle gracefully
@@ -47,10 +48,10 @@ async def test_huge_diff(mock_config):
     })
     mock_github.post_commit_comment = AsyncMock(return_value=True)
     
-    mock_llm = MagicMock()
-    mock_llm.analyze_code = AsyncMock(return_value="Review of large diff")
+    mock_provider = MagicMock(spec=ReviewProvider)
+    mock_provider.review_code = AsyncMock(return_value="Review of large diff")
     
-    reviewer = CodeReviewer(mock_github, mock_llm)
+    reviewer = CodeReviewer(mock_github, mock_provider)
     result = await reviewer.review_commit("abc123")
     
     # Should still process (LLM client may truncate internally)
@@ -63,9 +64,9 @@ async def test_github_rate_limit(mock_config):
     # Simulate rate limit error - GitHubClient returns None on error
     mock_github.get_commit_diff = AsyncMock(return_value=None)
     
-    mock_llm = MagicMock()
+    mock_provider = MagicMock(spec=ReviewProvider)
     
-    reviewer = CodeReviewer(mock_github, mock_llm)
+    reviewer = CodeReviewer(mock_github, mock_provider)
     result = await reviewer.review_commit("abc123")
     
     # Should return False on error
@@ -81,11 +82,11 @@ async def test_llm_api_failure(mock_config):
         "commit": {"message": "test", "author": {"name": "User"}}
     })
     
-    mock_llm = MagicMock()
+    mock_provider = MagicMock(spec=ReviewProvider)
     # Simulate LLM API error
-    mock_llm.analyze_code = AsyncMock(side_effect=Exception("API timeout"))
+    mock_provider.review_code = AsyncMock(side_effect=Exception("API timeout"))
     
-    reviewer = CodeReviewer(mock_github, mock_llm)
+    reviewer = CodeReviewer(mock_github, mock_provider)
     result = await reviewer.review_commit("abc123")
     
     # Should handle exception gracefully
@@ -102,10 +103,10 @@ async def test_missing_readme(mock_config):
     })
     mock_github.get_file_content = AsyncMock(return_value=None)  # README doesn't exist
     
-    mock_llm = MagicMock()
-    mock_llm.update_readme = AsyncMock(return_value="# New README\n\nContent")
+    mock_provider = MagicMock(spec=ReviewProvider)
+    mock_provider.update_readme = AsyncMock(return_value="# New README\n\nContent")
     
-    updater = ReadmeUpdater(mock_github, mock_llm)
+    updater = ReadmeUpdater(mock_github, mock_provider)
     result = await updater.update_readme("abc123")
     
     # Should create new README (LLM returns the new content)
@@ -123,10 +124,10 @@ async def test_missing_spec(mock_config):
     mock_github.get_commit_diff = AsyncMock(return_value="diff content")
     mock_github.get_file_content = AsyncMock(return_value=None)  # spec.md doesn't exist
     
-    mock_llm = AsyncMock()
-    mock_llm.update_spec = AsyncMock(return_value="New entry")
+    mock_provider = AsyncMock(spec=ReviewProvider)
+    mock_provider.update_spec = AsyncMock(return_value="New entry")
     
-    updater = SpecUpdater(mock_github, mock_llm)
+    updater = SpecUpdater(mock_github, mock_provider)
     result = await updater.update_spec("abc123")
     
     # Should create new spec.md
@@ -165,9 +166,9 @@ async def test_malformed_commit_info(mock_config):
     mock_github.get_commit_diff = AsyncMock(return_value="diff")
     mock_github.get_commit_info = AsyncMock(return_value=None)  # Malformed response
     
-    mock_llm = MagicMock()
+    mock_provider = MagicMock(spec=ReviewProvider)
     
-    reviewer = CodeReviewer(mock_github, mock_llm)
+    reviewer = CodeReviewer(mock_github, mock_provider)
     result = await reviewer.review_commit("abc123")
     
     # Should handle gracefully
