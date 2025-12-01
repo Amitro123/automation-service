@@ -47,3 +47,6 @@ Thumbs.db
 # Generated Gemini Reports
 gemini_*.md
 verification_result.txt
+
+# Session Memory
+session_memory.json
