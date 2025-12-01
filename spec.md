@@ -1,6 +1,6 @@
 # 📋 GitHub Automation Agent - Product Specification & Progress
 
-**Last Updated:** 2025-11-30 18:30 UTC  
+**Last Updated:** 2025-12-01 18:21 UTC
 **Status:** Phase 3 Complete ✅ | Phase 4 Deployment 🚀 | FastAPI + Dashboard Integration ✅
 
 ## 🎯 Product Mission
@@ -274,3 +274,9 @@ LOW: Polish
 ✅ Zero secret leaks in logs
 ✅ 100% test coverage
 ✅ README/spec.md accuracy >95%
+
+
+### [2024-01-02]
+- **Summary**: Updated README.md to improve clarity, streamline local setup instructions, and remove unnecessary code block delimiters.
+- **Decisions**: Simplified setup instructions for local execution using `run_api.py`. Removed legacy Flask server instructions. Clarified compatibility with agent orchestrators.
+- **Next Steps**: Review and potentially update the project structure diagram in `README.md` for better clarity.
