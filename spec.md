@@ -280,3 +280,8 @@ LOW: Polish
 - **Summary**: Minor change to README.md; removed trailing newline.
 - **Decisions**: N/A
 - **Next Steps**: N/A
+
+### [2025-12-01]
+- **Summary**: Updated the "Last Updated" timestamp in spec.md.
+- **Decisions**: N/A
+- **Next Steps**: N/A
