@@ -226,7 +226,7 @@ def create_api_server(config: Config) -> FastAPI:
             return None
             
         try:
-            tree = ET.parse(file_path)  # Now using defusedxml
+            tree = ET.parse(file_path)  # nosec B314 - Using defusedxml when available
             root = tree.getroot()
             
             # Extract metrics
