@@ -254,7 +254,7 @@ def create_api_server(config: Config) -> FastAPI:
     async def get_architecture():
         """Get the current architecture diagram."""
         try:
-            with open("ARCHITECTURE.md", "r", encoding="utf-8") as f:
+            with open(config.ARCHITECTURE_FILE, "r", encoding="utf-8") as f:
                 content = f.read()
                 # Extract mermaid block
                 import re
@@ -262,8 +262,8 @@ def create_api_server(config: Config) -> FastAPI:
                 if match:
                     return {"diagram": match.group(1)}
                 return {"diagram": "graph TD\nError[Could not parse diagram]"}
-        except Exception as e:
-            logger.error(f"Failed to read architecture file: {e}")
+        except (FileNotFoundError, IOError, OSError) as e:
+            logger.exception("Failed to read architecture file")
             return {"diagram": "graph TD\nError[Failed to read architecture file]"}
     
     @app.post("/webhook")

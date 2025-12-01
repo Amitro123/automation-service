@@ -31,6 +31,13 @@ import { Repository, LogEntry, Task, Status } from './types';
 import { generateProjectFile } from './services/geminiService';
 import { fetchDashboardMetrics, fetchArchitecture, fetchHistory } from './services/apiService';
 
+interface HistoryRun {
+  id: string;
+  commit_sha: string;
+  branch: string;
+  status: 'completed' | 'running' | 'failed' | 'pending';
+}
+
 function App() {
   // State
   const [selectedRepo, setSelectedRepo] = useState<Repository>(REPOSITORIES[0]);
@@ -79,7 +86,7 @@ function App() {
         // Fetch History (map to Tasks)
         const historyData = await fetchHistory();
         if (historyData && historyData.length > 0) {
-          const historyTasks: Task[] = historyData.map((run: any) => ({
+          const historyTasks: Task[] = (historyData as unknown as HistoryRun[]).map((run: HistoryRun) => ({
             id: run.id,
             title: `Run ${run.commit_sha.substring(0, 7)} (${run.branch})`,
             status: run.status === 'completed' ? Status.Completed :
@@ -175,8 +182,8 @@ function App() {
           <div className="flex items-center gap-4">
             {/* Security Indicator */}
             <div className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold border backdrop-blur-md transition-all duration-300 ${selectedRepo.isSecure
-                ? 'bg-emerald-950/30 text-emerald-400 border-emerald-500/30 shadow-[0_0_15px_-5px_rgba(16,185,129,0.3)]'
-                : 'bg-rose-950/30 text-rose-400 border-rose-500/30 shadow-[0_0_15px_-5px_rgba(244,63,94,0.3)]'
+              ? 'bg-emerald-950/30 text-emerald-400 border-emerald-500/30 shadow-[0_0_15px_-5px_rgba(16,185,129,0.3)]'
+              : 'bg-rose-950/30 text-rose-400 border-rose-500/30 shadow-[0_0_15px_-5px_rgba(244,63,94,0.3)]'
               }`}>
               {selectedRepo.isSecure ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
               {selectedRepo.isSecure ? 'SYSTEM SECURE' : 'VULNERABILITIES DETECTED'}

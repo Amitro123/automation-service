@@ -88,8 +88,8 @@ graph TD
     ReviewUp -->|Read Log| ReviewMD
     ReviewUp -->|Summarize| LLM
     ReviewUp -->|Append Log| GitHubAPI
-    
-    %% Memory Updates
+    ReviewUp -->|Log Result| SessionMem
+        %% Memory Updates
     SpecUp -.->|Update| SpecMD
     ReadmeUp -.->|Update| ReadmeMD
     ReviewUp -.->|Update| ReviewMD

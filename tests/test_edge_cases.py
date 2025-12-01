@@ -146,8 +146,10 @@ async def test_invalid_payload(mock_config):
     code_review_updater = MagicMock()
     code_review_updater.update_review_log = AsyncMock(return_value=None)
     
+    mock_session_memory = MagicMock()
+
     orch = AutomationOrchestrator(
-        mock_github, code_reviewer, readme_updater, spec_updater, code_review_updater, mock_config
+        mock_github, code_reviewer, readme_updater, spec_updater, code_review_updater, mock_session_memory, mock_config
     )
     
     # Invalid payload (missing required fields)

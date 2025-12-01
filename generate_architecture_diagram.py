@@ -90,7 +90,7 @@ def generate_mermaid() -> str:
     """
     return diagram
 
-def update_architecture_file():
+def update_architecture_file(output_path: str = "ARCHITECTURE.md"):
     """Update ARCHITECTURE.md with the generated diagram."""
     diagram = generate_mermaid()
     
@@ -127,10 +127,13 @@ python generate_architecture_diagram.py
 This file is automatically updated on every push to main via GitHub Actions.
 """
     
-    with open("ARCHITECTURE.md", "w", encoding="utf-8") as f:
-        f.write(content)
-    
-    print("Successfully updated ARCHITECTURE.md")
+    try:
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write(content)
+        print(f"Successfully updated {output_path}")
+    except (IOError, OSError) as e:
+        print(f"Error: Failed to write {output_path}: {e}")
+        raise
 
 if __name__ == "__main__":
     update_architecture_file()

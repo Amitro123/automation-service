@@ -5,12 +5,14 @@ from automation_agent.orchestrator import AutomationOrchestrator
 
 @pytest.fixture
 def orchestrator(mock_github_client, mock_code_reviewer, mock_readme_updater, mock_spec_updater, mock_code_review_updater, mock_config):
+    mock_session_memory = MagicMock()
     return AutomationOrchestrator(
         github_client=mock_github_client,
         code_reviewer=mock_code_reviewer,
         readme_updater=mock_readme_updater,
         spec_updater=mock_spec_updater,
         code_review_updater=mock_code_review_updater,
+        session_memory=mock_session_memory,
         config=mock_config
     )
 
@@ -190,7 +192,7 @@ async def test_readme_update_exception(orchestrator, mock_readme_updater):
     """Test exception in readme update task."""
     mock_readme_updater.update_readme.side_effect = Exception("Error")
     
-    result = await orchestrator._run_readme_update("sha", "branch")
+    result = await orchestrator._run_readme_update("sha", "branch", "test_run_id")
     
     assert result["success"] is False
     assert result["status"] == "error"
@@ -200,7 +202,7 @@ async def test_spec_update_exception(orchestrator, mock_spec_updater):
     """Test exception in spec update task."""
     mock_spec_updater.update_spec.side_effect = Exception("Error")
     
-    result = await orchestrator._run_spec_update("sha", "branch")
+    result = await orchestrator._run_spec_update("sha", "branch", "test_run_id")
     
     assert result["success"] is False
     assert result["status"] == "error"
@@ -210,7 +212,7 @@ async def test_spec_update_skipped(orchestrator, mock_spec_updater):
     """Test spec update returning None (skipped - no update needed)."""
     mock_spec_updater.update_spec.return_value = None
     
-    result = await orchestrator._run_spec_update("sha", "branch")
+    result = await orchestrator._run_spec_update("sha", "branch", "test_run_id")
     
     assert result["success"] is True
     assert result["status"] == "skipped"
@@ -225,7 +227,7 @@ async def test_readme_update_auto_commit(orchestrator, mock_readme_updater, mock
     mock_readme_updater.update_readme.return_value = "Updated README"
     mock_github_client.update_file.return_value = True
 
-    result = await orchestrator._run_readme_update("sha123", "main")
+    result = await orchestrator._run_readme_update("sha123", "main", "test_run_id")
 
     assert result["success"] is True
     assert result["status"] == "completed"
@@ -246,7 +248,7 @@ async def test_spec_update_auto_commit(orchestrator, mock_spec_updater, mock_git
     mock_spec_updater.update_spec.return_value = "Updated Spec"
     mock_github_client.update_file.return_value = True
 
-    result = await orchestrator._run_spec_update("sha123", "main")
+    result = await orchestrator._run_spec_update("sha123", "main", "test_run_id")
 
     assert result["success"] is True
     assert result["status"] == "completed"

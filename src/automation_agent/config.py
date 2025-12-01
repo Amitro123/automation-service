@@ -36,6 +36,7 @@ class Config:
     CREATE_PR: bool = os.getenv("CREATE_PR", "True").lower() == "true"
     POST_REVIEW_AS_ISSUE: bool = os.getenv("POST_REVIEW_AS_ISSUE", "False").lower() == "true"
     AUTO_COMMIT: bool = os.getenv("AUTO_COMMIT", "False").lower() == "true"
+    ARCHITECTURE_FILE: str = os.getenv("ARCHITECTURE_FILE", "ARCHITECTURE.md")
 
     @classmethod
     def validate(cls) -> list[str]:
