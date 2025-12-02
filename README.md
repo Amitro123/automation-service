@@ -125,6 +125,8 @@ GitHub Push → Agent Platform Webhook → Orchestrator → GitHub API
 
 ## 📋 Workflow
 
+The agent is **event-driven**, triggering on **push and pull request events**. Ensure your webhook configuration is set up to send both types of events for full functionality.
+
 ### Standard Flow (Push Events)
 1. **Developer pushes code** → webhook triggers
 2. **Webhook verifies signature** → extracts diff/commit data
