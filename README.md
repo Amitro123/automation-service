@@ -1,4 +1,4 @@
-﻿# 🤖 GitHub Automation Agent
+# 🤖 GitHub Automation Agent
 
 An autonomous GitHub automation system that triggers on **push and pull request events** to perform intelligent code review, automatic README and code_review.md updates, and project progress documentation. Features **PR-centric orchestration** with trivial change filtering to optimize LLM token usage.
 
