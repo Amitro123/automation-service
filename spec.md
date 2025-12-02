@@ -1,6 +1,6 @@
 # 📋 GitHub Automation Agent - Product Specification & Progress
 
-**Last Updated:** 2025-12-02 12:00 UTC  
+**Last Updated:** 2025-12-02 15:29 UTC
 **Status:** Phase 3 Complete ✅ | Phase 4 Deployment 🚀 | PR-Centric Automation ✅
 
 ## 🎯 Product Mission
@@ -317,3 +317,9 @@ LOW: Polish
 ✅ Zero secret leaks in logs
 ✅ 100% test coverage
 ✅ README/spec.md accuracy >95%
+
+
+### [2024-01-26]
+- **Summary**: Updated README to reflect `spec.md` updates, clarified PR-centric automation features, and added details on trigger modes, trivial change filtering, and new API endpoints for skipped runs and PR history.
+- **Decisions**: Emphasized PR-centric automation and added details on trigger configuration and run types for better user understanding.
+- **Next Steps**: Further refine documentation based on user feedback, particularly around configuration options and API endpoints.
