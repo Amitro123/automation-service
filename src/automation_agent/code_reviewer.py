@@ -48,6 +48,20 @@ class CodeReviewer:
         # Generate code review
         try:
             review = await self.provider.review_code(diff)
+            
+            # Check if provider returned a structured error (e.g., Jules 404)
+            if isinstance(review, dict) and not review.get("success", True):
+                error_type = review.get("error_type", "unknown")
+                error_msg = review.get("message", "Unknown error")
+                logger.error(f"Review provider error ({error_type}): {error_msg}")
+                # Return error information without posting to GitHub
+                return {
+                    "success": False,
+                    "review": None,
+                    "error_type": error_type,
+                    "message": error_msg
+                }
+            
             if not review:
                 logger.error("Failed to generate code review")
                 return {"success": False, "review": None}

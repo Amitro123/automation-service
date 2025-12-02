@@ -288,7 +288,31 @@ POST_REVIEW_ON_PR=True
 - Windows users can see real mutation scores from CI
 - Automated quality checks on every push to main
 - PR reviewers see mutation coverage before merging
+- PR reviewers see mutation coverage before merging
 - Historical results stored as artifacts
+
+### [2025-12-02] Error Hardening for Jules/LLM Failures ✅
+
+**Summary**: Implemented comprehensive error handling for Jules 404 and LLM 429 rate-limit errors to prevent junk PR creation and improve failure visibility.
+
+**Key Changes:**
+- **Jules 404 Detection**: Returns structured error without LLM fallback (saves costs when misconfigured)
+- **LLM 429 Handling**: Stops retries immediately on rate limit, raises `RateLimitError`
+- **SessionMemory Tracking**: Added `failed_tasks` and `failure_reasons` fields per run
+- **Orchestrator Integration**: Detects critical failures, prevents PR creation, sets run status to "failed"/"completed_with_issues"
+- **Clear Logging**: Single concise log line per error type
+
+**Files Modified:**
+- `llm_client.py` - Added RateLimitError exception + 429 detection
+- `review_provider.py` - Jules 404 handling without fallback
+- `session_memory.py` - Failure tracking fields + mark_task_failed() method
+- `code_reviewer.py` - Structured error response handling
+- `orchestrator.py` - Critical failure detection, PR prevention logic
+- `readme_updater.py`, `spec_updater.py` - RateLimitError catching
+
+**Testing**: 132 existing tests pass, implementation doesn't break existing functionality
+
+**Impact**: No more junk PRs when Jules is down or LLM hits rate limits. Clear failure reasons visible in logs and dashboard.
 
 ## 🔍 Current Tasks (Agent Priorities)
 

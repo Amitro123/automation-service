@@ -6,6 +6,7 @@ from datetime import datetime, UTC
 from typing import Optional, List, Dict, Any
 from .review_provider import ReviewProvider
 from .github_client import GitHubClient
+from .llm_client import RateLimitError
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +58,13 @@ class SpecUpdater:
         try:
             # Pass diff explicitly
             updated_spec = await self.provider.update_spec(commit_info, diff, current_spec)
+        except RateLimitError as e:
+            logger.error("Spec update failed: LLM rate-limited (429)")
+            return {
+                "success": False,
+                "error_type": "llm_rate_limited",
+                "message": str(e)
+            }
         except Exception as e:
             logger.error(f"Failed to generate spec update: {e}")
             return None

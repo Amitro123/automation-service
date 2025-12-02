@@ -4,6 +4,7 @@ import logging
 import re
 from typing import Optional, Dict, List
 from .review_provider import ReviewProvider
+from .llm_client import RateLimitError
 from .github_client import GitHubClient
 
 logger = logging.getLogger(__name__)
@@ -55,6 +56,13 @@ class ReadmeUpdater:
         try:
             updated_readme = await self.provider.update_readme(diff, current_readme)
             updated_readme = self._clean_readme_output(updated_readme)
+        except RateLimitError as e:
+            logger.error("README update failed: LLM rate-limited (429)")
+            return {
+                "success": False,
+                "error_type": "llm_rate_limited",
+                "message": str(e)
+            }
         except Exception as e:
             logger.error(f"Failed to generate README updates: {e}")
             return None
