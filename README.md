@@ -145,6 +145,8 @@ GitHub Push → Agent Platform Webhook → Orchestrator → GitHub API
    - Documentation updates → grouped into **single automation PR** per source PR
 5. **Results linked to source PR** → clear audit trail
 
+**Note:** The agent is designed to be triggered by both `push` and `pull_request` events. Ensure your webhook configuration includes these event triggers for optimal performance.
+
 ## 🧪 Testing
 
 ### Health Check
