@@ -288,8 +288,7 @@ POST_REVIEW_ON_PR=True
 - Windows users can see real mutation scores from CI
 - Automated quality checks on every push to main
 - PR reviewers see mutation coverage before merging
-- PR reviewers see mutation coverage before merging
-- Historical results stored as artifacts
+- Historical results stored as artifacts- Historical results stored as artifacts
 
 ### [2025-12-02] Error Hardening for Jules/LLM Failures ✅
 
