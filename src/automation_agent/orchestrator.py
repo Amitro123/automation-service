@@ -209,6 +209,21 @@ class AutomationOrchestrator:
                 commit_sha=commit_sha, branch=branch
             )
 
+            # Check if result is an error dict (rate limit, etc.)
+            if isinstance(updated_readme, dict) and not updated_readme.get("success", True):
+                error_type = updated_readme.get("error_type", "unknown")
+                error_msg = updated_readme.get("message", "Unknown error")
+                # Mark task as failed in session memory
+                self.session_memory.mark_task_failed(run_id, "readme_update", error_msg, error_type)
+                result = {
+                    "success": False,
+                    "status": "failed",
+                    "error_type": error_type,
+                    "message": error_msg
+                }
+                self.session_memory.update_task_result(run_id, "readme_update", result)
+                return result
+
             if updated_readme:
                 if self.config.CREATE_PR:
                     pr_result = await self._create_documentation_pr(
@@ -263,6 +278,21 @@ class AutomationOrchestrator:
             updated_spec = await self.spec_updater.update_spec(
                 commit_sha=commit_sha, branch=branch
             )
+
+            # Check if result is an error dict (rate limit, etc.)
+            if isinstance(updated_spec, dict) and not updated_spec.get("success", True):
+                error_type = updated_spec.get("error_type", "unknown")
+                error_msg = updated_spec.get("message", "Unknown error")
+                # Mark task as failed in session memory
+                self.session_memory.mark_task_failed(run_id, "spec_update", error_msg, error_type)
+                result = {
+                    "success": False,
+                    "status": "failed",
+                    "error_type": error_type,
+                    "message": error_msg
+                }
+                self.session_memory.update_task_result(run_id, "spec_update", result)
+                return result
 
             if updated_spec:
                 if self.config.CREATE_PR:

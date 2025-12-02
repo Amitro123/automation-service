@@ -29,10 +29,16 @@ class TestJules404Handling:
         mock_response = AsyncMock()
         mock_response.status = 404
         mock_response.text = AsyncMock(return_value="Not found")
+        mock_response.__aenter__ = AsyncMock(return_value=mock_response)
+        mock_response.__aexit__ = AsyncMock(return_value=None)
         
-        with patch('aiohttp.ClientSession') as mock_session:
-            mock_session.return_value.__aenter__.return_value.post.return_value.__aenter__.return_value = mock_response
-            
+        mock_session_instance = AsyncMock()
+        mock_post = AsyncMock(return_value=mock_response)
+        mock_session_instance.post = mock_post
+        mock_session_instance.__aenter__ = AsyncMock(return_value=mock_session_instance)
+        mock_session_instance.__aexit__ = AsyncMock(return_value=None)
+        
+        with patch('aiohttp.ClientSession', return_value=mock_session_instance):
             result = await jules_provider.review_code("diff content")
         
         # Should return error dict
@@ -60,10 +66,16 @@ class TestJules404Handling:
         mock_response = AsyncMock()
         mock_response.status = 500
         mock_response.text = AsyncMock(return_value="Server error")
+        mock_response.__aenter__ = AsyncMock(return_value=mock_response)
+        mock_response.__aexit__ = AsyncMock(return_value=None)
         
-        with patch('aiohttp.ClientSession') as mock_session:
-            mock_session.return_value.__aenter__.return_value.post.return_value.__aenter__.return_value = mock_response
-            
+        mock_session_instance = AsyncMock()
+        mock_post = AsyncMock(return_value=mock_response)
+        mock_session_instance.post = mock_post
+        mock_session_instance.__aenter__ = AsyncMock(return_value=mock_session_instance)
+        mock_session_instance.__aexit__ = AsyncMock(return_value=None)
+        
+        with patch('aiohttp.ClientSession', return_value=mock_session_instance):
             result = await jules_provider.review_code("diff content")
         
         # Should fall back to LLM

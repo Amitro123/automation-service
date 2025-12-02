@@ -3,7 +3,7 @@
 import logging
 import re
 from datetime import datetime, UTC
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 from .review_provider import ReviewProvider
 from .github_client import GitHubClient
 from .llm_client import RateLimitError
@@ -24,7 +24,7 @@ class SpecUpdater:
         self.github = github_client
         self.provider = review_provider
 
-    async def update_spec(self, commit_sha: str, branch: str = "main") -> Optional[str]:
+    async def update_spec(self, commit_sha: str, branch: str = "main") -> Optional[Union[str, Dict[str, Any]]]:
         """Update spec.md with project progress documentation.
 
         Args:
@@ -32,7 +32,9 @@ class SpecUpdater:
             branch: Branch to update spec on
 
         Returns:
-            Updated spec content, or None if update fails
+            str: Updated spec content on success
+            Dict[str, Any]: Error dict with success=False, error_type, message on rate limit
+            None: If update fails
         """
         logger.info(f"Generating spec.md update for commit {commit_sha}")
 

@@ -3,7 +3,7 @@
 import logging
 import aiohttp
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Union
 from .llm_client import LLMClient
 from .config import Config
 
@@ -14,8 +14,13 @@ class ReviewProvider(ABC):
     """Abstract base class for code review providers."""
 
     @abstractmethod
-    async def review_code(self, diff: str) -> str:
-        """Analyze code changes and provide a review."""
+    async def review_code(self, diff: str) -> Union[str, Dict[str, Any]]:
+        """Analyze code changes and provide a review.
+        
+        Returns:
+            str: Review content on success
+            Dict[str, Any]: Error dict with success=False, error_type, message on failure
+        """
         pass
 
     @abstractmethod
@@ -35,8 +40,24 @@ class LLMReviewProvider(ReviewProvider):
     def __init__(self, llm_client: LLMClient):
         self.llm = llm_client
 
-    async def review_code(self, diff: str) -> str:
-        return await self.llm.analyze_code(diff)
+    async def review_code(self, diff: str) -> Union[str, Dict[str, Any]]:
+        """Review code using LLM.
+        
+        Returns:
+            str: Review content on success
+            Dict[str, Any]: Error dict on rate limit or other failures
+        """
+        try:
+            return await self.llm.analyze_code(diff)
+        except Exception as e:
+            # LLMClient already raises RateLimitError for 429s
+            # This catches any other unexpected errors
+            logger.error(f"LLM review failed: {e}")
+            return {
+                "success": False,
+                "error_type": "llm_error",
+                "message": str(e)
+            }
 
     async def update_readme(self, diff: str, current_readme: str) -> str:
         return await self.llm.update_readme(diff, current_readme)
@@ -54,11 +75,15 @@ class JulesReviewProvider(ReviewProvider):
         self.api_key = config.JULES_API_KEY
         self.api_url = config.JULES_API_URL
 
-    async def review_code(self, diff: str):
+    async def review_code(self, diff: str) -> Union[str, Dict[str, Any]]:
         """Review code using Jules API, with controlled fallback strategy.
         
         Returns structured error dict on 404 (misconfiguration) without fallback.
         Falls back to LLM only on transient errors (5xx, timeouts).
+        
+        Returns:
+            str: Review content on success
+            Dict[str, Any]: Error dict with success=False, error_type, message on 404
         """
         try:
             logger.info("Requesting code review from Jules API...")
