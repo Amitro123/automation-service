@@ -59,7 +59,7 @@ class ReadmeUpdater:
             updated_readme = await self.provider.update_readme(diff, current_readme)
             updated_readme = self._clean_readme_output(updated_readme)
         except RateLimitError as e:
-            logger.error("README update failed: LLM rate-limited (429)")
+            logger.exception("README update failed: LLM rate-limited (429)")
             return {
                 "success": False,
                 "error_type": "llm_rate_limited",
