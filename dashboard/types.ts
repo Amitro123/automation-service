@@ -1,17 +1,33 @@
-export enum Status {
-  Completed = 'Completed',
-  InProgress = 'InProgress',
-  Pending = 'Pending',
-  Failed = 'Failed',
+export interface AutomationTaskStatus {
+  name: string;
+  status: string; // success, failed, skipped, pending
+  details?: string;
 }
 
-export interface Repository {
+export interface PRItem {
+  id: number;
+  title: string;
+  author: string;
+  status: string;
+  checksPassed: boolean;
+  url: string;
+  createdAt: string;
+  automationStatus: AutomationTaskStatus[];
+  runId?: string;
+}
+
+export interface BugItem {
   id: string;
-  name: string;
-  hasReadme: boolean;
-  hasSpec: boolean;
-  branch: string;
-  isSecure: boolean;
+  title: string;
+  severity: string;
+  status: string;
+  createdAt: string;
+}
+
+export interface LogEntry {
+  timestamp: string;
+  level: 'INFO' | 'WARN' | 'ERROR';
+  message: string;
 }
 
 export interface Task {
@@ -20,37 +36,60 @@ export interface Task {
   status: Status;
 }
 
-export interface Bug {
-  id: string;
-  title: string;
-  severity: 'Critical' | 'Major' | 'Minor';
-  status: 'Open' | 'In Progress' | 'Closed';
-  createdAt: string;
+export enum Status {
+  Pending = 'Pending',
+  InProgress = 'InProgress',
+  Completed = 'Completed',
+  Failed = 'Failed',
 }
 
-export interface PullRequest {
-  id: number;
-  title: string;
-  author: string;
-  status: 'Merged' | 'Open' | 'Closed';
-  checksPassed: boolean;
+export interface Repository {
+  id: string;
+  name: string;
+  branch: string;
+  hasReadme: boolean;
+  hasSpec: boolean;
+  isSecure: boolean;
+}
+
+export interface CoverageMetrics {
+  total: number;
+  uncoveredLines: number;
+  mutationScore: number;
+  mutationStatus: string;
+  mutationReason?: string;
 }
 
 export interface LLMMetrics {
   tokensUsed: number;
   estimatedCost: number;
-  efficiencyScore: number; // 0-100
-  sessionMemoryUsage: number; // percentage
+  efficiencyScore: number;
+  sessionMemoryUsage: number;
 }
 
-export interface CoverageMetrics {
-  total: number; // percentage
-  uncoveredLines: number;
-  mutationScore: number; // percentage
+export interface DashboardMetrics {
+  coverage: CoverageMetrics;
+  llm: LLMMetrics;
+  tasks: Task[];
+  bugs: BugItem[];
+  prs: PRItem[];
+  logs: LogEntry[];
+  security: {
+    isSecure: boolean;
+    vulnerabilities: number;
+    lastScan: string;
+  };
+  projectProgress: number;
 }
 
-export interface LogEntry {
-  timestamp: string;
-  level: 'INFO' | 'WARN' | 'ERROR';
-  message: string;
+export interface RunHistoryItem {
+  id: string;
+  commit_sha: string;
+  branch: string;
+  status: 'completed' | 'running' | 'failed' | 'pending';
+  start_time: string;
+  end_time?: string;
+  summary?: string;
+  tasks: Record<string, unknown>;
+  metrics: Record<string, number>;
 }

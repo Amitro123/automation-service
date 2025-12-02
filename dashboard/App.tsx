@@ -27,9 +27,10 @@ import {
   INITIAL_LOGS,
   ARCHITECTURE_DIAGRAM
 } from './constants';
-import { Repository, LogEntry, Task, Status } from './types';
+import { Repository, LogEntry, Task, Status, PRItem, BugItem } from './types';
 import { generateProjectFile } from './services/geminiService';
-import { fetchDashboardMetrics, fetchArchitecture, fetchHistory, RunHistoryItem } from './services/apiService';
+import { fetchDashboardMetrics, fetchArchitecture, fetchHistory, RunHistoryItem, fetchSpecContent } from './services/apiService';
+import SpecViewerModal from './components/SpecViewerModal';
 
 function App() {
   // State
@@ -39,14 +40,20 @@ function App() {
   const [apiKey, setApiKey] = useState('');
   const [showKeyModal, setShowKeyModal] = useState(false);
 
+  // Spec Viewer State
+  const [showSpecModal, setShowSpecModal] = useState(false);
+  const [specContent, setSpecContent] = useState('');
+  const [isLoadingSpec, setIsLoadingSpec] = useState(false);
+
   // Real-time State from API
   const [metrics, setMetrics] = useState(INITIAL_METRICS);
   const [coverage, setCoverage] = useState(COVERAGE_DATA);
   const [isConnected, setIsConnected] = useState(false);
   const [architectureDiagram, setArchitectureDiagram] = useState(ARCHITECTURE_DIAGRAM);
   const [tasks, setTasks] = useState<Task[]>(MOCK_TASKS);
-  const [bugs, setBugs] = useState(MOCK_BUGS);
-  const [prs, setPrs] = useState(MOCK_PRS);
+  const [bugs, setBugs] = useState<BugItem[]>([]);
+  const [prs, setPrs] = useState<PRItem[]>([]);
+  const [projectProgress, setProjectProgress] = useState(0);
 
   // Fetch real data from FastAPI backend
   useEffect(() => {
@@ -59,6 +66,8 @@ function App() {
             total: data.coverage.total,
             uncoveredLines: data.coverage.uncoveredLines,
             mutationScore: data.coverage.mutationScore,
+            mutationStatus: data.coverage.mutationStatus,
+            mutationReason: data.coverage.mutationReason,
           });
           setMetrics({
             tokensUsed: data.llm.tokensUsed,
@@ -70,6 +79,7 @@ function App() {
             setLogs(data.logs.map(l => ({ ...l, level: l.level as 'INFO' | 'WARN' | 'ERROR' })));
           }
           setSelectedRepo(prev => ({ ...prev, isSecure: data.security.isSecure }));
+          setProjectProgress(data.projectProgress);
         }
 
         // Fetch Architecture
@@ -90,7 +100,7 @@ function App() {
           }));
           setTasks(historyTasks);
         }
-        
+
         // Set bugs and PRs from API
         if (data.bugs) {
           setBugs(data.bugs);
@@ -109,6 +119,14 @@ function App() {
     const interval = setInterval(fetchData, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  const handleViewSpec = async () => {
+    setShowSpecModal(true);
+    setIsLoadingSpec(true);
+    const content = await fetchSpecContent();
+    setSpecContent(content || "Failed to load spec.md");
+    setIsLoadingSpec(false);
+  };
 
   const handleGenerateFile = async (type: 'README' | 'SPEC') => {
     if (!apiKey) {
@@ -154,6 +172,13 @@ function App() {
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const handleLogClick = (log: LogEntry) => {
+    // Simple logic to find a related PR or Run
+    // In a real app, we'd parse the log message for IDs
+    console.log("Log clicked:", log);
+    // For now, we just log to console, but this could open a modal
   };
 
   return (
@@ -273,7 +298,7 @@ function App() {
               <MetricsPanel coverage={coverage} llm={metrics} />
             </div>
             <div className="flex-1 min-h-[300px] flex flex-col">
-              <LogViewer logs={logs} />
+              <LogViewer logs={logs} onLogClick={handleLogClick} />
             </div>
           </div>
 
@@ -283,7 +308,7 @@ function App() {
               <ArchitecturePanel diagramDefinition={architectureDiagram} />
             </div>
             <div className="flex-1 min-h-[250px]">
-              <TaskList tasks={tasks} />
+              <TaskList tasks={tasks} progress={projectProgress} onViewSpec={handleViewSpec} />
             </div>
           </div>
 
@@ -293,6 +318,14 @@ function App() {
           </div>
         </div>
       </main>
+
+      {/* Spec Viewer Modal */}
+      <SpecViewerModal
+        isOpen={showSpecModal}
+        onClose={() => setShowSpecModal(false)}
+        content={specContent}
+        isLoading={isLoadingSpec}
+      />
 
       {/* API Key Modal */}
       {showKeyModal && (

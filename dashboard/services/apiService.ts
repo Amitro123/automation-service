@@ -5,52 +5,11 @@
  * Dashboard runs on port 5173 (Vite dev server)
  */
 
+import { DashboardMetrics, Repository, LogEntry, Task, Status, PRItem, BugItem, RunHistoryItem } from '../types';
+
 // Use environment variable or default to localhost:8080
 // Use relative path to leverage Vite proxy (configured in vite.config.ts)
 const API_BASE_URL = '/api';
-
-export interface DashboardMetrics {
-  coverage: {
-    total: number;
-    uncoveredLines: number;
-    mutationScore: number;
-  };
-  llm: {
-    tokensUsed: number;
-    estimatedCost: number;
-    efficiencyScore: number;
-    sessionMemoryUsage: number;
-  };
-  tasks: Array<{
-    id: string;
-    title: string;
-    status: string;
-  }>;
-  bugs: Array<{
-    id: string;
-    title: string;
-    severity: string;
-    status: string;
-    createdAt: string;
-  }>;
-  prs: Array<{
-    id: number;
-    title: string;
-    author: string;
-    status: string;
-    checksPassed: boolean;
-  }>;
-  logs: Array<{
-    timestamp: string;
-    level: string;
-    message: string;
-  }>;
-  security: {
-    isSecure: boolean;
-    vulnerabilities: number;
-    lastScan: string;
-  };
-}
 
 export interface RepositoryStatus {
   name: string;
@@ -136,17 +95,8 @@ export async function fetchArchitecture(): Promise<{ diagram: string } | null> {
   }
 }
 
-export interface RunHistoryItem {
-  id: string;
-  commit_sha: string;
-  branch: string;
-  status: 'completed' | 'running' | 'failed' | 'pending';
-  start_time: string;
-  end_time?: string;
-  summary?: string;
-  tasks: Record<string, unknown>;
-  metrics: Record<string, number>;
-}
+export type { RunHistoryItem };
+
 export async function fetchHistory(limit: number = 50): Promise<Array<RunHistoryItem>> {
   try {
     const response = await fetch(`${API_BASE_URL}/history?limit=${limit}`);
@@ -176,6 +126,8 @@ function getMockMetrics(): DashboardMetrics {
       total: 78,
       uncoveredLines: 124,
       mutationScore: 65,
+      mutationStatus: 'success',
+      mutationReason: 'All tests passed'
     },
     llm: {
       tokensUsed: 145020,
@@ -184,22 +136,14 @@ function getMockMetrics(): DashboardMetrics {
       sessionMemoryUsage: 42,
     },
     tasks: [
-      { id: 't1', title: 'Implement JWT Authentication', status: 'Completed' },
-      { id: 't2', title: 'Setup Mutation Testing (mutmut)', status: 'InProgress' },
-      { id: 't3', title: 'Create Mermaid Diagram Generator', status: 'InProgress' },
-      { id: 't4', title: 'Integrate Gemini 2.5 Flash', status: 'Pending' },
-      { id: 't5', title: 'Finalize Security Audit', status: 'Pending' },
+      { id: 't1', title: 'Implement JWT Authentication', status: Status.Completed },
+      { id: 't2', title: 'Setup Mutation Testing (mutmut)', status: Status.InProgress },
+      { id: 't3', title: 'Create Mermaid Diagram Generator', status: Status.InProgress },
+      { id: 't4', title: 'Integrate Gemini 2.5 Flash', status: Status.Pending },
+      { id: 't5', title: 'Finalize Security Audit', status: Status.Pending },
     ],
-    bugs: [
-      { id: 'BUG-101', title: 'Memory leak in session storage', severity: 'Critical', status: 'Open', createdAt: '2h ago' },
-      { id: 'BUG-102', title: 'Webhook timeout on large payloads', severity: 'Major', status: 'In Progress', createdAt: '5h ago' },
-      { id: 'BUG-103', title: 'Typo in README', severity: 'Minor', status: 'Open', createdAt: '1d ago' },
-    ],
-    prs: [
-      { id: 45, title: 'feat: Add Tailwind Support', author: 'dev_alex', status: 'Merged', checksPassed: true },
-      { id: 46, title: 'fix: API Rate Limiting', author: 'qa_sarah', status: 'Open', checksPassed: false },
-      { id: 47, title: 'chore: Update dependencies', author: 'bot_renovate', status: 'Closed', checksPassed: true },
-    ],
+    bugs: [],
+    prs: [],
     logs: [
       { timestamp: new Date().toLocaleTimeString(), level: 'INFO', message: 'StudioAI Backend Service Started' },
       { timestamp: new Date().toLocaleTimeString(), level: 'INFO', message: 'Connected to GitHub Webhook' },
@@ -209,5 +153,18 @@ function getMockMetrics(): DashboardMetrics {
       vulnerabilities: 0,
       lastScan: new Date().toISOString(),
     },
+    projectProgress: 45,
   };
 }
+
+export const fetchSpecContent = async (): Promise<string | null> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/spec`);
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data.content;
+  } catch (error) {
+    console.error('Error fetching spec content:', error);
+    return null;
+  }
+};

@@ -4,6 +4,7 @@ import logging
 import hmac
 import hashlib
 import asyncio
+import re
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from collections import deque
@@ -40,6 +41,8 @@ class CoverageMetrics(BaseModel):
     total: float
     uncoveredLines: int
     mutationScore: float
+    mutationStatus: str = "unknown"  # skipped, success, failed, unknown
+    mutationReason: Optional[str] = None
 
 
 class LLMMetrics(BaseModel):
@@ -63,12 +66,22 @@ class BugItem(BaseModel):
     createdAt: str
 
 
+class AutomationTaskStatus(BaseModel):
+    name: str
+    status: str  # success, failed, skipped, pending
+    details: Optional[str] = None
+
+
 class PRItem(BaseModel):
     id: int
     title: str
     author: str
     status: str
     checksPassed: bool
+    url: str
+    createdAt: str
+    automationStatus: List[AutomationTaskStatus] = []
+    runId: Optional[str] = None
 
 
 class SecurityStatus(BaseModel):
@@ -85,6 +98,7 @@ class DashboardMetrics(BaseModel):
     prs: List[PRItem]
     logs: List[LogEntry]
     security: SecurityStatus
+    projectProgress: float  # 0-100 percentage
 
 
 class RepositoryStatus(BaseModel):
@@ -222,8 +236,26 @@ def create_api_server(config: Config) -> FastAPI:
             import xml.etree.ElementTree as ET  # nosec B405
         import os
         
+        # Get mutation score from mutation results if available
+        mutation_score = 0.0
+        mutation_status = "unknown"
+        mutation_reason = None
+        
+        mutation_results = mutation_service.get_latest_results()
+        if mutation_results:
+            mutation_score = mutation_results.get("mutation_score", 0.0)
+            mutation_status = mutation_results.get("status", "unknown")
+            mutation_reason = mutation_results.get("reason")
+        
         if not os.path.exists(file_path):
-            return None
+            # Return metrics with 0 coverage but potentially valid mutation score
+            return CoverageMetrics(
+                total=0.0,
+                uncoveredLines=0,
+                mutationScore=mutation_score,
+                mutationStatus=mutation_status,
+                mutationReason=mutation_reason
+            )
             
         try:
             tree = ET.parse(file_path)  # nosec B314 - Using defusedxml when available
@@ -234,16 +266,12 @@ def create_api_server(config: Config) -> FastAPI:
             lines_valid = int(root.get("lines-valid", 0))
             lines_covered = int(root.get("lines-covered", 0))
             
-            # Get mutation score from mutation results if available
-            mutation_score = 0.0
-            mutation_results = mutation_service.get_latest_results()
-            if mutation_results:
-                mutation_score = mutation_results.get("mutation_score", 0.0)
-            
             return CoverageMetrics(
                 total=round(line_rate * 100, 1),
                 uncoveredLines=lines_valid - lines_covered,
-                mutationScore=mutation_score
+                mutationScore=mutation_score,
+                mutationStatus=mutation_status,
+                mutationReason=mutation_reason
             )
         except Exception as e:
             logger.error(f"Failed to parse coverage.xml: {e}")
@@ -268,25 +296,85 @@ def create_api_server(config: Config) -> FastAPI:
             return []
     
     async def _fetch_prs() -> List[PRItem]:
-        """Fetch real pull requests from GitHub."""
+        """Fetch real pull requests from GitHub and enrich with automation status."""
         try:
             prs = await github_client.list_pull_requests(state="open")
             pr_items = []
+            
+            # Get recent runs to match with PRs
+            recent_runs = session_memory.get_history(limit=20)
+            
             for pr in prs:
                 # Check if PR has passing checks (simplified - just check if mergeable)
                 checks_passed = pr.get("mergeable", False) or pr.get("mergeable_state") == "clean"
+                
+                # Match PR to automation run based on branch
+                pr_branch = pr["head"]["ref"]
+                matched_run = next((run for run in recent_runs if run.get("branch") == pr_branch), None)
+                
+                automation_status = []
+                run_id = None
+                
+                if matched_run:
+                    run_id = matched_run.get("id")
+                    tasks = matched_run.get("tasks", {})
+                    
+                    # Map tasks to AutomationTaskStatus
+                    if "code_review" in tasks:
+                        automation_status.append(AutomationTaskStatus(
+                            name="Code Review",
+                            status=tasks["code_review"].get("status", "pending"),
+                            details="Review generated" if tasks["code_review"].get("status") == "success" else None
+                        ))
+                    
+                    if "readme_update" in tasks:
+                        automation_status.append(AutomationTaskStatus(
+                            name="README Update",
+                            status=tasks["readme_update"].get("status", "pending"),
+                            details="PR created" if tasks["readme_update"].get("status") == "success" else "No changes"
+                        ))
+                        
+                    if "spec_update" in tasks:
+                        automation_status.append(AutomationTaskStatus(
+                            name="Spec Update",
+                            status=tasks["spec_update"].get("status", "pending"),
+                            details="Spec updated" if tasks["spec_update"].get("status") == "success" else "No changes"
+                        ))
                 
                 pr_items.append(PRItem(
                     id=pr["number"],
                     title=pr["title"],
                     author=pr["user"]["login"],
                     status=pr["state"],
-                    checksPassed=checks_passed
+                    checksPassed=checks_passed,
+                    url=pr["html_url"],
+                    createdAt=pr["created_at"],
+                    automationStatus=automation_status,
+                    runId=run_id
                 ))
             return pr_items
         except Exception as e:
             logger.error(f"Failed to fetch PRs: {e}")
             return []
+
+    async def _calculate_progress() -> float:
+        """Calculate project progress based on spec.md tasks."""
+        try:
+            content = await github_client.get_file_content("spec.md")
+            if not content:
+                return 0.0
+            
+            # Simple heuristic: Count [x] vs [ ]
+            total_tasks = content.count("- [ ]") + content.count("- [x]")
+            completed_tasks = content.count("- [x]")
+            
+            if total_tasks == 0:
+                return 0.0
+                
+            return round((completed_tasks / total_tasks) * 100, 1)
+        except Exception as e:
+            logger.error(f"Failed to calculate progress: {e}")
+            return 0.0
 
     @app.get("/api/metrics", response_model=DashboardMetrics)
     async def get_metrics():
@@ -294,7 +382,12 @@ def create_api_server(config: Config) -> FastAPI:
         coverage = _parse_coverage()
         if not coverage:
             # Fallback mock
-            coverage = CoverageMetrics(total=0.0, uncoveredLines=0, mutationScore=0.0)
+            coverage = CoverageMetrics(
+                total=0.0, 
+                uncoveredLines=0, 
+                mutationScore=0.0,
+                mutationStatus="unknown"
+            )
             
         # 2. Get Global Metrics (LLM)
         global_metrics = session_memory.get_global_metrics()
@@ -343,6 +436,9 @@ def create_api_server(config: Config) -> FastAPI:
                                  if run.get("status") == "success")
             efficiency_score = round((successful_runs / min(10, history_count)) * 100, 1) if history_count > 0 else 0.0
         
+        # 6. Calculate Project Progress
+        project_progress = await _calculate_progress()
+        
         return DashboardMetrics(
             coverage=coverage,
             llm=LLMMetrics(
@@ -359,7 +455,8 @@ def create_api_server(config: Config) -> FastAPI:
                 isSecure=True,
                 vulnerabilities=0,
                 lastScan=datetime.now(timezone.utc).isoformat()
-            )
+            ),
+            projectProgress=project_progress
         )
     
     @app.get("/api/logs")
@@ -447,6 +544,18 @@ def create_api_server(config: Config) -> FastAPI:
             logger.exception("Failed to read architecture file")
             return {"diagram": "graph TD\nError[Failed to read architecture file]"}
     
+    @app.get("/api/spec")
+    async def get_spec_content():
+        """Get the content of spec.md."""
+        try:
+            content = await github_client.get_file_content("spec.md")
+            if not content:
+                raise HTTPException(status_code=404, detail="spec.md not found")
+            return {"content": content}
+        except Exception as e:
+            logger.error(f"Failed to fetch spec.md: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+
     @app.post("/webhook")
     async def webhook(request: Request, background_tasks: BackgroundTasks):
         # Verify signature
