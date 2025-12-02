@@ -1,6 +1,6 @@
-﻿# 🤖 GitHub Automation Agent
+# 🤖 GitHub Automation Agent
 
-An autonomous GitHub automation system that triggers on **push and pull request events** to perform intelligent code review, automatic README and code_review.md updates, and project progress documentation. Features **PR-centric orchestration** with trivial change filtering to optimize LLM token usage.
+An autonomous GitHub automation system that triggers on **push and pull request events** to perform intelligent code review, automatic README and spec.md updates, and project progress documentation. Features **PR-centric orchestration** with trivial change filtering to optimize LLM token usage.
 
 ## 💡 Why This Agent?
 
@@ -38,7 +38,7 @@ An autonomous GitHub automation system that triggers on **push and pull request 
 - Security guardrails integrated with Bandit scans and CI/CD enforcement
 - Multi-repository support with auto-detection of required files (README.md, spec.md)
 
-### 5. 🎯 PR-Centric Automation (NEW)
+### 5. 🎯 PR-Centric Automation
 - **Trigger Modes**: Configure to respond to PRs only, pushes only, or both
 - **Trivial Change Filter**: Skip automation for small doc edits, whitespace-only changes
 - **Smart Task Routing**: Code review only runs on code changes, not doc-only PRs
@@ -78,8 +78,6 @@ venv\Scripts\activate
 
 pip install -r requirements.txt
 cp .env.example .env
-```
-
 Edit `.env` with your credentials.
 
 ### PR-Centric Configuration (Optional)
@@ -96,8 +94,6 @@ POST_REVIEW_ON_PR=True
 
 # Group doc updates into single automation PR
 GROUP_AUTOMATION_UPDATES=True
-```
-
 ### Run Locally
 
 #### Option 1: FastAPI Server (Recommended - includes Dashboard API)
@@ -107,8 +103,6 @@ GROUP_AUTOMATION_UPDATES=True
 
 # Linux/Mac
 python run_api.py
-```
-
 #### Option 2: Flask Server (Legacy webhook-only)
 ```bash
 # Windows (PowerShell)
@@ -120,10 +114,7 @@ python -m automation_agent.main
 
 Compatible with **Windsurf**, **AntiGravity**, **n8n**, or any agent orchestrator:
 
-```
 GitHub Push → Agent Platform Webhook → Orchestrator → GitHub API
-```
-
 **Example flow:**
 1. Platform receives webhook → normalizes payload
 2. Calls `code_reviewer.py` → posts review comment/issue
@@ -159,16 +150,12 @@ GitHub Push → Agent Platform Webhook → Orchestrator → GitHub API
 ### Health Check
 ```bash
 curl http://localhost:8080/
-```
-
 ### Test Full Flow
 ```bash
 echo "# Test change" >> test.txt
 git add test.txt
 git commit -m "test: trigger automation"
 git push
-```
-
 **Expected results:**
 - ✅ Code review comment/issue
 - ✅ README PR (if applicable)
@@ -184,20 +171,25 @@ git push
 
 ## 📦 Project Structure
 
-```
 automation_agent/
 ├── src/
 │   └── automation_agent/
+│       ├── __init__.py
+│       ├── main.py                    # Flask entry point
+│       ├── main_api.py                # FastAPI entry point
+│       ├── api_server.py              # FastAPI server with Dashboard API
 │       ├── webhook_server.py          # Flask webhook endpoint
-│       ├── orchestrator.py            # Coordinates 4 parallel tasks
-│       ├── session_memory.py          # Session Memory Store (NEW)
+│       ├── orchestrator.py            # Coordinates parallel tasks (push + PR events)
+│       ├── trigger_filter.py          # Event classification + trivial change detection
+│       ├── session_memory.py          # Session Memory Store (extended for PR tracking)
 │       ├── code_reviewer.py           # LLM-powered code analysis
 │       ├── code_review_updater.py     # Persistent review logging
-│       ├── readme_updater.py          # Smart README updates
+│       ├── readme_updater.py          # Smart README updates from diffs
 │       ├── spec_updater.py            # Progress documentation
-│       ├── github_client.py           # GitHub API wrapper
+│       ├── github_client.py           # GitHub API wrapper (extended for PR operations)
 │       ├── llm_client.py              # OpenAI/Anthropic/Gemini abstraction
-│       └── main.py                    # Entry point
+│       ├── config.py                  # .env loading + validation (extended for PR config)
+│       └── utils.py                   # Shared utilities
 ├── dashboard/                         # React + Vite dashboard (NEW)
 │   ├── App.tsx                        # Main dashboard UI
 │   ├── components/                    # UI components
@@ -205,8 +197,6 @@ automation_agent/
 │   │   └── apiService.ts              # Backend API client
 │   └── DASHBOARD_SETUP.md             # Dashboard documentation
 └── tests/                             # Pytest test suite
-```
-
 ## 🗺️ Roadmap
 
 - ✅ Multi-LLM support (Gemini, local models)
@@ -234,8 +224,6 @@ The project includes a real-time dashboard for monitoring automation metrics, te
 cd dashboard
 npm install  # First time only
 npm run dev
-```
-
 Dashboard runs on: **http://localhost:5173**
 
 **Features:**
@@ -248,6 +236,9 @@ Dashboard runs on: **http://localhost:5173**
 - 📜 Session History & Run Logs
 
 See [`dashboard/DASHBOARD_SETUP.md`](dashboard/DASHBOARD_SETUP.md)
+ for detailed setup and API integration instructions.
+
+### Mutation Testing in CI (Linux/Mac/CI Only)
 
 5. Displays results in Actions summary
 6. (Optional) Comments on PRs with scores
@@ -260,7 +251,33 @@ See [`dashboard/DASHBOARD_SETUP.md`](dashboard/DASHBOARD_SETUP.md)
 
 See [`.github/workflows/MUTATION_TESTING.md`](.github/workflows/MUTATION_TESTING.md) for details.
  On Windows, the feature will show as "skipped" with instructions. Run mutation tests in CI for best results.
- for detailed setup and API integration instructions.
+
+## 🎯 PR-Centric Configuration
+
+**Trigger Modes:**
+```bash
+TRIGGER_MODE=both    # "pr" = PR events only, "push" = push only, "both" = all events
+ENABLE_PR_TRIGGER=True
+ENABLE_PUSH_TRIGGER=True
+**Trivial Change Filter:**
+```bash
+TRIVIAL_CHANGE_FILTER_ENABLED=True  # Skip automation for trivial changes
+TRIVIAL_MAX_LINES=10                 # Max lines for doc-only to be "trivial"
+TRIVIAL_DOC_PATHS=README.md,*.md,docs/**  # Patterns for doc files
+**PR Automation Behavior:**
+```bash
+GROUP_AUTOMATION_UPDATES=True  # Bundle README+spec into single automation PR
+POST_REVIEW_ON_PR=True         # Post code review as PR review (not commit comment)
+**Run Types (tracked in session_memory):**
+- `full_automation` - All tasks run
+- `partial_docs_only` - Only doc updates (no code review)
+- `skipped_trivial_change` - Skipped due to trivial change filter
+- `skipped_docs_only` - Skipped because only docs changed
+
+**New API Endpoints:**
+- `GET /api/history/skipped` - Get runs skipped due to trivial changes
+- `GET /api/history/pr/{pr_number}` - Get runs for a specific PR
+- `GET /api/trigger-config` - Get current trigger configuration
 
 ## 🌐 Deployment
 
@@ -268,13 +285,9 @@ See [`.github/workflows/MUTATION_TESTING.md`](.github/workflows/MUTATION_TESTING
 ```bash
 docker build -t automation-agent .
 docker run -p 8080:8080 --env-file .env automation-agent
-```
-
 ### Docker Compose (Recommended)
 ```bash
 docker-compose up -d
-```
-
 ### CI/CD
 Included GitHub Actions workflow (`.github/workflows/ci.yml`) runs tests on every push and builds Docker image on main branch pushes.
 
@@ -310,8 +323,6 @@ graph TD
     Orchestrator -->|Init Run| SessionMem
     Dashboard -->|Fetch Metrics/History| Webhook
     Webhook -.->|Read| SessionMem
-```
-
 The diagram updates automatically as the project evolves.
 
 ## 📄 License
