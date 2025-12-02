@@ -61,7 +61,7 @@ class SpecUpdater:
             # Pass diff explicitly
             updated_spec = await self.provider.update_spec(commit_info, diff, current_spec)
         except RateLimitError as e:
-            logger.error("Spec update failed: LLM rate-limited (429)")
+            logger.exception("Spec update failed: LLM rate-limited (429)")
             return {
                 "success": False,
                 "error_type": "llm_rate_limited",

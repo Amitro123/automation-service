@@ -4,7 +4,7 @@ import logging
 import aiohttp
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional, Union
-from .llm_client import LLMClient
+from .llm_client import LLMClient, RateLimitError
 from .config import Config
 
 logger = logging.getLogger(__name__)
@@ -49,10 +49,15 @@ class LLMReviewProvider(ReviewProvider):
         """
         try:
             return await self.llm.analyze_code(diff)
+        except RateLimitError as e:
+            logger.exception("LLM review failed: Rate limit exceeded")
+            return {
+                "success": False,
+                "error_type": "llm_rate_limited",
+                "message": str(e)
+            }
         except Exception as e:
-            # LLMClient already raises RateLimitError for 429s
-            # This catches any other unexpected errors
-            logger.error(f"LLM review failed: {e}")
+            logger.exception("LLM review failed")
             return {
                 "success": False,
                 "error_type": "llm_error",
@@ -112,7 +117,7 @@ class JulesReviewProvider(ReviewProvider):
                     # Handle 404 errors without fallback (likely misconfiguration)
                     if response.status == 404:
                         error_text = await response.text()
-                        error_msg = f"Jules API returned 404. Check JULES_SOURCE_ID/JULES_PROJECT_ID configuration."
+                        error_msg = "Jules API returned 404. Check JULES_SOURCE_ID/JULES_PROJECT_ID configuration."
                         logger.error(f"Code review skipped: {error_msg}")
                         logger.debug(f"Jules 404 response body: {error_text[:200] if error_text else 'No response body'}")
                         # Return error dict instead of falling back
