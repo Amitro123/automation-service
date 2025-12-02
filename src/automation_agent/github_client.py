@@ -307,3 +307,185 @@ class GitHubClient:
         except httpx.HTTPError as e:
             logger.error(f"Failed to fetch pull requests: {e}")
             return []
+
+    async def get_pull_request(self, pr_number: int) -> Optional[Dict[str, Any]]:
+        """Get a specific pull request.
+
+        Args:
+            pr_number: Pull request number
+
+        Returns:
+            Pull request data dictionary or None
+        """
+        url = f"{self.base_url}/repos/{self.owner}/{self.repo}/pulls/{pr_number}"
+        try:
+            async with httpx.AsyncClient(headers=self.headers, timeout=self.timeout) as client:
+                response = await client.get(url)
+                response.raise_for_status()
+                return response.json()
+        except httpx.HTTPError as e:
+            logger.error(f"Failed to fetch pull request #{pr_number}: {e}")
+            return None
+
+    async def get_pull_request_diff(self, pr_number: int) -> Optional[str]:
+        """Get the diff for a pull request.
+
+        Args:
+            pr_number: Pull request number
+
+        Returns:
+            Diff content as string, or None if error
+        """
+        url = f"{self.base_url}/repos/{self.owner}/{self.repo}/pulls/{pr_number}"
+        try:
+            async with httpx.AsyncClient(headers=self.headers, timeout=self.timeout) as client:
+                response = await client.get(
+                    url,
+                    headers={**self.headers, "Accept": "application/vnd.github.v3.diff"}
+                )
+                response.raise_for_status()
+                return response.text
+        except httpx.HTTPError as e:
+            logger.error(f"Failed to fetch PR diff: {e}")
+            return None
+
+    async def post_pull_request_comment(self, pr_number: int, body: str) -> bool:
+        """Post a comment on a pull request.
+
+        Args:
+            pr_number: Pull request number
+            body: Comment body text
+
+        Returns:
+            True if successful, False otherwise
+        """
+        url = f"{self.base_url}/repos/{self.owner}/{self.repo}/issues/{pr_number}/comments"
+        try:
+            async with httpx.AsyncClient(headers=self.headers, timeout=self.timeout) as client:
+                response = await client.post(url, json={"body": body})
+                response.raise_for_status()
+                logger.info(f"Posted comment on PR #{pr_number}")
+                return True
+        except httpx.HTTPError as e:
+            logger.error(f"Failed to post PR comment: {e}")
+            return False
+
+    async def post_pull_request_review(
+        self,
+        pr_number: int,
+        body: str,
+        event: str = "COMMENT",
+        commit_id: Optional[str] = None,
+    ) -> bool:
+        """Post a review on a pull request.
+
+        Args:
+            pr_number: Pull request number
+            body: Review body text
+            event: Review event type (APPROVE, REQUEST_CHANGES, COMMENT)
+            commit_id: Optional commit SHA to review
+
+        Returns:
+            True if successful, False otherwise
+        """
+        url = f"{self.base_url}/repos/{self.owner}/{self.repo}/pulls/{pr_number}/reviews"
+        payload: Dict[str, Any] = {"body": body, "event": event}
+        if commit_id:
+            payload["commit_id"] = commit_id
+
+        try:
+            async with httpx.AsyncClient(headers=self.headers, timeout=self.timeout) as client:
+                response = await client.post(url, json=payload)
+                response.raise_for_status()
+                logger.info(f"Posted review on PR #{pr_number}")
+                return True
+        except httpx.HTTPError as e:
+            logger.error(f"Failed to post PR review: {e}")
+            return False
+
+    async def find_open_pr_for_branch(self, branch: str) -> Optional[Dict[str, Any]]:
+        """Find an open PR for a given branch.
+
+        Args:
+            branch: Branch name to search for
+
+        Returns:
+            PR data if found, None otherwise
+        """
+        url = f"{self.base_url}/repos/{self.owner}/{self.repo}/pulls"
+        params = {"state": "open", "head": f"{self.owner}:{branch}"}
+
+        try:
+            async with httpx.AsyncClient(headers=self.headers, timeout=self.timeout) as client:
+                response = await client.get(url, params=params)
+                response.raise_for_status()
+                prs = response.json()
+                return prs[0] if prs else None
+        except httpx.HTTPError as e:
+            logger.error(f"Failed to find PR for branch {branch}: {e}")
+            return None
+
+    async def update_pull_request(
+        self,
+        pr_number: int,
+        title: Optional[str] = None,
+        body: Optional[str] = None,
+    ) -> bool:
+        """Update a pull request's title or body.
+
+        Args:
+            pr_number: Pull request number
+            title: New title (optional)
+            body: New body (optional)
+
+        Returns:
+            True if successful, False otherwise
+        """
+        url = f"{self.base_url}/repos/{self.owner}/{self.repo}/pulls/{pr_number}"
+        payload: Dict[str, Any] = {}
+        if title:
+            payload["title"] = title
+        if body:
+            payload["body"] = body
+
+        if not payload:
+            return True  # Nothing to update
+
+        try:
+            async with httpx.AsyncClient(headers=self.headers, timeout=self.timeout) as client:
+                response = await client.patch(url, json=payload)
+                response.raise_for_status()
+                logger.info(f"Updated PR #{pr_number}")
+                return True
+        except httpx.HTTPError as e:
+            logger.error(f"Failed to update PR: {e}")
+            return False
+
+    async def add_files_to_branch(
+        self,
+        branch: str,
+        files: Dict[str, str],
+        message: str,
+    ) -> bool:
+        """Add or update multiple files on a branch in a single commit.
+
+        Args:
+            branch: Branch to commit to
+            files: Dictionary of file_path -> content
+            message: Commit message
+
+        Returns:
+            True if successful, False otherwise
+        """
+        # For simplicity, we'll update files one by one
+        # A more efficient implementation would use the Git Data API
+        for file_path, content in files.items():
+            success = await self.update_file(
+                file_path=file_path,
+                content=content,
+                message=message,
+                branch=branch,
+            )
+            if not success:
+                return False
+        return True

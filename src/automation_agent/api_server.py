@@ -370,6 +370,30 @@ def create_api_server(config: Config) -> FastAPI:
     @app.get("/api/history")
     async def get_history(limit: int = 50):
         return session_memory.get_history(limit)
+
+    @app.get("/api/history/skipped")
+    async def get_skipped_runs(limit: int = 20):
+        """Get runs that were skipped due to trivial changes."""
+        return session_memory.get_skipped_runs(limit)
+
+    @app.get("/api/history/pr/{pr_number}")
+    async def get_runs_by_pr(pr_number: int, limit: int = 10):
+        """Get automation runs associated with a specific PR."""
+        return session_memory.get_runs_by_pr(pr_number, limit)
+
+    @app.get("/api/trigger-config")
+    async def get_trigger_config():
+        """Get current trigger configuration for dashboard display."""
+        return {
+            "trigger_mode": config.TRIGGER_MODE,
+            "enable_pr_trigger": config.ENABLE_PR_TRIGGER,
+            "enable_push_trigger": config.ENABLE_PUSH_TRIGGER,
+            "trivial_filter_enabled": config.TRIVIAL_CHANGE_FILTER_ENABLED,
+            "trivial_max_lines": config.TRIVIAL_MAX_LINES,
+            "trivial_doc_paths": config.TRIVIAL_DOC_PATHS,
+            "group_automation_updates": config.GROUP_AUTOMATION_UPDATES,
+            "post_review_on_pr": config.POST_REVIEW_ON_PR,
+        }
     
     @app.post("/api/mutation/run")
     async def run_mutation_tests_endpoint(background_tasks: BackgroundTasks):
@@ -473,36 +497,74 @@ def create_api_server(config: Config) -> FastAPI:
         
         # Check event type
         event_type = request.headers.get("X-GitHub-Event")
-        if event_type != "push":
-            return {"message": "Event ignored", "status": "ok"}
-        
         payload = await request.json()
-        app_state.add_log("INFO", f"Received push event: {payload.get('head_commit', {}).get('message', 'N/A')[:50]}")
         
-        # Process in background
-        background_tasks.add_task(handle_push_event, orchestrator, payload)
+        # Handle both push and pull_request events
+        if event_type == "push":
+            commit_msg = payload.get('head_commit', {}).get('message', 'N/A')[:50]
+            app_state.add_log("INFO", f"Received push event: {commit_msg}")
+            background_tasks.add_task(handle_event, orchestrator, event_type, payload)
+            return {"message": "Automation started", "status": "accepted"}
         
-        return {"message": "Automation started", "status": "accepted"}
+        elif event_type == "pull_request":
+            action = payload.get("action", "")
+            pr_number = payload.get("number", "N/A")
+            # Only process opened, synchronize, reopened actions
+            if action in ("opened", "synchronize", "reopened"):
+                app_state.add_log("INFO", f"Received PR event: #{pr_number} ({action})")
+                background_tasks.add_task(handle_event, orchestrator, event_type, payload)
+                return {"message": "Automation started", "status": "accepted"}
+            else:
+                app_state.add_log("INFO", f"Ignoring PR event: #{pr_number} ({action})")
+                return {"message": f"PR action '{action}' ignored", "status": "ok"}
+        
+        else:
+            return {"message": f"Event '{event_type}' ignored", "status": "ok"}
     
     return app
 
 
 async def handle_push_event(orchestrator: AutomationOrchestrator, payload: dict):
-    """Handle push event in background."""
+    """Handle push event in background (legacy method)."""
+    await handle_event(orchestrator, "push", payload)
+
+
+async def handle_event(orchestrator: AutomationOrchestrator, event_type: str, payload: dict):
+    """Handle GitHub event in background using context-aware orchestration.
+    
+    Args:
+        orchestrator: The automation orchestrator
+        event_type: GitHub event type (push, pull_request)
+        payload: Webhook payload
+    """
     try:
-        commits = payload.get("commits", [])
-        if not commits:
-            app_state.add_log("INFO", "No commits in push event")
-            return
+        # For push events, check if there are commits
+        if event_type == "push":
+            commits = payload.get("commits", [])
+            if not commits:
+                app_state.add_log("INFO", "No commits in push event")
+                return
         
-        app_state.add_log("INFO", "Starting automation tasks...")
-        result = await orchestrator.run_automation(payload)
+        app_state.add_log("INFO", f"Starting automation for {event_type} event...")
         
-        if result.get("success"):
-            app_state.add_log("INFO", "Automation completed successfully")
+        # Use the new context-aware orchestration
+        result = await orchestrator.run_automation_with_context(event_type, payload)
+        
+        # Log result based on run type
+        if result.get("skipped"):
+            skip_reason = result.get("skip_reason", "Unknown reason")
+            run_type = result.get("run_type", "unknown")
+            app_state.add_log("INFO", f"Run skipped ({run_type}): {skip_reason}")
+        elif result.get("success"):
+            run_type = result.get("run_type", "full_automation")
+            pr_number = result.get("pr_number")
+            if pr_number:
+                app_state.add_log("INFO", f"Automation completed ({run_type}) for PR #{pr_number}")
+            else:
+                app_state.add_log("INFO", f"Automation completed ({run_type})")
         else:
-            app_state.add_log("WARN", f"Automation completed with issues")
+            app_state.add_log("WARN", "Automation completed with issues")
             
     except Exception as e:
         app_state.add_log("ERROR", f"Automation failed: {str(e)}")
-        logger.error(f"Push event handling failed: {e}", exc_info=True)
+        logger.error(f"Event handling failed: {e}", exc_info=True)

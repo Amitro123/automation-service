@@ -4,30 +4,32 @@ Instructions for AI coding agents (Windsurf, Cursor, GitHub Copilot, etc.) worki
 
 ## 🎯 Project Mission
 
-**Single responsibility**: React to GitHub push events → run 3 parallel LLM-powered tasks:
-1. **Code Review** → post intelligent feedback (comments/issues)
+**Single responsibility**: React to GitHub **push and pull request events** → run parallel LLM-powered tasks:
+1. **Code Review** → post intelligent feedback (PR reviews or commit comments)
 2. **README Update** → detect changes → create PR with docs
 3. **Spec Update** → append structured progress log
+4. **Trivial Change Filter** → skip automation for small/whitespace-only changes
 
-**Success metric**: After every push → repo has fresh review + updated docs + progress log.
+**Success metric**: After every push/PR → repo has fresh review + updated docs + progress log (unless trivial).
 
 ## 📁 Project Structure
 
 src/automation_agent/ # Core package
 ├── __init__.py
 ├── main.py # Flask entry point (python -m automation_agent.main)
-├── main_api.py # FastAPI entry point (NEW)
-├── api_server.py # FastAPI server with Dashboard API (NEW)
+├── main_api.py # FastAPI entry point
+├── api_server.py # FastAPI server with Dashboard API
 ├── webhook_server.py # Flask webhook endpoint
-├── orchestrator.py # Coordinates 4 parallel tasks
-├── session_memory.py # Session Memory Store (NEW)
+├── orchestrator.py # Coordinates parallel tasks (push + PR events)
+├── trigger_filter.py # Event classification + trivial change detection (NEW)
+├── session_memory.py # Session Memory Store (extended for PR tracking)
 ├── code_reviewer.py # LLM-powered code analysis
 ├── code_review_updater.py # Persistent review logging
 ├── readme_updater.py # Smart README updates from diffs
 ├── spec_updater.py # Progress documentation
-├── github_client.py # GitHub API wrapper
+├── github_client.py # GitHub API wrapper (extended for PR operations)
 ├── llm_client.py # OpenAI/Anthropic/Gemini abstraction
-├── config.py # .env loading + validation
+├── config.py # .env loading + validation (extended for PR config)
 └── utils.py # Shared utilities
 
 tests/ # pytest tests (mock external services)
@@ -63,16 +65,31 @@ python -m automation_agent.main # http://localhost:8080/
 
 ## 🛠️ Core Workflow (NEVER BREAK THIS)
 
-GitHub Push Event → webhook_server.py
+### Push Event Flow
+```
+GitHub Push Event → webhook_server.py/api_server.py
+→ Verify HMAC signature → extract diff/commit SHA
+→ trigger_filter.py → classify event + analyze diff
+→ IF trivial change: skip automation, log reason
+→ ELSE: orchestrator.py → run tasks IN PARALLEL:
+   ↳ code_reviewer.py → post comment/issue
+   ↳ readme_updater.py → create PR (if changes)
+   ↳ spec_updater.py → append to spec.md
+→ Log results + GitHub artifacts created
+```
 
-Verify HMAC signature → extract diff/commit SHA
+### Pull Request Event Flow (NEW)
+```
+GitHub PR Event (opened/synchronized/reopened) → api_server.py
+→ Verify HMAC signature → extract PR number + diff
+→ trigger_filter.py → classify as pr_opened/pr_synchronized/pr_reopened
+→ IF trivial change: skip automation, log reason
+→ ELSE: orchestrator.run_automation_with_context():
+   ↳ code_reviewer.py → post PR REVIEW (not commit comment)
+   ↳ readme_updater.py + spec_updater.py → grouped into SINGLE automation PR
+→ Session memory tracks: trigger_type, run_type, pr_number, skip_reason
+```
 
-orchestrator.py → run 3 tasks IN PARALLEL:
-↳ code_reviewer.py → post comment/issue
-↳ readme_updater.py → create PR (if changes)
-↳ spec_updater.py → append to spec.md
-
-Log results + GitHub artifacts created
 **All tasks log execution to `session_memory.py`**
 
 ## 📋 Agent Task Priorities
@@ -167,8 +184,9 @@ Read `spec.md` first, then prioritize:
 5. ✅ Dashboard Real Data Integration (bugs, PRs, LLM metrics from GitHub API)
 6. ✅ Mutation Testing Integration (Linux/Mac/CI only - Windows shows helpful skip message)
 7. ✅ GitHub Actions Workflow for Mutation Testing in CI
-6. 🚀 E2E Testing with ngrok
-7. 🚀 Deployment readiness (Phase 4) - Docker + CI/CD
+8. ✅ **PR-Centric Automation** - Trigger on PR events, trivial change filtering, grouped automation PRs
+9. 🚀 E2E Testing with ngrok
+10. 🚀 Deployment readiness (Phase 4) - Docker + CI/CD
 
 
 ## 🧬 Mutation Testing (Linux/Mac/CI Only)
@@ -204,6 +222,39 @@ MUTATION_MAX_RUNTIME_SECONDS=600  # 10 minute timeout
 - Download and copy to repo root for dashboard display
 - See `.github/workflows/MUTATION_TESTING.md` for details
 
+## 🎯 PR-Centric Configuration (NEW)
+
+**Trigger Modes:**
+```bash
+TRIGGER_MODE=both    # "pr" = PR events only, "push" = push only, "both" = all events
+ENABLE_PR_TRIGGER=True
+ENABLE_PUSH_TRIGGER=True
+```
+
+**Trivial Change Filter:**
+```bash
+TRIVIAL_CHANGE_FILTER_ENABLED=True  # Skip automation for trivial changes
+TRIVIAL_MAX_LINES=10                 # Max lines for doc-only to be "trivial"
+TRIVIAL_DOC_PATHS=README.md,*.md,docs/**  # Patterns for doc files
+```
+
+**PR Automation Behavior:**
+```bash
+GROUP_AUTOMATION_UPDATES=True  # Bundle README+spec into single automation PR
+POST_REVIEW_ON_PR=True         # Post code review as PR review (not commit comment)
+```
+
+**Run Types (tracked in session_memory):**
+- `full_automation` - All tasks run
+- `partial_docs_only` - Only doc updates (no code review)
+- `skipped_trivial_change` - Skipped due to trivial change filter
+- `skipped_docs_only` - Skipped because only docs changed
+
+**New API Endpoints:**
+- `GET /api/history/skipped` - Get runs skipped due to trivial changes
+- `GET /api/history/pr/{pr_number}` - Get runs for a specific PR
+- `GET /api/trigger-config` - Get current trigger configuration
+
 ## 🚫 DON'T TOUCH (Unless Requested)
 
 ❌ Don't change webhook payload format
@@ -211,8 +262,7 @@ MUTATION_MAX_RUNTIME_SECONDS=600  # 10 minute timeout
 ❌ Don't hardcode config values
 ❌ Don't use print() for logging
 ❌ Don't make real API calls in tests
-
-
+❌ Don't break backward compatibility with push-only workflows
 
 
 

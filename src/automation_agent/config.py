@@ -1,19 +1,7 @@
 """Configuration management for GitHub Automation Agent."""
 
 import os
-from typing import Optional
-from dotenv import load_dotenv
-
-load_dotenv()
-
-
-class Config:
-    """Application configuration loaded from environment variables."""
-
-"""Configuration management for GitHub Automation Agent."""
-
-import os
-from typing import Optional
+from typing import Optional, List
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -59,6 +47,29 @@ class Config:
     ENABLE_MUTATION_TESTS: bool = os.getenv("ENABLE_MUTATION_TESTS", "False").lower() == "true"
     MUTATION_MAX_RUNTIME_SECONDS: int = int(os.getenv("MUTATION_MAX_RUNTIME_SECONDS", "600"))
     MUTATION_MIN_DIFF_LINES: int = int(os.getenv("MUTATION_MIN_DIFF_LINES", "10"))
+
+    # PR-Centric Trigger Configuration
+    # TRIGGER_MODE: "pr" = PR events only, "push" = push events only, "both" = both
+    TRIGGER_MODE: str = os.getenv("TRIGGER_MODE", "both").lower()
+    ENABLE_PR_TRIGGER: bool = os.getenv("ENABLE_PR_TRIGGER", "True").lower() == "true"
+    ENABLE_PUSH_TRIGGER: bool = os.getenv("ENABLE_PUSH_TRIGGER", "True").lower() == "true"
+
+    # Trivial Change Filter Configuration
+    TRIVIAL_CHANGE_FILTER_ENABLED: bool = os.getenv("TRIVIAL_CHANGE_FILTER_ENABLED", "True").lower() == "true"
+    TRIVIAL_MAX_LINES: int = int(os.getenv("TRIVIAL_MAX_LINES", "10"))
+    # Comma-separated list of glob patterns for doc files
+    TRIVIAL_DOC_PATHS: List[str] = [
+        p.strip() for p in os.getenv(
+            "TRIVIAL_DOC_PATHS",
+            "README.md,*.md,docs/**,CHANGELOG.md,CONTRIBUTING.md,LICENSE"
+        ).split(",") if p.strip()
+    ]
+
+    # PR-Centric Automation Behavior
+    # Group automation updates into single PR per source PR
+    GROUP_AUTOMATION_UPDATES: bool = os.getenv("GROUP_AUTOMATION_UPDATES", "True").lower() == "true"
+    # Post code review as PR comment instead of commit comment when triggered by PR
+    POST_REVIEW_ON_PR: bool = os.getenv("POST_REVIEW_ON_PR", "True").lower() == "true"
 
     @classmethod
     def validate(cls) -> list[str]:
