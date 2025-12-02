@@ -1,6 +1,6 @@
 ﻿# 🤖 GitHub Automation Agent
 
-An autonomous GitHub automation system that triggers on push events to perform intelligent code review, automatic README and code_review.md updates, and project progress documentation.
+An autonomous GitHub automation system that triggers on **push and pull request events** to perform intelligent code review, automatic README and code_review.md updates, and project progress documentation. Features **PR-centric orchestration** with trivial change filtering to optimize LLM token usage.
 
 ## 💡 Why This Agent?
 
@@ -38,13 +38,21 @@ An autonomous GitHub automation system that triggers on push events to perform i
 - Security guardrails integrated with Bandit scans and CI/CD enforcement
 - Multi-repository support with auto-detection of required files (README.md, spec.md)
 
-### 5. 🛡️ Security Features
+### 5. 🎯 PR-Centric Automation (NEW)
+- **Trigger Modes**: Configure to respond to PRs only, pushes only, or both
+- **Trivial Change Filter**: Skip automation for small doc edits, whitespace-only changes
+- **Smart Task Routing**: Code review only runs on code changes, not doc-only PRs
+- **Grouped Automation PRs**: README + spec updates bundled into single PR per source PR
+- **PR Review Comments**: Code reviews posted as PR reviews instead of commit comments
+- **Configurable Thresholds**: Set max lines for trivial detection, doc file patterns
+
+### 6. 🛡️ Security Features
 - HMAC-SHA256 verification of webhook signatures
 - Minimal GitHub token scopes
 - No secrets logged; credential storage limited to environment variables
 - Automated security scans integrated in CI
 
-### 6. 🗺️ Dynamic Architecture Diagram
+### 7. 🗺️ Dynamic Architecture Diagram
 - ARCHITECTURE.md includes a live Mermaid diagram reflecting system components and project progress
 - Automatically updated via scripts/CI when system or specs change
 - **Visualized in the Dashboard**
@@ -73,6 +81,22 @@ cp .env.example .env
 ```
 
 Edit `.env` with your credentials.
+
+### PR-Centric Configuration (Optional)
+```bash
+# Trigger mode: "pr", "push", or "both" (default: both)
+TRIGGER_MODE=both
+
+# Skip automation for trivial changes
+TRIVIAL_CHANGE_FILTER_ENABLED=True
+TRIVIAL_MAX_LINES=10
+
+# Post code review on PR instead of commit
+POST_REVIEW_ON_PR=True
+
+# Group doc updates into single automation PR
+GROUP_AUTOMATION_UPDATES=True
+```
 
 ### Run Locally
 
@@ -110,14 +134,25 @@ GitHub Push → Agent Platform Webhook → Orchestrator → GitHub API
 
 ## 📋 Workflow
 
+### Standard Flow (Push Events)
 1. **Developer pushes code** → webhook triggers
 2. **Webhook verifies signature** → extracts diff/commit data
-3. **Orchestrator runs 4 parallel tasks:**
-   - Code review → comment/issue + persistent logs
+3. **Trigger filter analyzes diff** → classifies as trivial/code/docs change
+4. **Orchestrator runs tasks based on change type:**
+   - Code review → comment/issue + persistent logs (code changes only)
    - README update → PR (if changes detected)
    - spec.md update → append entry
    - code_review.md update → append review summary with session memory
-4. **Results posted** → repo stays documented automatically and progress tracked
+5. **Results posted** → repo stays documented automatically and progress tracked
+
+### PR-Centric Flow (Pull Request Events)
+1. **Developer opens/updates PR** → webhook triggers
+2. **Trigger filter classifies event** → pr_opened, pr_synchronized, pr_reopened
+3. **Diff analyzed for trivial changes** → skip automation if trivial
+4. **Orchestrator runs context-aware tasks:**
+   - Code review → posted as **PR review comment** (not commit comment)
+   - Documentation updates → grouped into **single automation PR** per source PR
+5. **Results linked to source PR** → clear audit trail
 
 ## 🧪 Testing
 

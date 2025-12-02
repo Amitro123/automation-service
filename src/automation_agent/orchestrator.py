@@ -8,6 +8,7 @@ from .spec_updater import SpecUpdater
 from .code_review_updater import CodeReviewUpdater
 from .config import Config
 from .session_memory import SessionMemoryStore
+from .trigger_filter import TriggerFilter, TriggerContext, TriggerType, RunType
 
 logger = logging.getLogger(__name__)
 
@@ -375,3 +376,310 @@ This PR contains automated documentation updates generated from commit `{commit_
         except Exception as e:
             logger.error(f"Failed to create documentation PR: {e}")
             return {"success": False, "error": str(e)}
+
+    async def run_automation_with_context(
+        self,
+        event_type: str,
+        payload: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """Process an event with full trigger context and filtering.
+        
+        This is the new PR-centric entry point that:
+        1. Classifies the event (PR vs push)
+        2. Analyzes the diff for trivial changes
+        3. Skips automation for trivial changes
+        4. Routes tasks based on change type
+        5. Groups automation PRs for source PRs
+        
+        Args:
+            event_type: GitHub event type (push, pull_request)
+            payload: GitHub webhook payload
+            
+        Returns:
+            Dictionary with results including trigger context
+        """
+        # Initialize trigger filter with config
+        trigger_filter = TriggerFilter(
+            trivial_max_lines=self.config.TRIVIAL_MAX_LINES,
+            trivial_doc_paths=self.config.TRIVIAL_DOC_PATHS,
+            enable_trivial_filter=self.config.TRIVIAL_CHANGE_FILTER_ENABLED,
+        )
+        
+        # Check if we should process this event based on trigger mode
+        should_process, skip_reason = trigger_filter.should_process_event(
+            event_type, self.config.TRIGGER_MODE
+        )
+        
+        if not should_process:
+            logger.info(f"Event skipped: {skip_reason}")
+            return {
+                "success": True,
+                "skipped": True,
+                "skip_reason": skip_reason,
+                "run_type": "skipped_by_trigger_mode",
+            }
+        
+        # Get the diff content
+        diff_content = await self._get_diff_for_event(event_type, payload)
+        
+        # Create trigger context with full analysis
+        context = trigger_filter.create_trigger_context(event_type, payload, diff_content or "")
+        
+        # Generate run ID
+        run_id = f"run_{context.commit_sha[:7]}_{int(asyncio.get_event_loop().time())}"
+        
+        # Log the run with full context
+        self.session_memory.add_run(
+            run_id=run_id,
+            commit_sha=context.commit_sha,
+            branch=context.branch,
+            trigger_type=context.trigger_type.value,
+            run_type=context.run_type.value,
+            pr_number=context.pr_number,
+            pr_title=context.pr_title,
+            skip_reason=context.skip_reason,
+            diff_analysis=context.diff_analysis.to_dict() if context.diff_analysis else None,
+        )
+        
+        # Handle skipped runs
+        if context.run_type in (RunType.SKIPPED_TRIVIAL_CHANGE, RunType.SKIPPED_DOCS_ONLY):
+            logger.info(f"Run skipped: {context.skip_reason}")
+            self.session_memory.update_run_status(
+                run_id, "skipped", context.skip_reason
+            )
+            return {
+                "success": True,
+                "skipped": True,
+                "skip_reason": context.skip_reason,
+                "run_id": run_id,
+                "run_type": context.run_type.value,
+                "trigger_type": context.trigger_type.value,
+                "commit_sha": context.commit_sha,
+                "pr_number": context.pr_number,
+            }
+        
+        logger.info(
+            f"Starting automation for {context.trigger_type.value} "
+            f"(commit: {context.commit_sha[:7]}, PR: {context.pr_number or 'N/A'})"
+        )
+        
+        # Build task list based on context
+        tasks = []
+        task_names = []
+        
+        if context.should_run_code_review:
+            tasks.append(self._run_code_review_with_context(context, run_id))
+            task_names.append("code_review")
+        
+        if context.should_run_readme_update:
+            tasks.append(self._run_readme_update(context.commit_sha, context.branch, run_id))
+            task_names.append("readme_update")
+        
+        if context.should_run_spec_update:
+            tasks.append(self._run_spec_update(context.commit_sha, context.branch, run_id))
+            task_names.append("spec_update")
+        
+        if not tasks:
+            logger.info("No tasks to run based on context")
+            self.session_memory.update_run_status(run_id, "skipped", "No tasks needed")
+            return {
+                "success": True,
+                "skipped": True,
+                "skip_reason": "No tasks needed based on change analysis",
+                "run_id": run_id,
+                "run_type": context.run_type.value,
+            }
+        
+        # Execute tasks in parallel
+        task_results = await self._run_parallel_tasks(tasks)
+        
+        # Build results dictionary
+        results_dict = {}
+        for i, name in enumerate(task_names):
+            result = task_results[i]
+            if isinstance(result, Exception):
+                results_dict[name] = {"success": False, "error": str(result)}
+            else:
+                results_dict[name] = result
+        
+        # Handle PR-centric grouping of automation updates
+        if context.pr_number and self.config.GROUP_AUTOMATION_UPDATES:
+            await self._handle_grouped_automation_pr(context, results_dict, run_id)
+        
+        success = all(
+            r.get("success", False) for r in results_dict.values()
+            if not isinstance(r, Exception)
+        )
+        
+        status = "completed" if success else "failed"
+        summary = f"Ran {len(tasks)} tasks: {', '.join(task_names)}"
+        self.session_memory.update_run_status(run_id, status, summary)
+        
+        return {
+            "success": success,
+            "run_id": run_id,
+            "run_type": context.run_type.value,
+            "trigger_type": context.trigger_type.value,
+            "commit_sha": context.commit_sha,
+            "branch": context.branch,
+            "pr_number": context.pr_number,
+            "tasks": results_dict,
+            "diff_analysis": context.diff_analysis.to_dict() if context.diff_analysis else None,
+        }
+
+    async def _get_diff_for_event(
+        self,
+        event_type: str,
+        payload: Dict[str, Any],
+    ) -> Optional[str]:
+        """Get the diff content for an event.
+        
+        Args:
+            event_type: GitHub event type
+            payload: Webhook payload
+            
+        Returns:
+            Diff content as string, or None
+        """
+        if event_type == "pull_request":
+            pr_number = payload.get("number")
+            if pr_number:
+                return await self.github.get_pull_request_diff(pr_number)
+        elif event_type == "push":
+            head_commit = payload.get("head_commit", {})
+            commit_sha = head_commit.get("id")
+            if commit_sha:
+                return await self.github.get_commit_diff(commit_sha)
+        return None
+
+    async def _run_code_review_with_context(
+        self,
+        context: TriggerContext,
+        run_id: str,
+    ) -> Dict[str, Any]:
+        """Run code review with PR-centric context.
+        
+        If triggered by a PR, posts review on the PR instead of commit.
+        """
+        try:
+            logger.info("Task: Running code review...")
+            
+            # Run the review
+            review_result = await self.code_reviewer.review_commit(
+                commit_sha=context.commit_sha,
+                post_as_issue=self.config.POST_REVIEW_AS_ISSUE,
+            )
+            
+            review_success = review_result.get("success", False)
+            review_content = review_result.get("review", "")
+            
+            # Post review on PR if applicable
+            posted_on_pr = False
+            if (review_success and review_content and 
+                context.pr_number and self.config.POST_REVIEW_ON_PR):
+                posted_on_pr = await self.github.post_pull_request_review(
+                    pr_number=context.pr_number,
+                    body=review_content,
+                    event="COMMENT",
+                    commit_id=context.commit_sha,
+                )
+            
+            # Update review log
+            log_updated = False
+            if review_success and review_content:
+                updated_log = await self.code_review_updater.update_review_log(
+                    commit_sha=context.commit_sha,
+                    review_content=review_content,
+                    branch=context.branch,
+                )
+                if updated_log and self.config.AUTO_COMMIT:
+                    log_updated = await self.github.update_file(
+                        file_path=CodeReviewUpdater.LOG_FILE,
+                        content=updated_log,
+                        message=f"docs: Update automated review log for {context.commit_sha[:7]}",
+                        branch=context.branch,
+                    )
+            
+            result = {
+                "success": review_success,
+                "status": "completed" if review_success else "failed",
+                "posted_on_pr": posted_on_pr,
+                "pr_number": context.pr_number,
+                "log_updated": log_updated,
+            }
+            self.session_memory.update_task_result(run_id, "code_review", result)
+            return result
+            
+        except Exception as e:
+            logger.error(f"Code review failed: {e}", exc_info=True)
+            result = {"success": False, "status": "error", "error": str(e)}
+            self.session_memory.update_task_result(run_id, "code_review", result)
+            return result
+
+    async def _handle_grouped_automation_pr(
+        self,
+        context: TriggerContext,
+        task_results: Dict[str, Any],
+        run_id: str,
+    ) -> None:
+        """Handle grouping automation updates into a single PR for a source PR.
+        
+        Instead of creating separate PRs for README and spec updates,
+        this creates or updates a single automation PR for the source PR.
+        """
+        if not context.pr_number:
+            return
+        
+        # Check if we have any doc updates to commit
+        readme_result = task_results.get("readme_update", {})
+        spec_result = task_results.get("spec_update", {})
+        
+        has_readme_update = readme_result.get("success") and readme_result.get("status") == "completed"
+        has_spec_update = spec_result.get("success") and spec_result.get("status") == "completed"
+        
+        if not has_readme_update and not has_spec_update:
+            return
+        
+        # Check for existing automation PR for this source PR
+        existing = self.session_memory.find_automation_pr_for_source_pr(context.pr_number)
+        
+        if existing and existing.get("automation_pr_branch"):
+            # Update existing automation PR branch
+            automation_branch = existing["automation_pr_branch"]
+            logger.info(f"Updating existing automation branch: {automation_branch}")
+            # Files would be added to existing branch
+        else:
+            # Create new automation PR
+            automation_branch = f"automation/pr-{context.pr_number}-docs"
+            
+            # Create the branch from the PR's base
+            base_branch = context.pr_base_branch or "main"
+            if await self.github.create_branch(automation_branch, from_branch=base_branch):
+                # Create the PR
+                pr_title = f"🤖 Automation updates for PR #{context.pr_number}"
+                pr_body = f"""## Automated Documentation Updates
+
+This PR contains automated documentation updates for PR #{context.pr_number}: {context.pr_title}
+
+### Updates Included:
+{"- ✅ README.md updated" if has_readme_update else ""}
+{"- ✅ spec.md updated" if has_spec_update else ""}
+
+### Related PR
+- #{context.pr_number}
+
+---
+*This PR was created automatically by the GitHub Automation Agent.*
+"""
+                automation_pr_number = await self.github.create_pull_request(
+                    title=pr_title,
+                    body=pr_body,
+                    head=automation_branch,
+                    base=base_branch,
+                )
+                
+                if automation_pr_number:
+                    self.session_memory.update_automation_pr(
+                        run_id, automation_pr_number, automation_branch
+                    )
+                    logger.info(f"Created automation PR #{automation_pr_number} for source PR #{context.pr_number}")

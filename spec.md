@@ -1,11 +1,11 @@
 # 📋 GitHub Automation Agent - Product Specification & Progress
 
-**Last Updated:** 2025-11-30 18:30 UTC  
-**Status:** Phase 3 Complete ✅ | Phase 4 Deployment 🚀 | FastAPI + Dashboard Integration ✅
+**Last Updated:** 2025-12-02 12:00 UTC  
+**Status:** Phase 3 Complete ✅ | Phase 4 Deployment 🚀 | PR-Centric Automation ✅
 
 ## 🎯 Product Mission
 
-**One sentence:** Autonomous GitHub agent that reacts to **every push** → delivers **code review + fresh docs + progress log** within 60 seconds.
+**One sentence:** Autonomous GitHub agent that reacts to **push and pull request events** → delivers **code review + fresh docs + progress log** within 60 seconds, with **trivial change filtering** to optimize LLM costs.
 
 **Value proposition:** 
 - Developers get instant, intelligent feedback without waiting for humans
@@ -237,6 +237,50 @@ Next Steps
 - Consider caching GitHub API responses to reduce rate limit usage
 - Add more detailed PR check status (individual check runs)
 
+---
+
+**2025-12-02 12:00 UTC | PR-Centric Automation Refactor**
+
+**Changes:**
+- Created `src/automation_agent/trigger_filter.py` - Event classification and trivial change detection
+- Updated `config.py` - Added PR trigger mode, trivial filter, and grouping configuration
+- Updated `session_memory.py` - Extended with trigger_type, run_type, PR association fields
+- Updated `github_client.py` - Added PR diff fetching, PR review posting, PR comment methods
+- Updated `orchestrator.py` - Added `run_automation_with_context()` for PR-centric orchestration
+- Updated `api_server.py` - Handle both push and pull_request webhook events
+- Updated `.env.example` - Documented new configuration options
+- Added `tests/test_trigger_filter.py` - 21 new tests for trigger filtering
+
+**New Features:**
+- **Trigger Modes**: `TRIGGER_MODE=pr|push|both` - Control which events trigger automation
+- **Trivial Change Filter**: Skip automation for small doc edits (<10 lines), whitespace-only changes
+- **PR Review Comments**: Code reviews posted as PR reviews instead of commit comments
+- **Grouped Automation PRs**: README + spec updates bundled into single PR per source PR
+- **Smart Task Routing**: Code review skipped for doc-only changes
+
+**New Configuration Options:**
+```bash
+TRIGGER_MODE=both              # pr, push, or both
+TRIVIAL_CHANGE_FILTER_ENABLED=True
+TRIVIAL_MAX_LINES=10
+GROUP_AUTOMATION_UPDATES=True
+POST_REVIEW_ON_PR=True
+```
+
+**Decisions:**
+- Primary trigger is now PR events (opened, synchronized, reopened)
+- Push events without PRs can be disabled via `TRIGGER_MODE=pr`
+- Trivial changes defined as: <10 lines, doc-only, whitespace-only, or minimal (<3 lines)
+- Session memory tracks: trigger_type, run_type, pr_number, skip_reason, diff_analysis
+- Backward compatible: existing push-only workflows continue to work
+
+**Test Results:** 132/132 tests passing (100% pass rate) ✅
+
+**Next Steps:**
+- E2E testing with real PR events via ngrok
+- Dashboard updates to show trigger type and skip reasons
+- Per-branch trigger policies (stricter on main)
+
 
 4. Dashboard displays real CI mutation score
 
@@ -261,8 +305,7 @@ LOW: Polish
 → Diff chunking for huge changes
 
 ## 🚫 Out of Scope (Don't Implement)
-❌ Real-time PR reviews (only push events)
-❌ GitHub App (webhook-only)
+❌ GitHub App (webhook-only for now)
 ❌ Self-hosting LLM
 
 
