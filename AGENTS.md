@@ -101,6 +101,7 @@ When working on this repo, focus on these **in order**:
 ✅ Add retry logic for transient API failures
 ✅ Make tasks idempotent (handle webhook retries)
 ✅ Improve error handling + logging
+✅ **Error hardening for Jules 404 and LLM 429** (prevents junk PRs, tracks failures)
 
 
 ### 2. **LLM Output Quality**

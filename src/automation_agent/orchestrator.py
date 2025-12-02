@@ -9,6 +9,7 @@ from .code_review_updater import CodeReviewUpdater
 from .config import Config
 from .session_memory import SessionMemoryStore
 from .trigger_filter import TriggerFilter, TriggerContext, TriggerType, RunType
+from .llm_client import RateLimitError
 
 logger = logging.getLogger(__name__)
 
@@ -150,6 +151,22 @@ class AutomationOrchestrator:
             review_success = review_result.get("success", False)
             review_content = review_result.get("review", "")
             
+            # Check for structured error (Jules 404, etc.)
+            if not review_success and review_result.get("error_type"):
+                error_type = review_result.get("error_type")
+                error_msg = review_result.get("message", "Unknown error")
+                # Mark task as failed in session memory
+                self.session_memory.mark_task_failed(run_id, "code_review", error_msg, error_type)
+                # Return error without posting to GitHub or creating PRs
+                result = {
+                    "success": False,
+                    "status": "failed",
+                    "error_type": error_type,
+                    "message": error_msg
+                }
+                self.session_memory.update_task_result(run_id, "code_review", result)
+                return result
+            
             log_updated = False
             if review_success and review_content:
                 updated_log = await self.code_review_updater.update_review_log(
@@ -191,6 +208,21 @@ class AutomationOrchestrator:
             updated_readme = await self.readme_updater.update_readme(
                 commit_sha=commit_sha, branch=branch
             )
+
+            # Check if result is an error dict (rate limit, etc.)
+            if isinstance(updated_readme, dict) and not updated_readme.get("success", True):
+                error_type = updated_readme.get("error_type", "unknown")
+                error_msg = updated_readme.get("message", "Unknown error")
+                # Mark task as failed in session memory
+                self.session_memory.mark_task_failed(run_id, "readme_update", error_msg, error_type)
+                result = {
+                    "success": False,
+                    "status": "failed",
+                    "error_type": error_type,
+                    "message": error_msg
+                }
+                self.session_memory.update_task_result(run_id, "readme_update", result)
+                return result
 
             if updated_readme:
                 if self.config.CREATE_PR:
@@ -246,6 +278,21 @@ class AutomationOrchestrator:
             updated_spec = await self.spec_updater.update_spec(
                 commit_sha=commit_sha, branch=branch
             )
+
+            # Check if result is an error dict (rate limit, etc.)
+            if isinstance(updated_spec, dict) and not updated_spec.get("success", True):
+                error_type = updated_spec.get("error_type", "unknown")
+                error_msg = updated_spec.get("message", "Unknown error")
+                # Mark task as failed in session memory
+                self.session_memory.mark_task_failed(run_id, "spec_update", error_msg, error_type)
+                result = {
+                    "success": False,
+                    "status": "failed",
+                    "error_type": error_type,
+                    "message": error_msg
+                }
+                self.session_memory.update_task_result(run_id, "spec_update", result)
+                return result
 
             if updated_spec:
                 if self.config.CREATE_PR:
@@ -505,6 +552,41 @@ This PR contains automated documentation updates generated from commit `{commit_
         # Handle PR-centric grouping of automation updates
         if context.pr_number and self.config.GROUP_AUTOMATION_UPDATES:
             await self._handle_grouped_automation_pr(context, results_dict, run_id)
+        
+        # Check for critical failures (Jules 404, LLM 429)
+        critical_failures = []
+        for task_name, result in results_dict.items():
+            if isinstance(result, dict):
+                error_type = result.get("error_type")
+                if error_type in ("jules_404", "llm_rate_limited"):
+                    critical_failures.append((task_name, error_type, result.get("message", "")))
+        
+        # If critical failures exist, set appropriate status and skip PR creation
+        if critical_failures:
+            all_failed = all(
+                isinstance(r, dict) and r.get("error_type") in ("jules_404", "llm_rate_limited")
+                for r in results_dict.values()
+            )
+            status = "failed" if all_failed else "completed_with_issues"
+            failure_summary = ", ".join([f"{t}:{e}" for t, e, _ in critical_failures])
+            summary = f"Critical failures: {failure_summary}"
+            self.session_memory.update_run_status(run_id, status, summary)
+            
+            logger.warning(f"Skipping PR creation due to critical failures: {summary}")
+            
+            return {
+                "success": False,
+                "run_id": run_id,
+                "run_type": context.run_type.value,
+                "trigger_type": context.trigger_type.value,
+                "commit_sha": context.commit_sha,
+                "branch": context.branch,
+                "pr_number": context.pr_number,
+                "tasks": results_dict,
+                "status": status,
+                "critical_failures": critical_failures,
+                "diff_analysis": context.diff_analysis.to_dict() if context.diff_analysis else None,
+            }
         
         success = all(
             r.get("success", False) for r in results_dict.values()

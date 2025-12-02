@@ -2,8 +2,9 @@
 
 import logging
 import re
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Union, Any
 from .review_provider import ReviewProvider
+from .llm_client import RateLimitError
 from .github_client import GitHubClient
 
 logger = logging.getLogger(__name__)
@@ -22,7 +23,7 @@ class ReadmeUpdater:
         self.github = github_client
         self.provider = review_provider
 
-    async def update_readme(self, commit_sha: str, branch: str = "main") -> Optional[str]:
+    async def update_readme(self, commit_sha: str, branch: str = "main") -> Optional[Union[str, Dict[str, Any]]]:
         """Update README.md based on code changes.
 
         Args:
@@ -30,7 +31,9 @@ class ReadmeUpdater:
             branch: Branch to update README on
 
         Returns:
-            Updated README content, or None if no updates needed
+            str: Updated README content on success
+            Dict[str, Any]: Error dict with success=False, error_type, message on rate limit
+            None: If no updates needed
         """
         logger.info(f"Analyzing commit {commit_sha} for README updates")
 
@@ -55,6 +58,13 @@ class ReadmeUpdater:
         try:
             updated_readme = await self.provider.update_readme(diff, current_readme)
             updated_readme = self._clean_readme_output(updated_readme)
+        except RateLimitError as e:
+            logger.error("README update failed: LLM rate-limited (429)")
+            return {
+                "success": False,
+                "error_type": "llm_rate_limited",
+                "message": str(e)
+            }
         except Exception as e:
             logger.error(f"Failed to generate README updates: {e}")
             return None

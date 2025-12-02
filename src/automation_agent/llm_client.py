@@ -8,6 +8,11 @@ import asyncio
 logger = logging.getLogger(__name__)
 
 
+class RateLimitError(Exception):
+    """Raised when LLM provider returns rate limit error (429)."""
+    pass
+
+
 class LLMClient:
     """Universal LLM client supporting multiple providers."""
 
@@ -110,6 +115,12 @@ class LLMClient:
                 else:
                     raise ValueError(f"Unsupported provider: {self.provider}")
             except Exception as e:
+                # Detect rate limit errors (429) from any provider
+                error_str = str(e).lower()
+                if "429" in error_str or "rate limit" in error_str or "quota" in error_str or "resource_exhausted" in error_str:
+                    logger.error(f"LLM rate-limited (429). Stopping retries immediately.")
+                    raise RateLimitError(f"LLM provider rate limited: {e}")
+                
                 last_exception = e
                 if attempt < retries - 1:
                     wait_time = 1 * (attempt + 1)

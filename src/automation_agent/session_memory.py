@@ -86,6 +86,9 @@ class SessionMemoryStore:
             # Track automation PR created for this source PR
             "automation_pr_number": None,
             "automation_pr_branch": None,
+            # Track task-level failures
+            "failed_tasks": [],  # List of task names that failed
+            "failure_reasons": {},  # Dict of task_name -> failure reason
         }
         self._memory["runs"].insert(0, run_entry)  # Prepend to keep newest first
         self._memory["metrics"]["total_runs"] += 1
@@ -196,6 +199,38 @@ class SessionMemoryStore:
             if run.get("pr_number") == pr_number
         ]
         return runs[:limit]
+
+    def mark_task_failed(
+        self,
+        run_id: str,
+        task_name: str,
+        reason: str,
+        error_type: str
+    ) -> None:
+        """Mark a specific task as failed with a reason.
+        
+        Args:
+            run_id: Run ID to update
+            task_name: Name of the failed task
+            reason: Human-readable failure reason
+            error_type: Machine-readable error type (jules_404, llm_rate_limited, etc.)
+        """
+        for run in self._memory["runs"]:
+            if run["id"] == run_id:
+                if "failed_tasks" not in run:
+                    run["failed_tasks"] = []
+                if "failure_reasons" not in run:
+                    run["failure_reasons"] = {}
+                
+                if task_name not in run["failed_tasks"]:
+                    run["failed_tasks"].append(task_name)
+                run["failure_reasons"][task_name] = {
+                    "reason": reason,
+                    "error_type": error_type
+                }
+                self._save()
+                return
+        logger.warning(f"Run ID {run_id} not found for marking task failed.")
 
     def get_skipped_runs(self, limit: int = 20) -> List[Dict[str, Any]]:
         """Get runs that were skipped due to trivial changes.

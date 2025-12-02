@@ -3,7 +3,7 @@
 import logging
 import aiohttp
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Union
 from .llm_client import LLMClient
 from .config import Config
 
@@ -14,8 +14,13 @@ class ReviewProvider(ABC):
     """Abstract base class for code review providers."""
 
     @abstractmethod
-    async def review_code(self, diff: str) -> str:
-        """Analyze code changes and provide a review."""
+    async def review_code(self, diff: str) -> Union[str, Dict[str, Any]]:
+        """Analyze code changes and provide a review.
+        
+        Returns:
+            str: Review content on success
+            Dict[str, Any]: Error dict with success=False, error_type, message on failure
+        """
         pass
 
     @abstractmethod
@@ -35,8 +40,24 @@ class LLMReviewProvider(ReviewProvider):
     def __init__(self, llm_client: LLMClient):
         self.llm = llm_client
 
-    async def review_code(self, diff: str) -> str:
-        return await self.llm.analyze_code(diff)
+    async def review_code(self, diff: str) -> Union[str, Dict[str, Any]]:
+        """Review code using LLM.
+        
+        Returns:
+            str: Review content on success
+            Dict[str, Any]: Error dict on rate limit or other failures
+        """
+        try:
+            return await self.llm.analyze_code(diff)
+        except Exception as e:
+            # LLMClient already raises RateLimitError for 429s
+            # This catches any other unexpected errors
+            logger.error(f"LLM review failed: {e}")
+            return {
+                "success": False,
+                "error_type": "llm_error",
+                "message": str(e)
+            }
 
     async def update_readme(self, diff: str, current_readme: str) -> str:
         return await self.llm.update_readme(diff, current_readme)
@@ -54,8 +75,16 @@ class JulesReviewProvider(ReviewProvider):
         self.api_key = config.JULES_API_KEY
         self.api_url = config.JULES_API_URL
 
-    async def review_code(self, diff: str) -> str:
-        """Review code using Jules API, falling back to LLM on failure."""
+    async def review_code(self, diff: str) -> Union[str, Dict[str, Any]]:
+        """Review code using Jules API, with controlled fallback strategy.
+        
+        Returns structured error dict on 404 (misconfiguration) without fallback.
+        Falls back to LLM only on transient errors (5xx, timeouts).
+        
+        Returns:
+            str: Review content on success
+            Dict[str, Any]: Error dict with success=False, error_type, message on 404
+        """
         try:
             logger.info("Requesting code review from Jules API...")
             async with aiohttp.ClientSession() as session:
@@ -80,11 +109,36 @@ class JulesReviewProvider(ReviewProvider):
                             logger.info("Successfully received review from Jules")
                             return self._format_jules_review(review)
                     
+                    # Handle 404 errors without fallback (likely misconfiguration)
+                    if response.status == 404:
+                        error_text = await response.text()
+                        error_msg = f"Jules API returned 404. Check JULES_SOURCE_ID/JULES_PROJECT_ID configuration."
+                        logger.error(f"Code review skipped: {error_msg}")
+                        logger.debug(f"Jules 404 response body: {error_text[:200] if error_text else 'No response body'}")
+                        # Return error dict instead of falling back
+                        return {
+                            "success": False,
+                            "error_type": "jules_404",
+                            "message": error_msg,
+                            "status_code": 404
+                        }
+                    
+                    # For server errors (5xx), fall back to LLM
                     error_text = await response.text()
+                    if response.status >= 500:
+                        logger.warning(f"Jules API server error ({response.status}), falling back to LLM provider.")
+                        return await self.fallback.review_code(diff)
+                    
+                    # For other client errors (4xx except 404), log and fall back
                     logger.warning(f"Jules API failed with status {response.status}: {error_text[:200] if error_text else 'No response body'}")
                     raise Exception(f"Jules API error: {response.status}")
 
+        except aiohttp.ClientError as e:
+            # Network/timeout errors - fall back to LLM
+            logger.warning(f"Jules API network error: {e}. Falling back to LLM provider.")
+            return await self.fallback.review_code(diff)
         except Exception as e:
+            # Other errors - fall back to LLM
             logger.warning(f"Jules review failed: {e}. Falling back to LLM provider.")
             return await self.fallback.review_code(diff)
 

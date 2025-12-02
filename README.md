@@ -46,13 +46,21 @@ An autonomous GitHub automation system that triggers on **push and pull request 
 - **PR Review Comments**: Code reviews posted as PR reviews instead of commit comments
 - **Configurable Thresholds**: Set max lines for trivial detection, doc file patterns
 
-### 6. 🛡️ Security Features
+### 6. 🛡️ Robust Error Handling (NEW)
+- **Jules 404 Detection**: Detects Jules API misconfiguration without expensive LLM fallback
+- **LLM Rate Limit Handling**: Stops retries immediately on 429 errors to prevent infinite loops
+- **No Junk PRs**: Critical failures (404/429) prevent automation PR creation
+- **Failure Visibility**: Task-level failure reasons stored in session memory for dashboard display
+- **Smart Status Tracking**: Run status set to "failed" or "completed_with_issues" based on failure scope
+- **Clear Logging**: Single concise log line per error type for easy debugging
+
+### 7. 🔒 Security Features
 - HMAC-SHA256 verification of webhook signatures
 - Minimal GitHub token scopes
 - No secrets logged; credential storage limited to environment variables
 - Automated security scans integrated in CI
 
-### 7. 🗺️ Dynamic Architecture Diagram
+### 8. 🗺️ Dynamic Architecture Diagram
 - ARCHITECTURE.md includes a live Mermaid diagram reflecting system components and project progress
 - Automatically updated via scripts/CI when system or specs change
 - **Visualized in the Dashboard**
