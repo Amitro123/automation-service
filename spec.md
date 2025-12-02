@@ -1,6 +1,6 @@
 # 📋 GitHub Automation Agent - Product Specification & Progress
 
-**Last Updated:** 2025-12-02 15:30 UTC
+**Last Updated:** 2025-12-02 15:32 UTC
 **Status:** Phase 3 Complete ✅ | Phase 4 Deployment 🚀 | PR-Centric Automation ✅
 
 ## 🎯 Product Mission
@@ -340,3 +340,8 @@ LOW: Polish
 - **Summary**: Updated README.md to emphasize push and pull request event triggering.
 - **Decisions**: Highlighting event-driven nature in the README for better clarity.
 - **Next Steps**: Ensure webhook configuration documentation clearly explains how to set up push and pull request event triggers.
+
+### [2024-01-03]
+- **Summary**: Added a note to README.md emphasizing the importance of including both `push` and `pull_request` events in the webhook configuration for optimal agent performance.
+- **Decisions**: N/A
+- **Next Steps**: Consider adding a check within the agent to verify webhook configuration and provide a warning if necessary.
