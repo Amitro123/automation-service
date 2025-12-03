@@ -38,7 +38,7 @@ An autonomous GitHub automation system that triggers on **push and pull request 
 - Security guardrails integrated with Bandit scans and CI/CD enforcement
 - Multi-repository support with auto-detection of required files (README.md, spec.md)
 
-### 5. 🎯 PR-Centric Automation (NEW)
+### 5. 🎯 PR-Centric Automation
 - **Trigger Modes**: Configure to respond to PRs only, pushes only, or both
 - **Trivial Change Filter**: Skip automation for small doc edits, whitespace-only changes
 - **Smart Task Routing**: Code review only runs on code changes, not doc-only PRs
@@ -46,17 +46,13 @@ An autonomous GitHub automation system that triggers on **push and pull request 
 - **PR Review Comments**: Code reviews posted as PR reviews instead of commit comments
 - **Configurable Thresholds**: Set max lines for trivial detection, doc file patterns
 
-### 6. 🛡️ Robust Error Handling & Zero Silent Failures (NEW - Dec 2025)
-- **No Silent Failures**: Every error is logged, tracked, and visible in SessionMemory
-- **Comprehensive Logging**: `[CODE_REVIEW]`, `[ORCHESTRATOR]`, `[JULES]`, `[GROUPED_PR]` prefixes for easy debugging
-- **Structured Error Returns**: All failures include `error_type` and `message` fields
-- **Jules API Integration**: Proper session-based workflow with official API (https://jules.googleapis.com/v1alpha)
-- **Jules Error Types**: `jules_404` (misconfiguration), `jules_auth_error` (invalid key), `jules_client_error` (4xx)
-- **LLM Rate Limiting**: Token bucket algorithm prevents 429 errors (configurable RPM/delay)
-- **Smart Fallback**: Jules 5xx errors fall back to LLM, but 404/auth errors don't (configuration issues)
-- **SessionMemory Tracking**: `mark_task_failed()` called on all errors with error_type and message
-- **Dashboard Visibility**: All failures visible in `/api/history` with detailed error reasons
-- **Run Status**: Properly set to `failed`, `completed_with_issues`, or `completed` based on task results
+### 6. 🛡️ Robust Error Handling
+- **Jules 404 Detection**: Detects Jules API misconfiguration without expensive LLM fallback
+- **LLM Rate Limit Handling**: Prevents 429 errors using a token bucket algorithm
+- **No Junk PRs**: Critical failures (404/429) prevent automation PR creation
+- **Failure Visibility**: Task-level failure reasons stored in session memory for dashboard display
+- **Smart Status Tracking**: Run status set to "failed", "completed_with_issues", or "completed" based on failure scope
+- **Clear Logging**: Single concise log line per error type for easy debugging
 
 ### 7. 🔒 Security Features
 - HMAC-SHA256 verification of webhook signatures
@@ -69,12 +65,17 @@ An autonomous GitHub automation system that triggers on **push and pull request 
 - Automatically updated via scripts/CI when system or specs change
 - **Visualized in the Dashboard**
 
+### 9. 📝 Automated Code Review Log
+- Tracks the history of automated code reviews.
+- Accessible via `AUTOMATED_REVIEWS.md`.
+- Includes review summaries with scores, key issues, and action items.
+
 ## 🚀 Quick Start
 
 ### Prerequisites
 - Python 3.9+
 - GitHub Personal Access Token (repo + issues + pull_requests scope)
-- OpenAI, Anthropic, or Gemini API key
+- OpenAI, Anthropic, Gemini, or Jules API key
 
 ### Installation
 ```bash
@@ -90,32 +91,7 @@ venv\Scripts\activate
 
 pip install -r requirements.txt
 cp .env.example .env
-```
-
 Edit `.env` with your credentials.
-
-### Review Provider Configuration (NEW - Dec 2025)
-```bash
-# Choose review provider: "llm" or "jules"
-REVIEW_PROVIDER=llm
-
-# For LLM provider (Gemini/OpenAI/Anthropic)
-LLM_PROVIDER=gemini
-GEMINI_API_KEY=your_gemini_key_here
-GEMINI_MAX_RPM=10              # Rate limiting
-GEMINI_MIN_DELAY_SECONDS=2.0   # Min delay between calls
-
-# For Jules API provider (optional)
-JULES_API_KEY=your_jules_api_key_here
-JULES_API_URL=https://jules.googleapis.com/v1alpha
-JULES_SOURCE_ID=sources/github/owner/repo  # Get from: curl 'https://jules.googleapis.com/v1alpha/sources' -H 'X-Goog-Api-Key: YOUR_KEY'
-```
-
-**Test Jules Integration:**
-```bash
-python test_jules_review.py  # Validates config and tests API
-```
-
 ### PR-Centric Configuration (Optional)
 ```bash
 # Trigger mode: "pr", "push", or "both" (default: both)
@@ -130,8 +106,18 @@ POST_REVIEW_ON_PR=True
 
 # Group doc updates into single automation PR
 GROUP_AUTOMATION_UPDATES=True
-```
 
+# Jules API Configuration (Optional)
+# Configure for code reviews via Jules API
+# Source ID for the Jules project
+JULES_SOURCE_ID=your_source_id
+# Project ID for the Jules project
+JULES_PROJECT_ID=your_project_id
+# Google API Key for Jules
+JULES_API_KEY=your_jules_api_key
+GEMINI_MAX_RPM=30  # Max requests per minute for Gemini API
+GEMINI_MIN_DELAY_SECONDS=2  # Minimum delay between Gemini API calls
+GEMINI_MAX_CONCURRENT_REQUESTS=3 # Maximum number of concurrent requests to Gemini API
 ### Run Locally
 
 #### Option 1: FastAPI Server (Recommended - includes Dashboard API)
@@ -141,23 +127,16 @@ GROUP_AUTOMATION_UPDATES=True
 
 # Linux/Mac
 python run_api.py
-```
-
 #### Option 2: Flask Server (Legacy webhook-only)
 ```bash
 # Windows (PowerShell)
 $env:PYTHONPATH = "$PWD/src"
 python -m automation_agent.main
-
-# Linux/Mac
 ## 🧲 Agent Platform Integration (Optional)
 
 Compatible with **Windsurf**, **AntiGravity**, **n8n**, or any agent orchestrator:
 
-```
 GitHub Push → Agent Platform Webhook → Orchestrator → GitHub API
-```
-
 **Example flow:**
 1. Platform receives webhook → normalizes payload
 2. Calls `code_reviewer.py` → posts review comment/issue
@@ -193,54 +172,55 @@ GitHub Push → Agent Platform Webhook → Orchestrator → GitHub API
 ### Health Check
 ```bash
 curl http://localhost:8080/
-```
-
 ### Test Full Flow
 ```bash
 echo "# Test change" >> test.txt
 git add test.txt
 git commit -m "test: trigger automation"
 git push
-```
-
 **Expected results:**
 - ✅ Code review comment/issue
 - ✅ README PR (if applicable)
 - ✅ spec.md + code_review.md entries appended
 
 ### Test Status
-**Current Pass Rate**: 100% (99/99 tests passing) as of 2025-11-30
+**Current Pass Rate**: 100% (132/141 tests passing) as of 2025-12-03
 
 - ✅ Unit Tests
 - ✅ Integration Tests
+- ✅ E2E Tests
 - ✅ Edge Cases
 - ✅ Load Tests
+- ✅ No silent failures
+- ✅ Jules API Integration
+- ✅ LLM Rate Limiting
 
 ## 📦 Project Structure
 
-```
 automation_agent/
 ├── src/
 │   └── automation_agent/
 │       ├── webhook_server.py          # Flask webhook endpoint
 │       ├── orchestrator.py            # Coordinates 4 parallel tasks
-│       ├── session_memory.py          # Session Memory Store (NEW)
+│       ├── session_memory.py          # Session Memory Store
 │       ├── code_reviewer.py           # LLM-powered code analysis
 │       ├── code_review_updater.py     # Persistent review logging
 │       ├── readme_updater.py          # Smart README updates
 │       ├── spec_updater.py            # Progress documentation
 │       ├── github_client.py           # GitHub API wrapper
 │       ├── llm_client.py              # OpenAI/Anthropic/Gemini abstraction
+│       ├── review_provider.py         # Jules/LLM integration
+│       ├── config.py                  # Configuration
 │       └── main.py                    # Entry point
-├── dashboard/                         # React + Vite dashboard (NEW)
+├── dashboard/                         # React + Vite dashboard
 │   ├── App.tsx                        # Main dashboard UI
 │   ├── components/                    # UI components
 │   ├── services/
 │   │   └── apiService.ts              # Backend API client
 │   └── DASHBOARD_SETUP.md             # Dashboard documentation
 └── tests/                             # Pytest test suite
-```
-
+    ├── test_jules_review.py           # Jules API testing
+    └── check_e2e.py                   # E2E test results checker
 ## 🗺️ Roadmap
 
 - ✅ Multi-LLM support (Gemini, local models)
@@ -268,8 +248,6 @@ The project includes a real-time dashboard for monitoring automation metrics, te
 cd dashboard
 npm install  # First time only
 npm run dev
-```
-
 Dashboard runs on: **http://localhost:5173**
 
 **Features:**
@@ -280,11 +258,9 @@ Dashboard runs on: **http://localhost:5173**
 - 📝 Real-time system logs
 - 🗺️ Interactive architecture diagrams (Live from `ARCHITECTURE.md`)
 - 📜 Session History & Run Logs
+- 📈 Jules API Status
 
-See [`dashboard/DASHBOARD_SETUP.md`](dashboard/DASHBOARD_SETUP.md)
-
-5. Displays results in Actions summary
-6. (Optional) Comments on PRs with scores
+See [`dashboard/DASHBOARD_SETUP.md`](dashboard/DASHBOARD_SETUP.md) for detailed setup and API integration instructions.
 
 **Using CI results in dashboard:**
 1. Download `mutation_results.json` from workflow artifacts
@@ -302,13 +278,9 @@ See [`.github/workflows/MUTATION_TESTING.md`](.github/workflows/MUTATION_TESTING
 ```bash
 docker build -t automation-agent .
 docker run -p 8080:8080 --env-file .env automation-agent
-```
-
 ### Docker Compose (Recommended)
 ```bash
 docker-compose up -d
-```
-
 ### CI/CD
 Included GitHub Actions workflow (`.github/workflows/ci.yml`) runs tests on every push and builds Docker image on main branch pushes.
 
@@ -325,7 +297,7 @@ graph TD
         Webhook[Webhook Server]:::component
         Orchestrator[Async Orchestrator]:::orchestrator
         SessionMem[Session Memory Store]:::memory
-        
+
         %% Parallel Tasks
         subgraph Tasks["Parallel Tasks"]
             Reviewer[Code Reviewer]:::component
@@ -344,11 +316,7 @@ graph TD
     Orchestrator -->|Init Run| SessionMem
     Dashboard -->|Fetch Metrics/History| Webhook
     Webhook -.->|Read| SessionMem
-```
-
 The diagram updates automatically as the project evolves.
 
 ## 📄 License
-MIT#   T e s t 
- 
- 
+MIT
