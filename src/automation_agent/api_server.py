@@ -582,9 +582,17 @@ def create_api_server(config: Config) -> FastAPI:
 
     @app.post("/webhook")
     async def webhook(request: Request, background_tasks: BackgroundTasks):
+        # Log incoming webhook request immediately
+        delivery_id = request.headers.get("X-GitHub-Delivery", "unknown")
+        event_type = request.headers.get("X-GitHub-Event", "unknown")
+        logger.info(f"[WEBHOOK] Received webhook: event={event_type}, delivery={delivery_id}")
+        app_state.add_log("INFO", f"Webhook received: {event_type} (delivery: {delivery_id[:8]}...)")
+        
         # Verify signature
         signature = request.headers.get("X-Hub-Signature-256")
         if not signature:
+            logger.warning(f"[WEBHOOK] Missing signature for delivery {delivery_id}")
+            app_state.add_log("WARN", "Webhook rejected: missing signature")
             raise HTTPException(status_code=403, detail="Missing signature")
         
         body = await request.body()
@@ -592,8 +600,10 @@ def create_api_server(config: Config) -> FastAPI:
         try:
             sha_name, sig = signature.split("=")
             if sha_name != "sha256":
+                logger.warning(f"[WEBHOOK] Invalid algorithm: {sha_name}")
                 raise HTTPException(status_code=403, detail="Invalid algorithm")
         except ValueError:
+            logger.warning(f"[WEBHOOK] Invalid signature format")
             raise HTTPException(status_code=403, detail="Invalid signature format")
         
         mac = hmac.new(
@@ -602,32 +612,55 @@ def create_api_server(config: Config) -> FastAPI:
             digestmod=hashlib.sha256
         )
         if not hmac.compare_digest(mac.hexdigest(), sig):
+            logger.warning(f"[WEBHOOK] Invalid signature - HMAC mismatch")
+            app_state.add_log("WARN", "Webhook rejected: invalid signature")
             raise HTTPException(status_code=403, detail="Invalid signature")
         
-        # Check event type
-        event_type = request.headers.get("X-GitHub-Event")
+        logger.info(f"[WEBHOOK] Signature verified successfully")
+        
+        # Parse payload
         payload = await request.json()
         
         # Handle both push and pull_request events
         if event_type == "push":
+            ref = payload.get('ref', 'N/A')
+            commit_sha = payload.get('head_commit', {}).get('id', 'N/A')[:7]
             commit_msg = payload.get('head_commit', {}).get('message', 'N/A')[:50]
-            app_state.add_log("INFO", f"Received push event: {commit_msg}")
+            logger.info(f"[WEBHOOK] Push event: ref={ref}, sha={commit_sha}, msg={commit_msg}")
+            app_state.add_log("INFO", f"Push event: {ref} ({commit_sha}) - {commit_msg}")
             background_tasks.add_task(handle_event, orchestrator, event_type, payload)
             return {"message": "Automation started", "status": "accepted"}
         
         elif event_type == "pull_request":
             action = payload.get("action", "")
             pr_number = payload.get("number", "N/A")
+            pr_data = payload.get("pull_request", {})
+            pr_title = pr_data.get("title", "N/A")[:50]
+            head_sha = pr_data.get("head", {}).get("sha", "N/A")[:7]
+            head_ref = pr_data.get("head", {}).get("ref", "N/A")
+            base_ref = pr_data.get("base", {}).get("ref", "N/A")
+            
+            logger.info(
+                f"[WEBHOOK] PR event: action={action}, pr=#{pr_number}, "
+                f"title='{pr_title}', head={head_ref}@{head_sha}, base={base_ref}"
+            )
+            
             # Only process opened, synchronize, reopened actions
             if action in ("opened", "synchronize", "reopened"):
-                app_state.add_log("INFO", f"Received PR event: #{pr_number} ({action})")
+                app_state.add_log(
+                    "INFO", 
+                    f"PR #{pr_number} ({action}): {head_ref}@{head_sha} -> {base_ref}"
+                )
+                logger.info(f"[WEBHOOK] Starting automation for PR #{pr_number} ({action})")
                 background_tasks.add_task(handle_event, orchestrator, event_type, payload)
                 return {"message": "Automation started", "status": "accepted"}
             else:
-                app_state.add_log("INFO", f"Ignoring PR event: #{pr_number} ({action})")
+                logger.info(f"[WEBHOOK] Ignoring PR action: {action}")
+                app_state.add_log("INFO", f"PR #{pr_number} action '{action}' ignored")
                 return {"message": f"PR action '{action}' ignored", "status": "ok"}
         
         else:
+            logger.info(f"[WEBHOOK] Ignoring event type: {event_type}")
             return {"message": f"Event '{event_type}' ignored", "status": "ok"}
     
     return app
@@ -647,33 +680,50 @@ async def handle_event(orchestrator: AutomationOrchestrator, event_type: str, pa
         payload: Webhook payload
     """
     try:
+        logger.info(f"[HANDLER] Starting handle_event for {event_type}")
+        
         # For push events, check if there are commits
         if event_type == "push":
             commits = payload.get("commits", [])
             if not commits:
+                logger.info("[HANDLER] No commits in push event, skipping")
                 app_state.add_log("INFO", "No commits in push event")
                 return
+            logger.info(f"[HANDLER] Push has {len(commits)} commit(s)")
+        
+        # For PR events, log details
+        if event_type == "pull_request":
+            pr_number = payload.get("number")
+            action = payload.get("action")
+            logger.info(f"[HANDLER] Processing PR #{pr_number} action={action}")
         
         app_state.add_log("INFO", f"Starting automation for {event_type} event...")
         
         # Use the new context-aware orchestration
+        logger.info(f"[HANDLER] Calling run_automation_with_context...")
         result = await orchestrator.run_automation_with_context(event_type, payload)
+        logger.info(f"[HANDLER] run_automation_with_context returned: success={result.get('success')}, skipped={result.get('skipped')}")
         
         # Log result based on run type
         if result.get("skipped"):
             skip_reason = result.get("skip_reason", "Unknown reason")
             run_type = result.get("run_type", "unknown")
+            logger.info(f"[HANDLER] Run skipped: type={run_type}, reason={skip_reason}")
             app_state.add_log("INFO", f"Run skipped ({run_type}): {skip_reason}")
         elif result.get("success"):
             run_type = result.get("run_type", "full_automation")
             pr_number = result.get("pr_number")
+            run_id = result.get("run_id", "unknown")
+            logger.info(f"[HANDLER] Automation completed: type={run_type}, pr={pr_number}, run_id={run_id}")
             if pr_number:
                 app_state.add_log("INFO", f"Automation completed ({run_type}) for PR #{pr_number}")
             else:
                 app_state.add_log("INFO", f"Automation completed ({run_type})")
         else:
+            logger.warning(f"[HANDLER] Automation completed with issues: {result}")
             app_state.add_log("WARN", "Automation completed with issues")
             
     except Exception as e:
+        logger.error(f"[HANDLER] Event handling failed: {e}", exc_info=True)
         app_state.add_log("ERROR", f"Automation failed: {str(e)}")
         logger.error(f"Event handling failed: {e}", exc_info=True)
