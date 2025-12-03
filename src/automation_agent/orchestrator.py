@@ -711,33 +711,46 @@ This PR contains automated documentation updates generated from commit `{commit_
         If triggered by a PR, posts review on the PR instead of commit.
         """
         try:
-            logger.info("Task: Running code review...")
+            logger.info(f"[ORCHESTRATOR] Task: Running code review for run_id={run_id}")
             
-            # Run the review - pass pr_number if available for PR reviews
+            # Run the review - pass run_id and pr_number for proper logging
             review_result = await self.code_reviewer.review_commit(
                 commit_sha=context.commit_sha,
                 post_as_issue=self.config.POST_REVIEW_AS_ISSUE,
                 pr_number=context.pr_number if context.pr_number else None,
+                run_id=run_id,
             )
             
             review_success = review_result.get("success", False)
             review_content = review_result.get("review", "")
+            error_type = review_result.get("error_type")
+            error_message = review_result.get("message")
             
-            # Post review on PR if applicable
-            posted_on_pr = False
-            if (review_success and review_content and 
-                context.pr_number and self.config.POST_REVIEW_ON_PR):
-                posted_on_pr = await self.github.post_pull_request_review(
-                    pr_number=context.pr_number,
-                    body=review_content,
-                    event="COMMENT",
-                    commit_id=context.commit_sha,
+            # If review failed, mark task as failed in session memory
+            if not review_success:
+                logger.error(
+                    f"[ORCHESTRATOR] Code review failed: error_type={error_type}, message={error_message}"
                 )
+                self.session_memory.mark_task_failed(
+                    run_id, "code_review", error_message or "Unknown error", error_type or "unknown"
+                )
+                result = {
+                    "success": False,
+                    "status": "failed",
+                    "error_type": error_type,
+                    "message": error_message,
+                    "posted_on_pr": False,
+                    "pr_number": context.pr_number,
+                    "log_updated": False,
+                    "updated_log_content": None,
+                }
+                self.session_memory.update_task_result(run_id, "code_review", result)
+                return result
             
-            # Update review log
+            # Review succeeded - update review log if needed
             log_updated = False
             updated_log = None
-            if review_success and review_content:
+            if review_content:
                 updated_log = await self.code_review_updater.update_review_log(
                     commit_sha=context.commit_sha,
                     review_content=review_content,
@@ -746,6 +759,7 @@ This PR contains automated documentation updates generated from commit `{commit_
                 # If grouped updates enabled for PR, don't commit yet
                 if updated_log and context.pr_number and self.config.GROUP_AUTOMATION_UPDATES:
                     log_updated = True  # Generated, will be committed in grouped PR
+                    logger.info(f"[ORCHESTRATOR] Review log generated for grouped PR")
                 elif updated_log and self.config.AUTO_COMMIT:
                     log_updated = await self.github.update_file(
                         file_path=CodeReviewUpdater.LOG_FILE,
@@ -753,16 +767,18 @@ This PR contains automated documentation updates generated from commit `{commit_
                         message=f"docs: Update automated review log for {context.commit_sha[:7]}",
                         branch=context.branch,
                     )
+                    logger.info(f"[ORCHESTRATOR] Review log committed: {log_updated}")
             
             result = {
-                "success": review_success,
-                "status": "completed" if review_success else "failed",
-                "posted_on_pr": posted_on_pr,
+                "success": True,
+                "status": "completed",
+                "posted_on_pr": True,  # Already posted by CodeReviewer
                 "pr_number": context.pr_number,
                 "log_updated": log_updated,
                 "updated_log_content": updated_log,
             }
             self.session_memory.update_task_result(run_id, "code_review", result)
+            logger.info(f"[ORCHESTRATOR] Code review completed successfully")
             return result
             
         except Exception as e:
