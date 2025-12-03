@@ -4,6 +4,7 @@ import logging
 from typing import Optional, Dict, Any
 import os
 import asyncio
+from .rate_limiter import TokenBucketRateLimiter, NoOpRateLimiter
 
 logger = logging.getLogger(__name__)
 
@@ -16,18 +17,38 @@ class RateLimitError(Exception):
 class LLMClient:
     """Universal LLM client supporting multiple providers."""
 
-    def __init__(self, provider: str = "openai", model: Optional[str] = None, api_key: Optional[str] = None):
+    def __init__(
+        self, 
+        provider: str = "openai", 
+        model: Optional[str] = None, 
+        api_key: Optional[str] = None,
+        gemini_max_rpm: int = 10,
+        gemini_min_delay: float = 2.0,
+    ):
         """Initialize LLM client.
 
         Args:
             provider: LLM provider ("openai", "anthropic", or "gemini")
             model: Model name (optional, uses provider defaults)
             api_key: API key (optional, reads from environment)
+            gemini_max_rpm: Maximum requests per minute for Gemini (default: 10)
+            gemini_min_delay: Minimum delay between Gemini calls in seconds (default: 2.0)
         """
         self.provider = provider.lower()
         self.model = model
         self.api_key = api_key
         self._client = None
+        
+        # Initialize rate limiter for Gemini
+        if self.provider == "gemini":
+            self._rate_limiter = TokenBucketRateLimiter(
+                max_requests_per_minute=gemini_max_rpm,
+                min_delay_seconds=gemini_min_delay,
+            )
+            logger.info(f"Gemini rate limiter enabled: {gemini_max_rpm} RPM, {gemini_min_delay}s min delay")
+        else:
+            self._rate_limiter = NoOpRateLimiter()
+        
         self._initialize_client()
 
     def _initialize_client(self):
@@ -211,6 +232,9 @@ class LLMClient:
 
     async def _generate_gemini(self, prompt: str, max_tokens: int, temperature: float) -> tuple[str, Dict[str, Any]]:
         """Generate text using Gemini and return usage metadata."""
+        # Acquire rate limit token before making API call
+        await self._rate_limiter.acquire()
+        
         generation_config = {
             "max_output_tokens": max_tokens,
             "temperature": temperature,

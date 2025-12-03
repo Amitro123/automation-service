@@ -604,13 +604,8 @@ This PR contains automated documentation updates generated from commit `{commit_
                 "run_type": context.run_type.value,
             }
         
-        # Execute tasks - use sequential execution with delays for Gemini to avoid rate limits
-        if self.config.LLM_PROVIDER == "gemini":
-            logger.info("Using sequential task execution with delays for Gemini rate limits")
-            task_results = await self._run_sequential_tasks_with_delay(tasks, delay_seconds=5)
-        else:
-            # For other providers, run in parallel
-            task_results = await self._run_parallel_tasks(tasks)
+        # Execute tasks in parallel (rate limiting handled by LLM client)
+        task_results = await self._run_parallel_tasks(tasks)
         
         # Build results dictionary
         results_dict = {}

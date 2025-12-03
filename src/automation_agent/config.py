@@ -71,6 +71,14 @@ class Config:
     # Post code review as PR comment instead of commit comment when triggered by PR
     POST_REVIEW_ON_PR: bool = os.getenv("POST_REVIEW_ON_PR", "True").lower() == "true"
 
+    # Gemini Rate Limiting Configuration
+    # Maximum requests per minute for Gemini API (free tier: 15 RPM)
+    GEMINI_MAX_RPM: int = int(os.getenv("GEMINI_MAX_RPM", "10"))
+    # Minimum delay between consecutive Gemini API calls (seconds)
+    GEMINI_MIN_DELAY_SECONDS: float = float(os.getenv("GEMINI_MIN_DELAY_SECONDS", "2.0"))
+    # Maximum concurrent Gemini requests (optional hard cap)
+    GEMINI_MAX_CONCURRENT_REQUESTS: int = int(os.getenv("GEMINI_MAX_CONCURRENT_REQUESTS", "3"))
+
     @classmethod
     def validate(cls) -> list[str]:
         """Validate required configuration values.

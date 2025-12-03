@@ -180,6 +180,8 @@ def create_api_server(config: Config) -> FastAPI:
         provider=config.LLM_PROVIDER,
         model=config.LLM_MODEL,
         api_key=api_key,
+        gemini_max_rpm=config.GEMINI_MAX_RPM,
+        gemini_min_delay=config.GEMINI_MIN_DELAY_SECONDS,
     )
     
     # Initialize Review Provider
