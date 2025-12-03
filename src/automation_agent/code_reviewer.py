@@ -45,31 +45,32 @@ class CodeReviewer:
             logger.error("Failed to fetch commit info")
             return {"success": False, "review": None}
 
-        # Generate code review
+        # Generate code review with usage metadata
         try:
-            review = await self.provider.review_code(diff)
+            review_result, usage_metadata = await self.provider.review_code(diff)
             
             # Check if provider returned a structured error (e.g., Jules 404)
-            if isinstance(review, dict) and not review.get("success", True):
-                error_type = review.get("error_type", "unknown")
-                error_msg = review.get("message", "Unknown error")
+            if isinstance(review_result, dict) and not review_result.get("success", True):
+                error_type = review_result.get("error_type", "unknown")
+                error_msg = review_result.get("message", "Unknown error")
                 logger.error(f"Review provider error ({error_type}): {error_msg}")
-                # Return error information without posting to GitHub
+                # Return error information without posting to GitHub, but include metadata
                 return {
                     "success": False,
                     "review": None,
                     "error_type": error_type,
-                    "message": error_msg
+                    "message": error_msg,
+                    "usage_metadata": usage_metadata,
                 }
             
-            if not review:
+            if not review_result:
                 logger.error("Failed to generate code review")
-                return {"success": False, "review": None}
+                return {"success": False, "review": None, "usage_metadata": usage_metadata}
         except Exception as e:
             logger.error(f"Review analysis failed: {e}")
-            return {"success": False, "review": None}
+            return {"success": False, "review": None, "usage_metadata": {}}
 
-        formatted_review = self._format_review(review)
+        formatted_review = self._format_review(review_result)
 
         # Post review
         success = False
@@ -83,8 +84,17 @@ class CodeReviewer:
             success = issue_number is not None
         else:
             success = await self.github.post_commit_comment(commit_sha, formatted_review)
+        
+        # Log usage metadata
+        if usage_metadata.get("total_tokens"):
+            logger.info(f"Code review used {usage_metadata['total_tokens']} tokens "
+                       f"(cost: ${usage_metadata.get('estimated_cost', 0):.6f})")
             
-        return {"success": success, "review": formatted_review}
+        return {
+            "success": success,
+            "review": formatted_review,
+            "usage_metadata": usage_metadata,
+        }
 
     def _format_review(self, analysis: str) -> str:
         """Format the analysis into a GitHub-friendly review.

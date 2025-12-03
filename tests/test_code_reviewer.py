@@ -24,7 +24,7 @@ async def test_review_commit_success(code_reviewer, mock_github_client, mock_pro
             "author": {"name": "Test User"}
         }
     }
-    mock_provider.review_code.return_value = "Code review analysis"
+    mock_provider.review_code.return_value = ("Code review analysis", {"provider": "test", "total_tokens": 100})
     mock_github_client.post_commit_comment.return_value = True
 
     # Run review
@@ -33,6 +33,7 @@ async def test_review_commit_success(code_reviewer, mock_github_client, mock_pro
     # Verify
     assert result["success"] is True
     assert "Code review analysis" in result["review"]
+    assert "usage_metadata" in result
     mock_github_client.get_commit_diff.assert_called_once_with("sha123")
     mock_provider.review_code.assert_called_once_with("diff content")
     mock_github_client.post_commit_comment.assert_called_once()
@@ -62,10 +63,11 @@ async def test_review_commit_post_as_issue(code_reviewer, mock_github_client, mo
     """Test posting review as an issue."""
     mock_github_client.get_commit_diff.return_value = "diff content"
     mock_github_client.get_commit_info.return_value = {"commit": {}}
-    mock_provider.review_code.return_value = "Analysis"
+    mock_provider.review_code.return_value = ("Analysis", {"provider": "test"})
     mock_github_client.create_issue.return_value = 123
     
     result = await code_reviewer.review_commit("sha123", post_as_issue=True)
     
     assert result["success"] is True
+    assert "usage_metadata" in result
     mock_github_client.create_issue.assert_called_once()

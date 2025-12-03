@@ -13,9 +13,9 @@ def mock_config():
 @pytest.fixture
 def mock_fallback_provider():
     provider = MagicMock(spec=LLMReviewProvider)
-    provider.review_code = AsyncMock(return_value="Fallback Review")
-    provider.update_readme = AsyncMock(return_value="Fallback Readme")
-    provider.update_spec = AsyncMock(return_value="Fallback Spec")
+    provider.review_code = AsyncMock(return_value=("Fallback Review", {"provider": "llm"}))
+    provider.update_readme = AsyncMock(return_value=("Fallback Readme", {}))
+    provider.update_spec = AsyncMock(return_value=("Fallback Spec", {}))
     return provider
 
 @pytest.mark.asyncio
@@ -28,10 +28,11 @@ async def test_jules_review_success(mock_config, mock_fallback_provider):
         mock_response.json.return_value = {"review": "Jules Review Content"}
         mock_post.return_value.__aenter__.return_value = mock_response
         
-        review = await provider.review_code("diff")
+        review, metadata = await provider.review_code("diff")
         
         assert "Jules Review Content" in review
         assert "Jules / Google Code Review API" in review
+        assert metadata.get("provider") == "jules"
         
         # Verify timeout was passed
         args, kwargs = mock_post.call_args
@@ -50,7 +51,7 @@ async def test_jules_review_failure_fallback(mock_config, mock_fallback_provider
         mock_response.text.return_value = "Internal Server Error"
         mock_post.return_value.__aenter__.return_value = mock_response
         
-        review = await provider.review_code("diff")
+        review, metadata = await provider.review_code("diff")
         
         assert review == "Fallback Review"
         mock_fallback_provider.review_code.assert_called_once_with("diff")
@@ -60,7 +61,7 @@ async def test_jules_review_exception_fallback(mock_config, mock_fallback_provid
     provider = JulesReviewProvider(mock_config, mock_fallback_provider)
     
     with patch("aiohttp.ClientSession.post", side_effect=Exception("Network Error")):
-        review = await provider.review_code("diff")
+        review, metadata = await provider.review_code("diff")
         
         assert review == "Fallback Review"
         mock_fallback_provider.review_code.assert_called_once_with("diff")
@@ -69,7 +70,7 @@ async def test_jules_review_exception_fallback(mock_config, mock_fallback_provid
 async def test_jules_update_readme_fallback(mock_config, mock_fallback_provider):
     provider = JulesReviewProvider(mock_config, mock_fallback_provider)
     
-    result = await provider.update_readme("diff", "readme")
+    result, metadata = await provider.update_readme("diff", "readme")
     
     assert result == "Fallback Readme"
     mock_fallback_provider.update_readme.assert_called_once_with("diff", "readme")
@@ -78,7 +79,7 @@ async def test_jules_update_readme_fallback(mock_config, mock_fallback_provider)
 async def test_jules_update_spec_fallback(mock_config, mock_fallback_provider):
     provider = JulesReviewProvider(mock_config, mock_fallback_provider)
     
-    result = await provider.update_spec({}, "diff", "spec")
+    result, metadata = await provider.update_spec({}, "diff", "spec")
     
     assert result == "Fallback Spec"
     mock_fallback_provider.update_spec.assert_called_once_with({}, "diff", "spec")

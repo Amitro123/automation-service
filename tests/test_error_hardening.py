@@ -21,31 +21,37 @@ class TestJules404Handling:
         config.JULES_API_URL = "http://test.api/review"
         
         llm_fallback = Mock()
-        llm_fallback.review_code = AsyncMock(return_value="LLM review")
+        llm_fallback.review_code = AsyncMock(return_value=("LLM review", {}))
         
         jules_provider = JulesReviewProvider(config, llm_fallback)
         
         # Mock aiohttp response with 404
-        mock_response = AsyncMock()
+        mock_response = Mock()
         mock_response.status = 404
         mock_response.text = AsyncMock(return_value="Not found")
-        mock_response.__aenter__ = AsyncMock(return_value=mock_response)
-        mock_response.__aexit__ = AsyncMock(return_value=None)
         
-        mock_session_instance = AsyncMock()
-        mock_post = AsyncMock(return_value=mock_response)
-        mock_session_instance.post = mock_post
-        mock_session_instance.__aenter__ = AsyncMock(return_value=mock_session_instance)
-        mock_session_instance.__aexit__ = AsyncMock(return_value=None)
+        # Create proper async context manager
+        mock_post_context = AsyncMock()
+        mock_post_context.__aenter__.return_value = mock_response
+        mock_post_context.__aexit__.return_value = None
         
-        with patch('aiohttp.ClientSession', return_value=mock_session_instance):
+        mock_session = Mock()
+        mock_session.post.return_value = mock_post_context
+        
+        # Create session context manager
+        mock_session_context = AsyncMock()
+        mock_session_context.__aenter__.return_value = mock_session
+        mock_session_context.__aexit__.return_value = None
+        
+        with patch('aiohttp.ClientSession', return_value=mock_session_context):
             result = await jules_provider.review_code("diff content")
         
-        # Should return error dict
-        assert isinstance(result, dict)
-        assert result["success"] is False
-        assert result["error_type"] == "jules_404"
-        assert "404" in result["message"]
+        # Should return error dict (result is a tuple now)
+        error_dict, metadata = result
+        assert isinstance(error_dict, dict)
+        assert error_dict["success"] is False
+        assert error_dict["error_type"] == "jules_404"
+        assert "404" in error_dict["message"]
         
         # LLM fallback should NOT be called
         llm_fallback.review_code.assert_not_called()
@@ -58,7 +64,7 @@ class TestJules404Handling:
         config.JULES_API_URL = "http://test.api/review"
         
         llm_fallback = Mock()
-        llm_fallback.review_code = AsyncMock(return_value="LLM review fallback")
+        llm_fallback.review_code = AsyncMock(return_value=("LLM review fallback", {}))
         
         jules_provider = JulesReviewProvider(config, llm_fallback)
         
@@ -78,8 +84,9 @@ class TestJules404Handling:
         with patch('aiohttp.ClientSession', return_value=mock_session_instance):
             result = await jules_provider.review_code("diff content")
         
-        # Should fall back to LLM
-        assert result == "LLM review fallback"
+        # Should fall back to LLM (result is a tuple now)
+        review, metadata = result
+        assert review == "LLM review fallback"
         llm_fallback.review_code.assert_called_once()
 
 
@@ -87,46 +94,58 @@ class TestLLMRateLimitHandling:
     """Test LLM 429 rate limit error handling."""
     
     @pytest.mark.asyncio
-    async def test_llm_429_raises_rate_limit_error(self):
+    async def test_llm_429_raises_rate_limit_error(self, monkeypatch):
         """LLM 429 should raise RateLimitError immediately."""
-        llm_client = LLMClient(provider="openai", model="gpt-4")
+        monkeypatch.setenv("OPENAI_API_KEY", "test_key")
         
-        # Mock OpenAI to raise an error with "429" in it
-        with patch.object(llm_client, '_generate_openai', side_effect=Exception("Rate limit exceeded (429)")):
-            with pytest.raises(RateLimitError) as exc_info:
-                await llm_client.generate("test prompt")
+        # Mock OpenAI client initialization
+        with patch("openai.AsyncOpenAI"):
+            llm_client = LLMClient(provider="openai", model="gpt-4")
             
-            assert "429" in str(exc_info.value).lower() or "rate limit" in str(exc_info.value).lower()
+            # Mock OpenAI to raise an error with "429" in it
+            with patch.object(llm_client, '_generate_openai', side_effect=Exception("Rate limit exceeded (429)")):
+                with pytest.raises(RateLimitError) as exc_info:
+                    await llm_client.generate("test prompt")
+                
+                assert "429" in str(exc_info.value).lower() or "rate limit" in str(exc_info.value).lower()
     
     @pytest.mark.asyncio
-    async def test_llm_quota_error_raises_rate_limit_error(self):
+    async def test_llm_quota_error_raises_rate_limit_error(self, monkeypatch):
         """LLM quota errors should raise RateLimitError."""
-        llm_client = LLMClient(provider="openai", model="gpt-4")
+        monkeypatch.setenv("OPENAI_API_KEY", "test_key")
         
-        # Mock OpenAI to raise quota error
-        with patch.object(llm_client, '_generate_openai', side_effect=Exception("Quota exceeded")):
-            with pytest.raises(RateLimitError):
-                await llm_client.generate("test prompt")
+        # Mock OpenAI client initialization
+        with patch("openai.AsyncOpenAI"):
+            llm_client = LLMClient(provider="openai", model="gpt-4")
+            
+            # Mock OpenAI to raise quota error
+            with patch.object(llm_client, '_generate_openai', side_effect=Exception("Quota exceeded")):
+                with pytest.raises(RateLimitError):
+                    await llm_client.generate("test prompt")
     
     @pytest.mark.asyncio
-    async def test_llm_other_errors_retry(self):
+    async def test_llm_other_errors_retry(self, monkeypatch):
         """Non-rate-limit errors should retry normally."""
-        llm_client = LLMClient(provider="openai", model="gpt-4")
+        monkeypatch.setenv("OPENAI_API_KEY", "test_key")
         
-        # Mock OpenAI to fail twice then succeed
-        call_count = 0
-        async def mock_generate(*args, **kwargs):
-            nonlocal call_count
-            call_count += 1
-            if call_count < 3:
-                raise Exception("Temporary network error")
-            return "Success after retries"
-        
-        with patch.object(llm_client, '_generate_openai', side_effect=mock_generate):
-            result = await llm_client.generate("test prompt")
-        
-        assert result == "Success after retries"
-        assert call_count == 3  # Should have retried
+        # Mock OpenAI client initialization
+        with patch("openai.AsyncOpenAI"):
+            llm_client = LLMClient(provider="openai", model="gpt-4")
+            
+            # Mock OpenAI to fail twice then succeed
+            call_count = 0
+            async def mock_generate(*args, **kwargs):
+                nonlocal call_count
+                call_count += 1
+                if call_count < 3:
+                    raise Exception("Temporary network error")
+                return ("Success after retries", {"total_tokens": 100})
+            
+            with patch.object(llm_client, '_generate_openai', side_effect=mock_generate):
+                result, metadata = await llm_client.generate("test prompt")
+            
+            assert result == "Success after retries"
+            assert call_count == 3  # Should have retried
 
 
 class TestSessionMemoryFailureTracking:
@@ -185,13 +204,13 @@ class TestCodeReviewerErrorHandling:
         github_client.get_commit_info = AsyncMock(return_value={"sha": "abc123"})
         
         review_provider = Mock()
-        # Return error dict like Jules 404
-        review_provider.review_code = AsyncMock(return_value={
+        # Return error dict like Jules 404 (as a tuple now)
+        review_provider.review_code = AsyncMock(return_value=({
             "success": False,
             "error_type": "jules_404",
             "message": "Jules API returned 404",
             "status_code": 404
-        })
+        }, {}))
         
         code_reviewer = CodeReviewer(github_client, review_provider)
         
@@ -199,7 +218,7 @@ class TestCodeReviewerErrorHandling:
         
         # Should return error without posting to GitHub
         assert result["success"] is False
-        assert result["error_type"] == "jules_404"
+        assert result.get("error_type") == "jules_404"
         assert "message" in result
         
         # Should NOT call GitHub to post

@@ -14,23 +14,30 @@ class ReviewProvider(ABC):
     """Abstract base class for code review providers."""
 
     @abstractmethod
-    async def review_code(self, diff: str) -> Union[str, Dict[str, Any]]:
+    async def review_code(self, diff: str) -> tuple[Union[str, Dict[str, Any]], Dict[str, Any]]:
         """Analyze code changes and provide a review.
         
         Returns:
-            str: Review content on success
-            Dict[str, Any]: Error dict with success=False, error_type, message on failure
+            Tuple of (review_content_or_error_dict, usage_metadata)
         """
         pass
 
     @abstractmethod
-    async def update_readme(self, diff: str, current_readme: str) -> str:
-        """Generate updates for README.md."""
+    async def update_readme(self, diff: str, current_readme: str) -> tuple[str, Dict[str, Any]]:
+        """Generate updates for README.md.
+        
+        Returns:
+            Tuple of (updated_readme, usage_metadata)
+        """
         pass
 
     @abstractmethod
-    async def update_spec(self, commit_info: Dict[str, Any], diff: str, current_spec: str) -> str:
-        """Update spec.md based on commit info."""
+    async def update_spec(self, commit_info: Dict[str, Any], diff: str, current_spec: str) -> tuple[str, Dict[str, Any]]:
+        """Update spec.md based on commit info.
+        
+        Returns:
+            Tuple of (updated_spec, usage_metadata)
+        """
         pass
 
 
@@ -40,29 +47,30 @@ class LLMReviewProvider(ReviewProvider):
     def __init__(self, llm_client: LLMClient):
         self.llm = llm_client
 
-    async def review_code(self, diff: str) -> Union[str, Dict[str, Any]]:
+    async def review_code(self, diff: str) -> tuple[Union[str, Dict[str, Any]], Dict[str, Any]]:
         """Review code using LLM.
         
         Returns:
-            str: Review content on success
-            Dict[str, Any]: Error dict on rate limit or other failures
+            Tuple of (review_content_or_error_dict, usage_metadata)
         """
         try:
-            return await self.llm.analyze_code(diff)
+            review, metadata = await self.llm.analyze_code(diff)
+            return review, metadata
         except Exception as e:
             # LLMClient already raises RateLimitError for 429s
             # This catches any other unexpected errors
             logger.error(f"LLM review failed: {e}")
-            return {
+            error_dict = {
                 "success": False,
                 "error_type": "llm_error",
                 "message": str(e)
             }
+            return error_dict, {}
 
-    async def update_readme(self, diff: str, current_readme: str) -> str:
+    async def update_readme(self, diff: str, current_readme: str) -> tuple[str, Dict[str, Any]]:
         return await self.llm.update_readme(diff, current_readme)
 
-    async def update_spec(self, commit_info: Dict[str, Any], diff: str, current_spec: str) -> str:
+    async def update_spec(self, commit_info: Dict[str, Any], diff: str, current_spec: str) -> tuple[str, Dict[str, Any]]:
         return await self.llm.update_spec(commit_info, diff, current_spec)
 
 
@@ -75,15 +83,14 @@ class JulesReviewProvider(ReviewProvider):
         self.api_key = config.JULES_API_KEY
         self.api_url = config.JULES_API_URL
 
-    async def review_code(self, diff: str) -> Union[str, Dict[str, Any]]:
+    async def review_code(self, diff: str) -> tuple[Union[str, Dict[str, Any]], Dict[str, Any]]:
         """Review code using Jules API, with controlled fallback strategy.
         
         Returns structured error dict on 404 (misconfiguration) without fallback.
         Falls back to LLM only on transient errors (5xx, timeouts).
         
         Returns:
-            str: Review content on success
-            Dict[str, Any]: Error dict with success=False, error_type, message on 404
+            Tuple of (review_content_or_error_dict, usage_metadata)
         """
         try:
             logger.info("Requesting code review from Jules API...")
@@ -107,7 +114,9 @@ class JulesReviewProvider(ReviewProvider):
                         review = data.get("review", "")
                         if review:
                             logger.info("Successfully received review from Jules")
-                            return self._format_jules_review(review)
+                            # Jules doesn't provide usage metadata, return empty dict
+                            metadata = {"provider": "jules", "model": "jules-api"}
+                            return self._format_jules_review(review), metadata
                     
                     # Handle 404 errors without fallback (likely misconfiguration)
                     if response.status == 404:
@@ -116,12 +125,13 @@ class JulesReviewProvider(ReviewProvider):
                         logger.error(f"Code review skipped: {error_msg}")
                         logger.debug(f"Jules 404 response body: {error_text[:200] if error_text else 'No response body'}")
                         # Return error dict instead of falling back
-                        return {
+                        error_dict = {
                             "success": False,
                             "error_type": "jules_404",
                             "message": error_msg,
                             "status_code": 404
                         }
+                        return error_dict, {}
                     
                     # For server errors (5xx), fall back to LLM
                     error_text = await response.text()
@@ -142,12 +152,12 @@ class JulesReviewProvider(ReviewProvider):
             logger.warning(f"Jules review failed: {e}. Falling back to LLM provider.")
             return await self.fallback.review_code(diff)
 
-    async def update_readme(self, diff: str, current_readme: str) -> str:
+    async def update_readme(self, diff: str, current_readme: str) -> tuple[str, Dict[str, Any]]:
         """Jules does not support README updates yet, using fallback."""
         logger.info("Jules does not support README updates, using fallback.")
         return await self.fallback.update_readme(diff, current_readme)
 
-    async def update_spec(self, commit_info: Dict[str, Any], diff: str, current_spec: str) -> str:
+    async def update_spec(self, commit_info: Dict[str, Any], diff: str, current_spec: str) -> tuple[str, Dict[str, Any]]:
         """Jules does not support Spec updates yet, using fallback."""
         logger.info("Jules does not support Spec updates, using fallback.")
         return await self.fallback.update_spec(commit_info, diff, current_spec)
