@@ -21,8 +21,7 @@ print("="*80)
 
 # Check PR #67
 pr_url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/pulls/67"
-response = requests.get(pr_url, headers=headers)
-
+response = requests.get(pr_url, headers=headers, timeout=10)
 if response.status_code == 200:
     pr = response.json()
     print(f"\n✅ PR #67 Found:")

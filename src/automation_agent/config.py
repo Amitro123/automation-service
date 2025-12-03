@@ -30,7 +30,9 @@ class Config:
     # Review Provider Configuration
     REVIEW_PROVIDER: str = os.getenv("REVIEW_PROVIDER", "llm").lower()  # "llm" or "jules"
     JULES_API_KEY: Optional[str] = os.getenv("JULES_API_KEY")
-    JULES_API_URL: str = os.getenv("JULES_API_URL", "https://code-review.googleapis.com/v1/review")
+    JULES_API_URL: str = os.getenv("JULES_API_URL", "https://jules.googleapis.com/v1alpha")
+    JULES_SOURCE_ID: Optional[str] = os.getenv("JULES_SOURCE_ID")  # e.g., "sources/github/owner/repo"
+    JULES_PROJECT_ID: Optional[str] = os.getenv("JULES_PROJECT_ID")  # Optional project ID
 
     # Webhook Server Configuration
     HOST: str = os.getenv("HOST", "0.0.0.0")  # nosec
@@ -109,6 +111,8 @@ class Config:
         if cls.REVIEW_PROVIDER == "jules":
             if not cls.JULES_API_KEY:
                 errors.append("JULES_API_KEY is required when using Jules review provider")
+            if not cls.JULES_SOURCE_ID:
+                errors.append("JULES_SOURCE_ID is required when using Jules review provider (e.g., 'sources/github/owner/repo')")
 
         return errors
 
