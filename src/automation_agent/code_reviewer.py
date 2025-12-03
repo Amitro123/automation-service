@@ -21,12 +21,13 @@ class CodeReviewer:
         self.github = github_client
         self.provider = review_provider
 
-    async def review_commit(self, commit_sha: str, post_as_issue: bool = False) -> Dict[str, Any]:
+    async def review_commit(self, commit_sha: str, post_as_issue: bool = False, pr_number: int = None) -> Dict[str, Any]:
         """Review a commit and post findings.
 
         Args:
             commit_sha: Commit SHA to review
             post_as_issue: If True, post as issue; otherwise as commit comment
+            pr_number: If provided, post as PR review instead of commit comment
 
         Returns:
             Dictionary with success status and review content
@@ -74,7 +75,12 @@ class CodeReviewer:
 
         # Post review
         success = False
-        if post_as_issue:
+        if pr_number:
+            # Post as PR review
+            logger.info(f"Posting review on PR #{pr_number}")
+            success = await self.github.post_pull_request_review(pr_number, formatted_review)
+        elif post_as_issue:
+            # Post as issue
             title = f"🤖 Code Review: {commit_sha[:7]}"
             issue_number = await self.github.create_issue(
                 title=title,
@@ -83,6 +89,7 @@ class CodeReviewer:
             )
             success = issue_number is not None
         else:
+            # Post as commit comment
             success = await self.github.post_commit_comment(commit_sha, formatted_review)
         
         # Log usage metadata

@@ -684,10 +684,11 @@ This PR contains automated documentation updates generated from commit `{commit_
         try:
             logger.info("Task: Running code review...")
             
-            # Run the review
+            # Run the review - pass pr_number if available for PR reviews
             review_result = await self.code_reviewer.review_commit(
                 commit_sha=context.commit_sha,
                 post_as_issue=self.config.POST_REVIEW_AS_ISSUE,
+                pr_number=context.pr_number if context.pr_number else None,
             )
             
             review_success = review_result.get("success", False)
