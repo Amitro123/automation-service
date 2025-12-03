@@ -445,6 +445,11 @@ This PR contains automated documentation updates generated from commit `{commit_
         Returns:
             Dictionary with results including trigger context
         """
+        logger.info(f"[ORCHESTRATOR] run_automation_with_context called: event_type={event_type}")
+        logger.info(f"[ORCHESTRATOR] Config: TRIGGER_MODE={self.config.TRIGGER_MODE}, "
+                    f"ENABLE_PR_TRIGGER={self.config.ENABLE_PR_TRIGGER}, "
+                    f"ENABLE_PUSH_TRIGGER={self.config.ENABLE_PUSH_TRIGGER}")
+        
         # Initialize trigger filter with config
         trigger_filter = TriggerFilter(
             trivial_max_lines=self.config.TRIVIAL_MAX_LINES,
@@ -456,9 +461,10 @@ This PR contains automated documentation updates generated from commit `{commit_
         should_process, skip_reason = trigger_filter.should_process_event(
             event_type, self.config.TRIGGER_MODE
         )
+        logger.info(f"[ORCHESTRATOR] should_process_event: {should_process}, reason={skip_reason}")
         
         if not should_process:
-            logger.info(f"Event skipped: {skip_reason}")
+            logger.info(f"[ORCHESTRATOR] Event skipped by trigger mode: {skip_reason}")
             return {
                 "success": True,
                 "skipped": True,
@@ -467,10 +473,15 @@ This PR contains automated documentation updates generated from commit `{commit_
             }
         
         # Get the diff content
+        logger.info(f"[ORCHESTRATOR] Fetching diff for {event_type} event...")
         diff_content = await self._get_diff_for_event(event_type, payload)
+        logger.info(f"[ORCHESTRATOR] Diff fetched: {len(diff_content) if diff_content else 0} chars")
         
         # Create trigger context with full analysis
         context = trigger_filter.create_trigger_context(event_type, payload, diff_content or "")
+        logger.info(f"[ORCHESTRATOR] TriggerContext created: trigger_type={context.trigger_type.value}, "
+                    f"run_type={context.run_type.value}, pr_number={context.pr_number}, "
+                    f"commit_sha={context.commit_sha[:7] if context.commit_sha else 'N/A'}")
         
         # Generate run ID
         run_id = f"run_{context.commit_sha[:7]}_{int(asyncio.get_event_loop().time())}"
