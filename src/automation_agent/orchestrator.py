@@ -138,6 +138,35 @@ class AutomationOrchestrator:
         """
         return await asyncio.gather(*tasks, return_exceptions=True)
 
+    async def _run_sequential_tasks_with_delay(
+        self, tasks: List[Callable], delay_seconds: int = 5
+    ) -> List[Dict[str, Any]]:
+        """Run tasks sequentially with delays between them to avoid rate limits.
+
+        Args:
+            tasks: List of coroutines to execute
+            delay_seconds: Seconds to wait between tasks
+
+        Returns:
+            List of results from each task
+        """
+        results = []
+        for i, task in enumerate(tasks):
+            try:
+                logger.info(f"Running task {i+1}/{len(tasks)}...")
+                result = await task
+                results.append(result)
+                
+                # Add delay between tasks (but not after the last one)
+                if i < len(tasks) - 1:
+                    logger.info(f"Waiting {delay_seconds}s before next task to avoid rate limits...")
+                    await asyncio.sleep(delay_seconds)
+            except Exception as e:
+                logger.error(f"Task {i+1} failed: {e}")
+                results.append(e)
+        
+        return results
+
     async def _run_code_review(self, commit_sha: str, branch: str, run_id: str) -> Dict[str, Any]:
         """Run code review task."""
         try:
@@ -575,8 +604,13 @@ This PR contains automated documentation updates generated from commit `{commit_
                 "run_type": context.run_type.value,
             }
         
-        # Execute tasks in parallel
-        task_results = await self._run_parallel_tasks(tasks)
+        # Execute tasks - use sequential execution with delays for Gemini to avoid rate limits
+        if self.config.LLM_PROVIDER == "gemini":
+            logger.info("Using sequential task execution with delays for Gemini rate limits")
+            task_results = await self._run_sequential_tasks_with_delay(tasks, delay_seconds=5)
+        else:
+            # For other providers, run in parallel
+            task_results = await self._run_parallel_tasks(tasks)
         
         # Build results dictionary
         results_dict = {}
