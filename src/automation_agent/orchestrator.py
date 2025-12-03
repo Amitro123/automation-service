@@ -229,7 +229,7 @@ class AutomationOrchestrator:
             self.session_memory.update_task_result(run_id, "code_review", result)
             return result
 
-    async def _run_readme_update(self, commit_sha: str, branch: str, run_id: str, pr_number: int = None) -> Dict[str, Any]:
+    async def _run_readme_update(self, commit_sha: str, branch: str, run_id: str, pr_number: Optional[int] = None) -> Dict[str, Any]:
         """Run README update task.
         
         Args:
@@ -315,7 +315,7 @@ class AutomationOrchestrator:
             self.session_memory.update_task_result(run_id, "readme_update", result)
             return result
 
-    async def _run_spec_update(self, commit_sha: str, branch: str, run_id: str, pr_number: int = None) -> Dict[str, Any]:
+    async def _run_spec_update(self, commit_sha: str, branch: str, run_id: str, pr_number: Optional[int] = None) -> Dict[str, Any]:
         """Run spec.md update task.
         
         Args:
