@@ -10,3 +10,4 @@ This file will trigger a new automation run to verify:
 Expected result: Status = completed, all tasks green!
 
 Retry #2: After rate limit cooldown (60s wait)
+Retry #3: With fresh API key and gemini-2.0-flash-exp model
