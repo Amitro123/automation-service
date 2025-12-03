@@ -58,8 +58,10 @@ class SpecUpdater:
 
         # Generate spec update
         try:
-            # Pass diff explicitly
-            updated_spec = await self.provider.update_spec(commit_info, diff, current_spec)
+            # Pass diff explicitly - provider now returns tuple (content, metadata)
+            updated_spec, usage_metadata = await self.provider.update_spec(commit_info, diff, current_spec)
+            # Store metadata for later logging
+            self._last_usage_metadata = usage_metadata
         except RateLimitError as e:
             logger.error("Spec update failed: LLM rate-limited (429)")
             return {

@@ -28,7 +28,7 @@ async def test_empty_diff(mock_config):
     })
     
     mock_provider = MagicMock(spec=ReviewProvider)
-    mock_provider.review_code = AsyncMock(return_value="No changes to review")
+    mock_provider.review_code = AsyncMock(return_value=("No changes to review", {}))
     
     reviewer = CodeReviewer(mock_github, mock_provider)
     result = await reviewer.review_commit("abc123")
@@ -49,7 +49,7 @@ async def test_huge_diff(mock_config):
     mock_github.post_commit_comment = AsyncMock(return_value=True)
     
     mock_provider = MagicMock(spec=ReviewProvider)
-    mock_provider.review_code = AsyncMock(return_value="Review of large diff")
+    mock_provider.review_code = AsyncMock(return_value=("Review of large diff", {"total_tokens": 1000}))
     
     reviewer = CodeReviewer(mock_github, mock_provider)
     result = await reviewer.review_commit("abc123")

@@ -40,8 +40,10 @@ def test_init_missing_api_key(monkeypatch):
 async def test_generate_openai(mock_env_openai, mock_openai_client):
     with patch("openai.AsyncOpenAI", return_value=mock_openai_client):
         client = LLMClient(provider="openai", model="gpt-4")
-        response = await client.generate("Test prompt")
+        response, metadata = await client.generate("Test prompt")
         assert response == "Mocked OpenAI response"
+        assert "total_tokens" in metadata
+        assert "estimated_cost" in metadata
         mock_openai_client.chat.completions.create.assert_called_once()
         args = mock_openai_client.chat.completions.create.call_args[1]
         assert args["messages"][0]["content"] == "Test prompt"
@@ -49,9 +51,11 @@ async def test_generate_openai(mock_env_openai, mock_openai_client):
 @pytest.mark.asyncio
 async def test_generate_anthropic(mock_env_anthropic, mock_anthropic_client):
     with patch("anthropic.AsyncAnthropic", return_value=mock_anthropic_client):
-        client = LLMClient(provider="anthropic", model="claude-3-opus")
-        response = await client.generate("Test prompt")
+        client = LLMClient(provider="anthropic", model="claude-3-opus-20240229")
+        response, metadata = await client.generate("Test prompt")
         assert response == "Mocked Anthropic response"
+        assert "total_tokens" in metadata
+        assert "estimated_cost" in metadata
         mock_anthropic_client.messages.create.assert_called_once()
         args = mock_anthropic_client.messages.create.call_args[1]
         assert args["messages"][0]["content"] == "Test prompt"
@@ -69,8 +73,9 @@ async def test_analyze_code(mock_env_openai, mock_openai_client):
     with patch("openai.AsyncOpenAI", return_value=mock_openai_client):
         client = LLMClient(provider="openai", model="gpt-4")
         diff = "diff --git a/file.py b/file.py\n+new line"
-        response = await client.analyze_code(diff)
+        response, metadata = await client.analyze_code(diff)
         assert response == "Mocked OpenAI response"
+        assert "total_tokens" in metadata
         # Verify prompt contains diff
         call_args = mock_openai_client.chat.completions.create.call_args[1]
         assert diff in call_args["messages"][0]["content"]
@@ -90,8 +95,9 @@ async def test_update_readme(mock_env_openai, mock_openai_client):
         client = LLMClient(provider="openai", model="gpt-4")
         diff = "diff content"
         readme = "# Old Readme"
-        response = await client.update_readme(diff, readme)
+        response, metadata = await client.update_readme(diff, readme)
         assert response == "Mocked OpenAI response"
+        assert "total_tokens" in metadata
         call_args = mock_openai_client.chat.completions.create.call_args[1]
         assert diff in call_args["messages"][0]["content"]
         assert readme in call_args["messages"][0]["content"]
@@ -103,8 +109,9 @@ async def test_update_spec(mock_env_openai, mock_openai_client):
         commit_info = {"message": "feat: new feature"}
         spec = "# Old Spec"
         diff = "diff content"
-        response = await client.update_spec(commit_info, diff, spec)
+        response, metadata = await client.update_spec(commit_info, diff, spec)
         assert response == "Mocked OpenAI response"
+        assert "total_tokens" in metadata
         call_args = mock_openai_client.chat.completions.create.call_args[1]
         assert "feat: new feature" in call_args["messages"][0]["content"]
         assert spec in call_args["messages"][0]["content"]
@@ -137,9 +144,11 @@ async def test_generate_gemini(mock_env_gemini):
         mock_model_cls.return_value = mock_model
 
         client = LLMClient(provider="gemini", model="gemini-2.0-flash")
-        response = await client.generate("Test prompt")
+        response, metadata = await client.generate("Test prompt")
         
         assert response == "Mocked Gemini response"
+        assert "total_tokens" in metadata
+        assert "estimated_cost" in metadata
         mock_model.generate_content_async.assert_called_once()
         args = mock_model.generate_content_async.call_args
         assert args[0][0] == "Test prompt"

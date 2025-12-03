@@ -30,7 +30,9 @@ class Config:
     # Review Provider Configuration
     REVIEW_PROVIDER: str = os.getenv("REVIEW_PROVIDER", "llm").lower()  # "llm" or "jules"
     JULES_API_KEY: Optional[str] = os.getenv("JULES_API_KEY")
-    JULES_API_URL: str = os.getenv("JULES_API_URL", "https://code-review.googleapis.com/v1/review")
+    JULES_API_URL: str = os.getenv("JULES_API_URL", "https://jules.googleapis.com/v1alpha")
+    JULES_SOURCE_ID: Optional[str] = os.getenv("JULES_SOURCE_ID")  # e.g., "sources/github/owner/repo"
+    JULES_PROJECT_ID: Optional[str] = os.getenv("JULES_PROJECT_ID")  # Optional project ID
 
     # Webhook Server Configuration
     HOST: str = os.getenv("HOST", "0.0.0.0")  # nosec
@@ -71,6 +73,14 @@ class Config:
     # Post code review as PR comment instead of commit comment when triggered by PR
     POST_REVIEW_ON_PR: bool = os.getenv("POST_REVIEW_ON_PR", "True").lower() == "true"
 
+    # Gemini Rate Limiting Configuration
+    # Maximum requests per minute for Gemini API (free tier: 15 RPM)
+    GEMINI_MAX_RPM: int = int(os.getenv("GEMINI_MAX_RPM", "10"))
+    # Minimum delay between consecutive Gemini API calls (seconds)
+    GEMINI_MIN_DELAY_SECONDS: float = float(os.getenv("GEMINI_MIN_DELAY_SECONDS", "2.0"))
+    # Maximum concurrent Gemini requests (optional hard cap)
+    GEMINI_MAX_CONCURRENT_REQUESTS: int = int(os.getenv("GEMINI_MAX_CONCURRENT_REQUESTS", "3"))
+
     @classmethod
     def validate(cls) -> list[str]:
         """Validate required configuration values.
@@ -101,6 +111,8 @@ class Config:
         if cls.REVIEW_PROVIDER == "jules":
             if not cls.JULES_API_KEY:
                 errors.append("JULES_API_KEY is required when using Jules review provider")
+            if not cls.JULES_SOURCE_ID:
+                errors.append("JULES_SOURCE_ID is required when using Jules review provider (e.g., 'sources/github/owner/repo')")
 
         return errors
 

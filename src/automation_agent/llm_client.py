@@ -4,6 +4,7 @@ import logging
 from typing import Optional, Dict, Any
 import os
 import asyncio
+from .rate_limiter import TokenBucketRateLimiter, NoOpRateLimiter
 
 logger = logging.getLogger(__name__)
 
@@ -16,18 +17,38 @@ class RateLimitError(Exception):
 class LLMClient:
     """Universal LLM client supporting multiple providers."""
 
-    def __init__(self, provider: str = "openai", model: Optional[str] = None, api_key: Optional[str] = None):
+    def __init__(
+        self, 
+        provider: str = "openai", 
+        model: Optional[str] = None, 
+        api_key: Optional[str] = None,
+        gemini_max_rpm: int = 10,
+        gemini_min_delay: float = 2.0,
+    ):
         """Initialize LLM client.
 
         Args:
             provider: LLM provider ("openai", "anthropic", or "gemini")
             model: Model name (optional, uses provider defaults)
             api_key: API key (optional, reads from environment)
+            gemini_max_rpm: Maximum requests per minute for Gemini (default: 10)
+            gemini_min_delay: Minimum delay between Gemini calls in seconds (default: 2.0)
         """
         self.provider = provider.lower()
         self.model = model
         self.api_key = api_key
         self._client = None
+        
+        # Initialize rate limiter for Gemini
+        if self.provider == "gemini":
+            self._rate_limiter = TokenBucketRateLimiter(
+                max_requests_per_minute=gemini_max_rpm,
+                min_delay_seconds=gemini_min_delay,
+            )
+            logger.info(f"Gemini rate limiter enabled: {gemini_max_rpm} RPM, {gemini_min_delay}s min delay")
+        else:
+            self._rate_limiter = NoOpRateLimiter()
+        
         self._initialize_client()
 
     def _initialize_client(self):
@@ -87,7 +108,7 @@ class LLMClient:
         except ImportError:
             raise ImportError("Google Generative AI package not installed. Run: pip install google-generativeai")
 
-    async def generate(self, prompt: str, max_tokens: int = 1000, temperature: float = 0.7) -> str:
+    async def generate(self, prompt: str, max_tokens: int = 1000, temperature: float = 0.7) -> tuple[str, Dict[str, Any]]:
         """Generate text using the configured LLM with retry logic.
 
         Args:
@@ -96,7 +117,7 @@ class LLMClient:
             temperature: Sampling temperature (0-1)
 
         Returns:
-            Generated text
+            Tuple of (generated_text, usage_metadata)
 
         Raises:
             Exception: If generation fails after retries
@@ -106,14 +127,20 @@ class LLMClient:
 
         for attempt in range(retries):
             try:
+                text, metadata = None, {}
                 if self.provider == "openai":
-                    return await self._generate_openai(prompt, max_tokens, temperature)
+                    text, metadata = await self._generate_openai(prompt, max_tokens, temperature)
                 elif self.provider == "anthropic":
-                    return await self._generate_anthropic(prompt, max_tokens, temperature)
+                    text, metadata = await self._generate_anthropic(prompt, max_tokens, temperature)
                 elif self.provider == "gemini":
-                    return await self._generate_gemini(prompt, max_tokens, temperature)
+                    text, metadata = await self._generate_gemini(prompt, max_tokens, temperature)
                 else:
                     raise ValueError(f"Unsupported provider: {self.provider}")
+                
+                # Calculate estimated cost
+                metadata["estimated_cost"] = self._calculate_cost(metadata)
+                
+                return text, metadata
             except Exception as e:
                 # Detect rate limit errors (429) from any provider
                 error_str = str(e).lower()
@@ -130,31 +157,84 @@ class LLMClient:
                     logger.error(f"Generation failed after {retries} attempts: {e}")
         
         raise last_exception
+    
+    def _calculate_cost(self, metadata: Dict[str, Any]) -> float:
+        """Calculate estimated cost based on provider pricing.
+        
+        Args:
+            metadata: Usage metadata dict
+            
+        Returns:
+            Estimated cost in USD
+        """
+        provider = metadata.get("provider", self.provider)
+        prompt_tokens = metadata.get("prompt_tokens", 0)
+        completion_tokens = metadata.get("completion_tokens", 0)
+        
+        # Gemini 2.0 Flash pricing (Dec 2024)
+        # $0.075 per 1M input tokens, $0.30 per 1M output tokens
+        if provider == "gemini":
+            input_cost = (prompt_tokens / 1_000_000) * 0.075
+            output_cost = (completion_tokens / 1_000_000) * 0.30
+            return input_cost + output_cost
+        
+        # OpenAI GPT-4 pricing (approximate)
+        elif provider == "openai":
+            input_cost = (prompt_tokens / 1_000_000) * 30.0
+            output_cost = (completion_tokens / 1_000_000) * 60.0
+            return input_cost + output_cost
+        
+        # Anthropic Claude pricing (approximate)
+        elif provider == "anthropic":
+            input_cost = (prompt_tokens / 1_000_000) * 15.0
+            output_cost = (completion_tokens / 1_000_000) * 75.0
+            return input_cost + output_cost
+        
+        return 0.0
 
-    async def _generate_openai(self, prompt: str, max_tokens: int, temperature: float) -> str:
-        """Generate text using OpenAI."""
+    async def _generate_openai(self, prompt: str, max_tokens: int, temperature: float) -> tuple[str, Dict[str, Any]]:
+        """Generate text using OpenAI and return usage metadata."""
         response = await self._client.chat.completions.create(
             model=self.model,
             messages=[{"role": "user", "content": prompt}],
             max_tokens=max_tokens,
             temperature=temperature,
         )
-        return response.choices[0].message.content
+        
+        usage_metadata = {
+            "provider": "openai",
+            "model": self.model,
+            "prompt_tokens": response.usage.prompt_tokens if response.usage else 0,
+            "completion_tokens": response.usage.completion_tokens if response.usage else 0,
+            "total_tokens": response.usage.total_tokens if response.usage else 0,
+        }
+        
+        return response.choices[0].message.content, usage_metadata
 
-    async def _generate_anthropic(self, prompt: str, max_tokens: int, temperature: float) -> str:
-        """Generate text using Anthropic."""
+    async def _generate_anthropic(self, prompt: str, max_tokens: int, temperature: float) -> tuple[str, Dict[str, Any]]:
+        """Generate text using Anthropic and return usage metadata."""
         response = await self._client.messages.create(
             model=self.model,
             max_tokens=max_tokens,
             temperature=temperature,
             messages=[{"role": "user", "content": prompt}],
         )
-        return response.content[0].text
+        
+        usage_metadata = {
+            "provider": "anthropic",
+            "model": self.model,
+            "prompt_tokens": response.usage.input_tokens if hasattr(response, 'usage') else 0,
+            "completion_tokens": response.usage.output_tokens if hasattr(response, 'usage') else 0,
+            "total_tokens": (response.usage.input_tokens + response.usage.output_tokens) if hasattr(response, 'usage') else 0,
+        }
+        
+        return response.content[0].text, usage_metadata
 
-    async def _generate_gemini(self, prompt: str, max_tokens: int, temperature: float) -> str:
-        """Generate text using Gemini."""
-        # Gemini doesn't support max_tokens directly in generate_content in the same way, 
-        # but we can pass generation_config.
+    async def _generate_gemini(self, prompt: str, max_tokens: int, temperature: float) -> tuple[str, Dict[str, Any]]:
+        """Generate text using Gemini and return usage metadata."""
+        # Acquire rate limit token before making API call
+        await self._rate_limiter.acquire()
+        
         generation_config = {
             "max_output_tokens": max_tokens,
             "temperature": temperature,
@@ -163,9 +243,25 @@ class LLMClient:
             prompt,
             generation_config=generation_config
         )
-        return response.text
+        
+        # Extract usage metadata from Gemini response
+        usage_metadata = {
+            "provider": "gemini",
+            "model": self.model,
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0,
+        }
+        
+        if hasattr(response, 'usage_metadata') and response.usage_metadata:
+            usage_metadata["prompt_tokens"] = response.usage_metadata.prompt_token_count
+            usage_metadata["completion_tokens"] = response.usage_metadata.candidates_token_count
+            usage_metadata["total_tokens"] = response.usage_metadata.total_token_count
+            logger.info(f"Gemini usage: {usage_metadata['total_tokens']} tokens (prompt: {usage_metadata['prompt_tokens']}, completion: {usage_metadata['completion_tokens']})")
+        
+        return response.text, usage_metadata
 
-    async def analyze_code(self, diff: str) -> str:
+    async def analyze_code(self, diff: str) -> tuple[str, Dict[str, Any]]:
         """Analyze code changes and provide a review.
 
         Args:
@@ -194,7 +290,7 @@ Instructions:
 Review:"""
         return await self.generate(prompt, max_tokens=2000)
 
-    async def update_readme(self, diff: str, current_readme: str) -> str:
+    async def update_readme(self, diff: str, current_readme: str) -> tuple[str, Dict[str, Any]]:
         """Generate updates for README.md based on code changes.
 
         Args:
@@ -228,7 +324,7 @@ Instructions:
 Updated README:"""
         return await self.generate(prompt, max_tokens=4000)
 
-    async def update_spec(self, commit_info: Dict[str, Any], diff: str, current_spec: str) -> str:
+    async def update_spec(self, commit_info: Dict[str, Any], diff: str, current_spec: str) -> tuple[str, Dict[str, Any]]:
         """Update spec.md based on commit info.
 
         Args:
@@ -270,7 +366,7 @@ Updated README:"""
         """
         return await self.generate(prompt, max_tokens=4000)
 
-    async def summarize_review(self, review_content: str, current_log: str) -> str:
+    async def summarize_review(self, review_content: str, current_log: str) -> tuple[str, Dict[str, Any]]:
         """Summarize a code review for the log.
 
         Args:

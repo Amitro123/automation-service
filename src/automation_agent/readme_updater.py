@@ -56,8 +56,11 @@ class ReadmeUpdater:
 
         # Generate updated README
         try:
-            updated_readme = await self.provider.update_readme(diff, current_readme)
+            # Provider now returns tuple (content, metadata)
+            updated_readme, usage_metadata = await self.provider.update_readme(diff, current_readme)
             updated_readme = self._clean_readme_output(updated_readme)
+            # Store metadata for later logging
+            self._last_usage_metadata = usage_metadata
         except RateLimitError as e:
             logger.error("README update failed: LLM rate-limited (429)")
             return {

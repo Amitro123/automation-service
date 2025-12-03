@@ -46,13 +46,17 @@ An autonomous GitHub automation system that triggers on **push and pull request 
 - **PR Review Comments**: Code reviews posted as PR reviews instead of commit comments
 - **Configurable Thresholds**: Set max lines for trivial detection, doc file patterns
 
-### 6. 🛡️ Robust Error Handling (NEW)
-- **Jules 404 Detection**: Detects Jules API misconfiguration without expensive LLM fallback
-- **LLM Rate Limit Handling**: Stops retries immediately on 429 errors to prevent infinite loops
-- **No Junk PRs**: Critical failures (404/429) prevent automation PR creation
-- **Failure Visibility**: Task-level failure reasons stored in session memory for dashboard display
-- **Smart Status Tracking**: Run status set to "failed" or "completed_with_issues" based on failure scope
-- **Clear Logging**: Single concise log line per error type for easy debugging
+### 6. 🛡️ Robust Error Handling & Zero Silent Failures (NEW - Dec 2025)
+- **No Silent Failures**: Every error is logged, tracked, and visible in SessionMemory
+- **Comprehensive Logging**: `[CODE_REVIEW]`, `[ORCHESTRATOR]`, `[JULES]`, `[GROUPED_PR]` prefixes for easy debugging
+- **Structured Error Returns**: All failures include `error_type` and `message` fields
+- **Jules API Integration**: Proper session-based workflow with official API (https://jules.googleapis.com/v1alpha)
+- **Jules Error Types**: `jules_404` (misconfiguration), `jules_auth_error` (invalid key), `jules_client_error` (4xx)
+- **LLM Rate Limiting**: Token bucket algorithm prevents 429 errors (configurable RPM/delay)
+- **Smart Fallback**: Jules 5xx errors fall back to LLM, but 404/auth errors don't (configuration issues)
+- **SessionMemory Tracking**: `mark_task_failed()` called on all errors with error_type and message
+- **Dashboard Visibility**: All failures visible in `/api/history` with detailed error reasons
+- **Run Status**: Properly set to `failed`, `completed_with_issues`, or `completed` based on task results
 
 ### 7. 🔒 Security Features
 - HMAC-SHA256 verification of webhook signatures
@@ -89,6 +93,28 @@ cp .env.example .env
 ```
 
 Edit `.env` with your credentials.
+
+### Review Provider Configuration (NEW - Dec 2025)
+```bash
+# Choose review provider: "llm" or "jules"
+REVIEW_PROVIDER=llm
+
+# For LLM provider (Gemini/OpenAI/Anthropic)
+LLM_PROVIDER=gemini
+GEMINI_API_KEY=your_gemini_key_here
+GEMINI_MAX_RPM=10              # Rate limiting
+GEMINI_MIN_DELAY_SECONDS=2.0   # Min delay between calls
+
+# For Jules API provider (optional)
+JULES_API_KEY=your_jules_api_key_here
+JULES_API_URL=https://jules.googleapis.com/v1alpha
+JULES_SOURCE_ID=sources/github/owner/repo  # Get from: curl 'https://jules.googleapis.com/v1alpha/sources' -H 'X-Goog-Api-Key: YOUR_KEY'
+```
+
+**Test Jules Integration:**
+```bash
+python test_jules_review.py  # Validates config and tests API
+```
 
 ### PR-Centric Configuration (Optional)
 ```bash
@@ -323,5 +349,6 @@ graph TD
 The diagram updates automatically as the project evolves.
 
 ## 📄 License
-MIT#   T e s t  
+MIT#   T e s t 
+ 
  
