@@ -46,7 +46,10 @@ class CodeReviewUpdater:
 
         # Generate summary entry
         try:
-            entry = await self.llm.summarize_review(review_content, current_log)
+            # LLM now returns tuple (content, metadata)
+            entry, usage_metadata = await self.llm.summarize_review(review_content, current_log)
+            # Store metadata for later logging
+            self._last_usage_metadata = usage_metadata
         except Exception as e:
             logger.error(f"Failed to generate review summary: {e}")
             return None
