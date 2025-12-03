@@ -782,77 +782,113 @@ This PR contains automated documentation updates generated from commit `{commit_
         Collects README, spec, and code review log updates and commits them
         all to a single automation PR instead of creating separate PRs.
         """
-        if not context.pr_number:
-            return
+        try:
+            logger.info(f"[GROUPED_PR] Starting grouped PR creation for PR #{context.pr_number}")
+            
+            if not context.pr_number:
+                logger.warning("[GROUPED_PR] No PR number in context, skipping")
+                return
         
-        # Collect all updates with their content
-        readme_result = task_results.get("readme_update", {})
-        spec_result = task_results.get("spec_update", {})
-        review_result = task_results.get("code_review", {})
-        
-        readme_content = readme_result.get("updated_content")
-        spec_content = spec_result.get("updated_content")
-        review_log_content = review_result.get("updated_log_content")
-        
-        # Check if we have anything to commit
-        if not (readme_content or spec_content or review_log_content):
-            logger.info("No content to commit for grouped PR")
-            return
-        
-        # Create automation branch
-        automation_branch = f"automation/pr-{context.pr_number}-docs"
-        base_branch = context.pr_base_branch or "main"
-        
-        logger.info(f"Creating grouped automation PR for source PR #{context.pr_number}")
-        
-        # Create the branch from the PR's base
-        if not await self.github.create_branch(automation_branch, from_branch=base_branch):
-            logger.error(f"Failed to create automation branch: {automation_branch}")
-            return
-        
-        # Commit all files to the branch
-        files_committed = []
-        
-        if readme_content:
-            logger.info("Committing README.md to automation branch")
-            if await self.github.update_file(
-                file_path="README.md",
-                content=readme_content,
-                message=f"docs: Auto-update README.md for PR #{context.pr_number}",
-                branch=automation_branch,
-            ):
-                files_committed.append("README.md")
-                logger.info("✅ README.md committed")
-        
-        if spec_content:
-            logger.info("Committing spec.md to automation branch")
-            if await self.github.update_file(
-                file_path="spec.md",
-                content=spec_content,
-                message=f"docs: Auto-update spec.md for PR #{context.pr_number}",
-                branch=automation_branch,
-            ):
-                files_committed.append("spec.md")
-                logger.info("✅ spec.md committed")
-        
-        if review_log_content:
-            logger.info(f"Committing {CodeReviewUpdater.LOG_FILE} to automation branch")
-            if await self.github.update_file(
-                file_path=CodeReviewUpdater.LOG_FILE,
-                content=review_log_content,
-                message=f"docs: Update code review log for PR #{context.pr_number}",
-                branch=automation_branch,
-            ):
-                files_committed.append(CodeReviewUpdater.LOG_FILE)
-                logger.info(f"✅ {CodeReviewUpdater.LOG_FILE} committed")
-        
-        if not files_committed:
-            logger.error("Failed to commit any files to automation branch")
-            return
-        
-        # Create the PR with all updates
-        pr_title = f"🤖 Automation updates for PR #{context.pr_number}"
-        pr_body = f"""## Automated Documentation Updates
+            # Collect all updates with their content
+            readme_result = task_results.get("readme_update", {})
+            spec_result = task_results.get("spec_update", {})
+            review_result = task_results.get("code_review", {})
+            
+            readme_content = readme_result.get("updated_content")
+            spec_content = spec_result.get("updated_content")
+            review_log_content = review_result.get("updated_log_content")
+            
+            logger.info(
+                f"[GROUPED_PR] Content available: "
+                f"README={'Yes' if readme_content else 'No'}, "
+                f"Spec={'Yes' if spec_content else 'No'}, "
+                f"Review={'Yes' if review_log_content else 'No'}"
+            )
+            
+            # Check if we have anything to commit
+            if not (readme_content or spec_content or review_log_content):
+                logger.info("[GROUPED_PR] No content to commit, skipping PR creation")
+                return
+            
+            # Create automation branch
+            automation_branch = f"automation/pr-{context.pr_number}-docs"
+            base_branch = context.pr_base_branch or "main"
+            
+            logger.info(
+                f"[GROUPED_PR] Creating branch '{automation_branch}' from '{base_branch}'"
+            )
+            
+            # Create the branch from the PR's base
+            try:
+                branch_created = await self.github.create_branch(automation_branch, from_branch=base_branch)
+                if not branch_created:
+                    logger.error(f"[GROUPED_PR] ❌ Failed to create automation branch: {automation_branch}")
+                    return
+                logger.info(f"[GROUPED_PR] ✅ Branch created: {automation_branch}")
+            except Exception as e:
+                logger.error(f"[GROUPED_PR] ❌ Exception creating branch: {e}", exc_info=True)
+                return
+            
+            # Commit all files to the branch
+            files_committed = []
+            
+            if readme_content:
+                logger.info("[GROUPED_PR] Committing README.md to automation branch")
+                try:
+                    if await self.github.update_file(
+                        file_path="README.md",
+                        content=readme_content,
+                        message=f"docs: Auto-update README.md for PR #{context.pr_number}",
+                        branch=automation_branch,
+                    ):
+                        files_committed.append("README.md")
+                        logger.info("[GROUPED_PR] ✅ README.md committed")
+                    else:
+                        logger.warning("[GROUPED_PR] ⚠️ README.md commit returned False")
+                except Exception as e:
+                    logger.error(f"[GROUPED_PR] ❌ Failed to commit README.md: {e}", exc_info=True)
+            
+            if spec_content:
+                logger.info("[GROUPED_PR] Committing spec.md to automation branch")
+                try:
+                    if await self.github.update_file(
+                        file_path="spec.md",
+                        content=spec_content,
+                        message=f"docs: Auto-update spec.md for PR #{context.pr_number}",
+                        branch=automation_branch,
+                    ):
+                        files_committed.append("spec.md")
+                        logger.info("[GROUPED_PR] ✅ spec.md committed")
+                    else:
+                        logger.warning("[GROUPED_PR] ⚠️ spec.md commit returned False")
+                except Exception as e:
+                    logger.error(f"[GROUPED_PR] ❌ Failed to commit spec.md: {e}", exc_info=True)
+            
+            if review_log_content:
+                logger.info(f"[GROUPED_PR] Committing {CodeReviewUpdater.LOG_FILE} to automation branch")
+                try:
+                    if await self.github.update_file(
+                        file_path=CodeReviewUpdater.LOG_FILE,
+                        content=review_log_content,
+                        message=f"docs: Update code review log for PR #{context.pr_number}",
+                        branch=automation_branch,
+                    ):
+                        files_committed.append(CodeReviewUpdater.LOG_FILE)
+                        logger.info(f"[GROUPED_PR] ✅ {CodeReviewUpdater.LOG_FILE} committed")
+                    else:
+                        logger.warning(f"[GROUPED_PR] ⚠️ {CodeReviewUpdater.LOG_FILE} commit returned False")
+                except Exception as e:
+                    logger.error(f"[GROUPED_PR] ❌ Failed to commit {CodeReviewUpdater.LOG_FILE}: {e}", exc_info=True)
+            
+            if not files_committed:
+                logger.error("[GROUPED_PR] ❌ Failed to commit any files to automation branch")
+                return
+            
+            logger.info(f"[GROUPED_PR] Successfully committed {len(files_committed)} files: {', '.join(files_committed)}")
+            
+            # Create the PR with all updates
+            pr_title = f"🤖 Automation updates for PR #{context.pr_number}"
+            pr_body = f"""## Automated Documentation Updates
 
 This PR contains automated documentation updates for PR #{context.pr_number}: {context.pr_title}
 
@@ -870,21 +906,29 @@ This PR contains automated documentation updates for PR #{context.pr_number}: {c
 ---
 *This PR was created automatically by the GitHub Automation Agent.*
 """
+            
+            logger.info(f"[GROUPED_PR] Creating PR with title: {pr_title}")
+            
+            try:
+                automation_pr_number = await self.github.create_pull_request(
+                    title=pr_title,
+                    body=pr_body,
+                    head=automation_branch,
+                    base=base_branch,
+                )
+                
+                if automation_pr_number:
+                    self.session_memory.update_automation_pr(
+                        run_id, automation_pr_number, automation_branch
+                    )
+                    logger.info(
+                        f"[GROUPED_PR] ✅ Created grouped automation PR #{automation_pr_number} "
+                        f"for source PR #{context.pr_number} with files: {', '.join(files_committed)}"
+                    )
+                else:
+                    logger.error(f"[GROUPED_PR] ❌ Failed to create automation PR for source PR #{context.pr_number}")
+            except Exception as e:
+                logger.error(f"[GROUPED_PR] ❌ Exception creating PR: {e}", exc_info=True)
         
-        automation_pr_number = await self.github.create_pull_request(
-            title=pr_title,
-            body=pr_body,
-            head=automation_branch,
-            base=base_branch,
-        )
-        
-        if automation_pr_number:
-            self.session_memory.update_automation_pr(
-                run_id, automation_pr_number, automation_branch
-            )
-            logger.info(
-                f"✅ Created grouped automation PR #{automation_pr_number} "
-                f"for source PR #{context.pr_number} with files: {', '.join(files_committed)}"
-            )
-        else:
-            logger.error(f"Failed to create automation PR for source PR #{context.pr_number}")
+        except Exception as e:
+            logger.error(f"[GROUPED_PR] ❌ Fatal error in grouped PR creation: {e}", exc_info=True)

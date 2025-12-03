@@ -75,22 +75,40 @@ class CodeReviewer:
 
         # Post review
         success = False
-        if pr_number:
-            # Post as PR review
-            logger.info(f"Posting review on PR #{pr_number}")
-            success = await self.github.post_pull_request_review(pr_number, formatted_review)
-        elif post_as_issue:
-            # Post as issue
-            title = f"🤖 Code Review: {commit_sha[:7]}"
-            issue_number = await self.github.create_issue(
-                title=title,
-                body=formatted_review,
-                labels=["automated-review", "code-quality"]
-            )
-            success = issue_number is not None
-        else:
-            # Post as commit comment
-            success = await self.github.post_commit_comment(commit_sha, formatted_review)
+        try:
+            if pr_number:
+                # Post as PR review
+                logger.info(f"[CODE_REVIEW] Posting review on PR #{pr_number}")
+                success = await self.github.post_pull_request_review(pr_number, formatted_review)
+                if success:
+                    logger.info(f"[CODE_REVIEW] Successfully posted review on PR #{pr_number}")
+                else:
+                    logger.error(f"[CODE_REVIEW] Failed to post review on PR #{pr_number}")
+            elif post_as_issue:
+                # Post as issue
+                title = f" Code Review: {commit_sha[:7]}"
+                logger.info(f"[CODE_REVIEW] Creating issue: {title}")
+                issue_number = await self.github.create_issue(
+                    title=title,
+                    body=formatted_review,
+                    labels=["automated-review", "code-quality"]
+                )
+                success = issue_number is not None
+                if success:
+                    logger.info(f"[CODE_REVIEW] Created issue #{issue_number}")
+                else:
+                    logger.error("[CODE_REVIEW] Failed to create issue")
+            else:
+                # Post as commit comment
+                logger.info(f"[CODE_REVIEW] Posting commit comment on {commit_sha[:7]}")
+                success = await self.github.post_commit_comment(commit_sha, formatted_review)
+                if success:
+                    logger.info(f"[CODE_REVIEW] Posted commit comment on {commit_sha[:7]}")
+                else:
+                    logger.error(f"[CODE_REVIEW] Failed to post commit comment on {commit_sha[:7]}")
+        except Exception as e:
+            logger.error(f"[CODE_REVIEW] Exception posting review: {e}", exc_info=True)
+            success = False
         
         # Log usage metadata
         if usage_metadata.get("total_tokens"):
