@@ -603,7 +603,7 @@ def create_api_server(config: Config) -> FastAPI:
                 logger.warning(f"[WEBHOOK] Invalid algorithm: {sha_name}")
                 raise HTTPException(status_code=403, detail="Invalid algorithm")
         except ValueError:
-            logger.warning(f"[WEBHOOK] Invalid signature format")
+            logger.warning("[WEBHOOK] Invalid signature format")
             raise HTTPException(status_code=403, detail="Invalid signature format")
         
         mac = hmac.new(
@@ -612,11 +612,11 @@ def create_api_server(config: Config) -> FastAPI:
             digestmod=hashlib.sha256
         )
         if not hmac.compare_digest(mac.hexdigest(), sig):
-            logger.warning(f"[WEBHOOK] Invalid signature - HMAC mismatch")
+            logger.warning("[WEBHOOK] Invalid signature - HMAC mismatch")
             app_state.add_log("WARN", "Webhook rejected: invalid signature")
             raise HTTPException(status_code=403, detail="Invalid signature")
         
-        logger.info(f"[WEBHOOK] Signature verified successfully")
+        logger.info("[WEBHOOK] Signature verified successfully")
         
         # Parse payload
         payload = await request.json()
@@ -726,4 +726,3 @@ async def handle_event(orchestrator: AutomationOrchestrator, event_type: str, pa
     except Exception as e:
         logger.error(f"[HANDLER] Event handling failed: {e}", exc_info=True)
         app_state.add_log("ERROR", f"Automation failed: {str(e)}")
-        logger.error(f"Event handling failed: {e}", exc_info=True)
