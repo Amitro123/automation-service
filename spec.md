@@ -444,17 +444,17 @@ LOW: Polish
 - **Decisions**: None.
 - **Next Steps**: Review the review summary and consider adding a unit test for the example in the docstring to ensure accuracy and maintainability.
 
-### 2024-01-26
-- **Summary**: Updated documentation (README and spec.md) to reflect the change from `code_review.md` to `AUTOMATED_REVIEWS.md` for storing automated review logs.  Also updated related descriptions of features and expected results.
-- **Decisions**: Renamed the log file to better reflect its purpose and avoid potential confusion.  Updated relevant documentation to reflect the new file name.
-- **Next Steps**:  Ensure all code references and integrations with the review logging functionality are updated to use `AUTOMATED_REVIEWS.md`.
+### 2024-07-26
+- **Summary**: Added a review summary to the top of CODE_REVIEW.md.
+- **Decisions**: None.
+- **Next Steps**: Review the review summary and consider adding a unit test for the example in the docstring to ensure accuracy and maintainability.
+
+### [2024-01-09]
+- **Summary**: Added test script for Jules integration and updated README with instructions.
+- **Decisions**: Added a test script to validate the Jules API integration and confirm the configuration is working as expected.
+- **Next Steps**: Continue integration and testing of Jules for code review functionality.
 
 ### 2024-07-26
-- **Summary**: Updated documentation to reflect the change from `code_review.md` to `AUTOMATED_REVIEWS.md` for persistent logging of automated reviews. This includes updates to the README and project specification.
-- **Decisions**: Renamed the log file to better reflect its purpose and improve consistency throughout the project.
-- **Next Steps**: Review the new documentation and ensure that all references to the log file are consistent.
-
-### 2024-05-09
-- **Summary**: Updated documentation to reflect the renaming of `code_review.md` to `AUTOMATED_REVIEWS.md` and updated the project description.
-- **Decisions**: Renamed the file for better clarity and alignment with the automated nature of the reviews.
-- **Next Steps**: Update any remaining references to `code_review.md` in the codebase.
+- **Summary**: Added documentation updates to `spec.md` to reflect the change from `code_review.md` to `AUTOMATED_REVIEWS.md` for persistent logging of automated reviews.
+- **Decisions**: None.
+- **Next Steps**: Review the updated documentation and ensure consistency across the project.
