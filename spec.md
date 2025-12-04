@@ -444,7 +444,7 @@ LOW: Polish
 - **Decisions**: Added a new section for PR-Centric Automation and Robust Error Handling.
 - **Next Steps**: Update spec.md to match the documentation changes.
 
-### [2024-01-09]
-- **Summary**: Implemented robust error handling and zero silent failures. Integrated Jules API for review provider (optional), added rate limiting for LLM calls, and enhanced session memory tracking. Improved dashboard visibility of failures and run status. Expanded PR-centric automation features including trivial change filtering, PR review comments, and grouped automation updates.
-- **Decisions**: Prioritized comprehensive logging and structured error returns to ensure all failures are captured and addressed. Introduced a configurable review provider to support different LLM APIs and the Jules API.
-- **Next Steps**: Refactor code to use the official Jules API client libraries. Further improve dashboard metrics related to error rates and LLM usage.
+### 2024-05-09
+- **Summary**: Added "PR-Centric Automation" and "Robust Error Handling & Zero Silent Failures" sections to the README, and updated Review Provider Configuration. Added utils.py and dashboard folder structure.
+- **Decisions**: Added a new section for PR-Centric Automation and Robust Error Handling.
+- **Next Steps**: Update spec.md to match the documentation changes.
