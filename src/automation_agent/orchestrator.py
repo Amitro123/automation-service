@@ -816,10 +816,11 @@ This PR contains automated documentation updates generated from commit `{commit_
             
             logger.info(
                 f"[GROUPED_PR] Content available: "
-                f"README={'Yes' if readme_content else 'No'}, "
-                f"Spec={'Yes' if spec_content else 'No'}, "
-                f"Review={'Yes' if review_log_content else 'No'}"
+                f"README={'Yes' if readme_content else 'No'} ({len(readme_content) if readme_content else 0} chars), "
+                f"Spec={'Yes' if spec_content else 'No'} ({len(spec_content) if spec_content else 0} chars), "
+                f"Review={'Yes' if review_log_content else 'No'} ({len(review_log_content) if review_log_content else 0} chars)"
             )
+            logger.info(f"[GROUPED_PR] review_result keys: {list(review_result.keys())}")
             
             # Check if we have anything to commit
             if not (readme_content or spec_content or review_log_content):
