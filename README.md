@@ -107,10 +107,6 @@ GEMINI_MIN_DELAY_SECONDS=2.0   # Min delay between calls
 JULES_API_KEY=your_jules_api_key_here
 JULES_API_URL=https://jules.googleapis.com/v1alpha
 JULES_SOURCE_ID=sources/github/owner/repo  # Get from: curl 'https://jules.googleapis.com/v1alpha/sources' -H 'X-Goog-Api-Key: YOUR_KEY'
-```bash
-**Test Jules Integration:**
-```bash
-python test_jules_review.py  # Validates config and tests API
 ### PR-Centric Configuration (Optional)
 ```bash
 # Trigger mode: "pr", "push", or "both" (default: both)
@@ -139,6 +135,8 @@ python run_api.py
 # Windows (PowerShell)
 $env:PYTHONPATH = "$PWD/src"
 python -m automation_agent.main
+
+# Linux/Mac
 ## 🧲 Agent Platform Integration (Optional)
 
 Compatible with **Windsurf**, **AntiGravity**, **n8n**, or any agent orchestrator:
@@ -179,25 +177,6 @@ GitHub Push → Agent Platform Webhook → Orchestrator → GitHub API
 ### Health Check
 ```bash
 curl http://localhost:8080/
-### Test Full Flow
-```bash
-echo "# Test change" >> test.txt
-git add test.txt
-git commit -m "test: trigger automation"
-git push
-**Expected results:**
-- ✅ Code review comment/issue
-- ✅ README PR (if applicable)
-- ✅ spec.md + code_review.md entries appended
-
-### Test Status
-**Current Pass Rate**: 100% (99/99 tests passing) as of 2025-11-30
-
-- ✅ Unit Tests
-- ✅ Integration Tests
-- ✅ Edge Cases
-- ✅ Load Tests
-
 ## 📦 Project Structure
 
 automation_agent/
@@ -259,7 +238,10 @@ Dashboard runs on: **http://localhost:5173**
 - 🗺️ Interactive architecture diagrams (Live from `ARCHITECTURE.md`)
 - 📜 Session History & Run Logs
 
-See [`dashboard/DASHBOARD_SETUP.md`](dashboard/DASHBOARD_SETUP.md) for detailed setup and API integration instructions.
+See [`dashboard/DASHBOARD_SETUP.md`](dashboard/DASHBOARD_SETUP.md)
+
+5. Displays results in Actions summary
+6. (Optional) Comments on PRs with scores
 
 **Using CI results in dashboard:**
 1. Download `mutation_results.json` from workflow artifacts
@@ -269,6 +251,7 @@ See [`dashboard/DASHBOARD_SETUP.md`](dashboard/DASHBOARD_SETUP.md) for detailed 
 
 See [`.github/workflows/MUTATION_TESTING.md`](.github/workflows/MUTATION_TESTING.md) for details.
  On Windows, the feature will show as "skipped" with instructions. Run mutation tests in CI for best results.
+ for detailed setup and API integration instructions.
 
 ## 🌐 Deployment
 
@@ -314,7 +297,3 @@ graph TD
     Orchestrator -->|Init Run| SessionMem
     Dashboard -->|Fetch Metrics/History| Webhook
     Webhook -.->|Read| SessionMem
-The diagram updates automatically as the project evolves.
-
-## 📄 License
-MIT
