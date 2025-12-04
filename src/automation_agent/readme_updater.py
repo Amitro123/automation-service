@@ -70,7 +70,11 @@ class ReadmeUpdater:
             }
         except Exception as e:
             logger.error(f"Failed to generate README updates: {e}")
-            return None
+            return {
+                "success": False,
+                "error_type": "readme_generation_failed",
+                "message": str(e)
+            }
 
         if not updated_readme or updated_readme == current_readme:
             logger.info("No README updates needed")

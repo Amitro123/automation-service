@@ -259,3 +259,39 @@ async def test_spec_update_auto_commit(orchestrator, mock_spec_updater, mock_git
         message="docs: Auto-update spec.md from sha123",
         branch="main"
     )
+
+@pytest.mark.asyncio
+async def test_spec_update_generation_error(orchestrator, mock_spec_updater):
+    """Test spec update returning error dictionary (generation failed)."""
+    # Mock spec_updater to return error dictionary
+    mock_spec_updater.update_spec.return_value = {
+        "success": False,
+        "error_type": "spec_generation_failed",
+        "message": "LLM error"
+    }
+    
+    result = await orchestrator._run_spec_update("sha", "branch", "test_run_id")
+    
+    # Should be marked as failed, not skipped
+    assert result["success"] is False
+    assert result["status"] == "failed"
+    assert result["error_type"] == "spec_generation_failed"
+    assert result["message"] == "LLM error"
+
+@pytest.mark.asyncio
+async def test_readme_update_generation_error(orchestrator, mock_readme_updater):
+    """Test README update returning error dictionary (generation failed)."""
+    # Mock readme_updater to return error dictionary
+    mock_readme_updater.update_readme.return_value = {
+        "success": False,
+        "error_type": "readme_generation_failed",
+        "message": "LLM error"
+    }
+    
+    result = await orchestrator._run_readme_update("sha", "branch", "test_run_id")
+    
+    # Should be marked as failed, not skipped
+    assert result["success"] is False
+    assert result["status"] == "failed"
+    assert result["error_type"] == "readme_generation_failed"
+    assert result["message"] == "LLM error"

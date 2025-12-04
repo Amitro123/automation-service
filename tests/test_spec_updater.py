@@ -17,8 +17,8 @@ async def test_update_spec_success(spec_updater, mock_github_client, mock_llm_cl
     mock_github_client.get_file_content.return_value = "Old Spec Content"
     mock_github_client.get_recent_commits.return_value = []
     
-    # LLM returns ONLY the new entry
-    mock_llm_client.update_spec.return_value = "New Entry"
+    # LLM returns ONLY the new entry (content, metadata)
+    mock_llm_client.update_spec.return_value = ("New Entry", {})
     
     result = await spec_updater.update_spec("sha123")
     
@@ -34,11 +34,17 @@ async def test_update_spec_success(spec_updater, mock_github_client, mock_llm_cl
 async def test_update_spec_failure(spec_updater, mock_github_client, mock_llm_client):
     """Test failure in spec update."""
     mock_github_client.get_commit_info.return_value = {"sha": "sha123"}
+    mock_github_client.get_commit_diff.return_value = "diff"
+    mock_github_client.get_file_content.return_value = "Old Spec"
     mock_llm_client.update_spec.side_effect = Exception("Error")
     
     result = await spec_updater.update_spec("sha123")
     
-    assert result is None
+    # Should return error dictionary, not None
+    assert isinstance(result, dict)
+    assert result["success"] is False
+    assert result["error_type"] == "spec_generation_failed"
+    assert "Error" in result["message"]
 
 @pytest.mark.asyncio
 async def test_update_spec_no_commit_info(spec_updater, mock_github_client):
@@ -57,7 +63,7 @@ async def test_update_spec_create_new(spec_updater, mock_github_client, mock_llm
         "commit": {"message": "msg", "author": {"name": "User"}}
     }
     mock_github_client.get_file_content.return_value = None  # Spec doesn't exist
-    mock_llm_client.update_spec.return_value = "New Entry"
+    mock_llm_client.update_spec.return_value = ("New Entry", {})
     
     result = await spec_updater.update_spec("sha123")
     
@@ -69,7 +75,7 @@ async def test_update_spec_llm_returns_empty(spec_updater, mock_github_client, m
     """Test failure when LLM returns empty string."""
     mock_github_client.get_commit_info.return_value = {"sha": "sha123"}
     mock_github_client.get_file_content.return_value = "Old Spec"
-    mock_llm_client.update_spec.return_value = ""
+    mock_llm_client.update_spec.return_value = ("", {})
     
     result = await spec_updater.update_spec("sha123")
     
