@@ -434,22 +434,22 @@ LOW: Polish
 - **Decisions**: Renamed the log file to better reflect its purpose and improve consistency throughout the project.
 - **Next Steps**: Review the new documentation and ensure that all references to the log file are consistent.
 
-### 2024-02-29
-- **Summary**: Updated README to reflect changes in automated review logging from `code_review.md` to `AUTOMATED_REVIEWS.md`, and other minor wording updates.
-- **Decisions**: Renamed the log file to better reflect its function and avoid confusion.
-- **Next Steps**: Update any internal references to `code_review.md` in the codebase.
-
 ### 2024-07-26
 - **Summary**: Added a review summary to the top of CODE_REVIEW.md.
 - **Decisions**: None.
 - **Next Steps**: Review the review summary and consider adding a unit test for the example in the docstring to ensure accuracy and maintainability.
 
-### 2024-07-26
-- **Summary**: Added a review summary to the top of CODE_REVIEW.md.
-- **Decisions**: None.
-- **Next Steps**: Review the review summary and consider adding a unit test for the example in the docstring to ensure accuracy and maintainability.
+### [2024-02-17]
+- **Summary**: Updated documentation (README, spec.md) to reflect use of `AUTOMATED_REVIEWS.md` for persistent code review logging, and clarified features.
+- **Decisions**: Renamed references to `code_review.md` to `AUTOMATED_REVIEWS.md` to align with the latest changes in the codebase.
+- **Next Steps**: Ensure all code uses `AUTOMATED_REVIEWS.md` consistently and that the update logic functions as expected.
 
-### 2024-07-26
-- **Summary**: Added a review summary to the top of CODE_REVIEW.md.
-- **Decisions**: None.
-- **Next Steps**: Review the review summary and consider adding a unit test for the example in the docstring to ensure accuracy and maintainability.
+### [2024-02-17]
+- **Summary**: Updated documentation (README, spec.md) to reflect use of `AUTOMATED_REVIEWS.md` for persistent code review logging, and clarified features.
+- **Decisions**: Renamed references to `code_review.md` to `AUTOMATED_REVIEWS.md` to align with the latest changes in the codebase.
+- **Next Steps**: Ensure all code uses `AUTOMATED_REVIEWS.md` consistently and that the update logic functions as expected.
+
+### [2024-12-07]
+- **Summary**: Updated documentation to reflect the change in `code_review_updater.py` output from logs to `AUTOMATED_REVIEWS.md`. Added a test for the Jules integration.
+- **Decisions**: Clarified the destination of the review summary output.
+- **Next Steps**: No immediate next steps.
