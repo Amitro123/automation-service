@@ -12,7 +12,7 @@ async def test_update_readme_success(readme_updater, mock_github_client, mock_ll
     mock_github_client.get_commit_diff.return_value = "diff"
     mock_github_client.get_commit_info.return_value = {"files": []}
     mock_github_client.get_file_content.return_value = "Old README"
-    mock_llm_client.update_readme.return_value = "New README"
+    mock_llm_client.update_readme.return_value = ("New README", {})
     
     result = await readme_updater.update_readme("sha123")
     
@@ -25,7 +25,7 @@ async def test_update_readme_no_changes(readme_updater, mock_github_client, mock
     mock_github_client.get_commit_diff.return_value = "diff"
     mock_github_client.get_commit_info.return_value = {"files": []}
     mock_github_client.get_file_content.return_value = "Old README"
-    mock_llm_client.update_readme.return_value = "Old README"
+    mock_llm_client.update_readme.return_value = ("Old README", {})
     
     result = await readme_updater.update_readme("sha123")
     
@@ -59,7 +59,7 @@ async def test_update_readme_missing_file(readme_updater, mock_github_client, mo
     mock_github_client.get_commit_diff.return_value = "diff"
     mock_github_client.get_commit_info.return_value = {"files": []}
     mock_github_client.get_file_content.return_value = None # Missing file
-    mock_llm_client.update_readme.return_value = "New README"
+    mock_llm_client.update_readme.return_value = ("New README", {})
     
     result = await readme_updater.update_readme("sha123")
     
