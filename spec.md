@@ -454,7 +454,7 @@ LOW: Polish
 - **Decisions**: Added a test script to validate the Jules API integration and confirm the configuration is working as expected.
 - **Next Steps**: Continue integration and testing of Jules for code review functionality.
 
-### 2024-07-26
-- **Summary**: Added documentation updates to `spec.md` to reflect the change from `code_review.md` to `AUTOMATED_REVIEWS.md` for persistent logging of automated reviews.
-- **Decisions**: None.
-- **Next Steps**: Review the updated documentation and ensure consistency across the project.
+### [2024-01-09]
+- **Summary**: Added test script for Jules integration and updated README with instructions.
+- **Decisions**: Added a test script to validate the Jules API integration and confirm the configuration is working as expected.
+- **Next Steps**: Continue integration and testing of Jules for code review functionality.
