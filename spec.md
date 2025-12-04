@@ -439,7 +439,7 @@ LOW: Polish
 - **Decisions**: Decided to create a dedicated module for utility functions to avoid code duplication and improve maintainability.
 - **Next Steps**: Populate `utils.py` with necessary utility functions.
 
-### 2024-05-09
-- **Summary**: Added "PR-Centric Automation" and "Robust Error Handling & Zero Silent Failures" sections to the README, and updated Review Provider Configuration. Added utils.py and dashboard folder structure.
-- **Decisions**: Added a new section for PR-Centric Automation and Robust Error Handling.
-- **Next Steps**: Update spec.md to match the documentation changes.
+### [2024-12-07]
+- **Summary**: Added `utils.py` module, removed the Automated Code Review Log section from the README.md and updated the dashboard section.
+- **Decisions**: Centralized utility functions into a dedicated module for code organization and reusability.
+- **Next Steps**: Implement utility functions within `utils.py`.
