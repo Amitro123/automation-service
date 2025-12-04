@@ -108,8 +108,6 @@ JULES_API_KEY=your_jules_api_key_here
 JULES_API_URL=https://jules.googleapis.com/v1alpha
 JULES_SOURCE_ID=sources/github/owner/repo  # Get from: curl 'https://jules.googleapis.com/v1alpha/sources' -H 'X-Goog-Api-Key: YOUR_KEY'
 ```bash
-**Test Jules Integration:**
-```bash
 python test_jules_review.py  # Validates config and tests API
 ### PR-Centric Configuration (Optional)
 ```bash
@@ -139,6 +137,8 @@ python run_api.py
 # Windows (PowerShell)
 $env:PYTHONPATH = "$PWD/src"
 python -m automation_agent.main
+
+# Linux/Mac
 ## 🧲 Agent Platform Integration (Optional)
 
 Compatible with **Windsurf**, **AntiGravity**, **n8n**, or any agent orchestrator:
@@ -318,7 +318,3 @@ graph TD
     Orchestrator -->|Init Run| SessionMem
     Dashboard -->|Fetch Metrics/History| Webhook
     Webhook -.->|Read| SessionMem
-The diagram updates automatically as the project evolves.
-
-## 📄 License
-MIT
