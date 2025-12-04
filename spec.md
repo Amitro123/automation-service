@@ -444,10 +444,15 @@ LOW: Polish
 - **Decisions**: Added a new section for PR-Centric Automation and Robust Error Handling.
 - **Next Steps**: Update spec.md to match the documentation changes.
 
-### [2024-01-09]
-- **Summary**: Implemented robust error handling and zero silent failures. Integrated Jules API for review provider (optional), added rate limiting for LLM calls, and enhanced session memory tracking. Improved dashboard visibility of failures and run status. Expanded PR-centric automation features including trivial change filtering, PR review comments, and grouped automation updates.
-- **Decisions**: Prioritized comprehensive logging and structured error returns to ensure all failures are captured and addressed. Introduced a configurable review provider to support different LLM APIs and the Jules API.
-- **Next Steps**: Refactor code to use the official Jules API client libraries. Further improve dashboard metrics related to error rates and LLM usage.
+### 2024-05-09
+- **Summary**: Added "PR-Centric Automation" and "Robust Error Handling & Zero Silent Failures" sections to the README, and updated Review Provider Configuration. Added utils.py and dashboard folder structure.
+- **Decisions**: Added a new section for PR-Centric Automation and Robust Error Handling.
+- **Next Steps**: Update spec.md to match the documentation changes.
+
+### [2024-02-28]
+- **Summary**: Updated README.md to reflect new features and configuration options related to PR-Centric Automation, Robust Error Handling & Zero Silent Failures, Review Provider Configuration, and the new Dashboard. Added Session Memory Store, Dashboard UI, Utility functions.
+- **Decisions**: Added new sections to README.md to highlight the new features and improvements. Updated the file structure to reflect the addition of the dashboard and new modules.
+- **Next Steps**: Update the spec.md file to reflect the new functionality.
 
 ### [2024-05-09]
 - **Summary**: Added "PR-Centric Automation" and "Robust Error Handling & Zero Silent Failures" sections to the README, and updated Review Provider Configuration. Added utils.py and dashboard folder structure.
@@ -457,9 +462,4 @@ LOW: Polish
 ### [2024-05-09]
 - **Summary**: Updated documentation to reflect the addition of "PR-Centric Automation" and "Robust Error Handling & Zero Silent Failures." Added a new dashboard folder structure and `utils.py`.
 - **Decisions**: Focused on improving the project's documentation and structure to reflect new features and architectural changes.
-- **Next Steps**:  No specific next steps are mentioned in the diff, but the documentation update suggests aligning the project's internal structure with the changes described in the README.
-
-### [2024-05-10]
-- **Summary**: Updated README with new features: Automated Code Review Log, new architecture diagram, and updated dashboard instructions. Renamed "NEW" flags.
-- **Decisions**: Added a new section for Automated Code Review Log and updated the architecture diagram to reflect the latest changes.
-- **Next Steps**:  Update the AUTOMATED_REVIEWS.md file to track and log automated code reviews.
+- **Next Steps**: Align the project's internal structure with the changes described in the README.
