@@ -112,7 +112,7 @@ JULES_API_KEY=your_jules_api_key_here
 JULES_API_URL=https://jules.googleapis.com/v1alpha
 JULES_SOURCE_ID=sources/github/owner/repo  # Get from: curl 'https://jules.googleapis.com/v1alpha/sources' -H 'X-Goog-Api-Key: YOUR_KEY'
 ```bash
-### Test Jules Integration:
+**Test Jules Integration:**
 ```bash
 python test_jules_review.py  # Validates config and tests API
 ### PR-Centric Configuration (Optional)
@@ -143,8 +143,9 @@ python run_api.py
 # Windows (PowerShell)
 $env:PYTHONPATH = "$PWD/src"
 python -m automation_agent.main
-
-# Linux/Mac
+# **Test Jules Integration:**
+```bash
+python test_jules_review.py  # Validates config and tests API
 ## 🧲 Agent Platform Integration (Optional)
 
 Compatible with **Windsurf**, **AntiGravity**, **n8n**, or any agent orchestrator:
@@ -155,7 +156,7 @@ GitHub Push → Agent Platform Webhook → Orchestrator → GitHub API
 2. Calls `code_reviewer.py` → posts review comment/issue
 3. Calls `readme_updater.py` → creates documentation PR
 4. Calls `spec_updater.py` → appends progress entry
-5. Calls `code_review_updater.py` → appends review summary to logs
+5. Calls `code_review_updater.py` → appends review summary to `AUTOMATED_REVIEWS.md`
 6. Platform handles retries, logging, notifications
 
 ## 📋 Workflow
@@ -213,7 +214,7 @@ automation_agent/
 │       ├── orchestrator.py            # Coordinates 4 parallel tasks
 │       ├── session_memory.py          # Session Memory Store (NEW)
 │       ├── code_reviewer.py           # LLM-powered code analysis
-│       ├── code_review_updater.py     # Persistent review logging
+│       ├── code_review_updater.py     # Persistent review logging - Output now to AUTOMATED_REVIEWS.md
 │       ├── readme_updater.py          # Smart README updates
 │       ├── spec_updater.py            # Progress documentation
 │       ├── github_client.py           # GitHub API wrapper
