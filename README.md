@@ -1,11 +1,11 @@
 ﻿# 🤖 GitHub Automation Agent
 
-An autonomous GitHub automation system that triggers on **push and pull request events** to perform intelligent code review, automatic README and code_review.md updates, and project progress documentation. Features **PR-centric orchestration** with trivial change filtering to optimize LLM token usage.
+An autonomous GitHub automation system that triggers on **push and pull request events** to perform intelligent code review, automatic README and `AUTOMATED_REVIEWS.md` updates, and project progress documentation. Features **PR-centric orchestration** with trivial change filtering to optimize LLM token usage.
 
 ## 💡 Why This Agent?
 
 - **Reduces repetitive code review work** — highlights risky changes and suggests fixes automatically
-- **Keeps docs always fresh** — README, spec.md, and code_review.md stay in sync with actual code changes
+- **Keeps docs always fresh** — README, spec.md, and `AUTOMATED_REVIEWS.md` stay in sync with actual code changes
 - **Intelligent layer over GitHub** — uses advanced LLMs + async orchestration instead of rigid YAML workflows
 
 ## ✨ Features
@@ -13,7 +13,7 @@ An autonomous GitHub automation system that triggers on **push and pull request 
 ### 1. 🔍 Automated Code Review
 - **Intelligent Analysis**: Uses LLMs (GPT-4o / Claude 3.5 / Gemini Pro) to analyze code changes
 - **Comprehensive Feedback**: Code quality, bugs, security, performance, best practices
-- **Flexible Output**: Commit comments, PR comments, GitHub issues, and persistent code_review.md logging
+- **Flexible Output**: Commit comments, PR comments, GitHub issues, and persistent `AUTOMATED_REVIEWS.md` logging
 - **Structured Reviews**: Strengths, issues, suggestions, security concerns
 - **Session Memory**: Maintains historic context for continuous improvement
 
@@ -69,9 +69,9 @@ An autonomous GitHub automation system that triggers on **push and pull request 
 - Automatically updated via scripts/CI when system or specs change
 - **Visualized in the Dashboard**
 
-### 9. 📝 Automated Code Review Log
+## 9. 📝 Automated Code Review Log
 - Tracks the history of automated code reviews.
-- Accessible via AUTOMATED_REVIEWS.md
+- Accessible via `AUTOMATED_REVIEWS.md`
 
 ## 🚀 Quick Start
 
@@ -167,7 +167,7 @@ GitHub Push → Agent Platform Webhook → Orchestrator → GitHub API
    - Code review → comment/issue + persistent logs (code changes only)
    - README update → PR (if changes detected)
    - spec.md update → append entry
-   - code_review.md update → append review summary with session memory
+   - `AUTOMATED_REVIEWS.md` update → append review summary with session memory
 5. **Results posted** → repo stays documented automatically and progress tracked
 
 ### PR-Centric Flow (Pull Request Events)
@@ -193,7 +193,7 @@ git push
 **Expected results:**
 - ✅ Code review comment/issue
 - ✅ README PR (if applicable)
-- ✅ spec.md + code_review.md entries appended
+- ✅ spec.md + `AUTOMATED_REVIEWS.md` entries appended
 
 ### Test Status
 **Current Pass Rate**: 100% (99/99 tests passing) as of 2025-11-30
