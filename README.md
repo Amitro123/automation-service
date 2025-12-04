@@ -45,8 +45,6 @@ An autonomous GitHub automation system that triggers on **push and pull request 
 - **Grouped Automation PRs**: README + spec updates bundled into single PR per source PR
 - **PR Review Comments**: Code reviews posted as PR reviews instead of commit comments
 - **Configurable Thresholds**: Set max lines for trivial detection, doc file patterns
-- **Displays results in Actions summary**
-- **(Optional) Comments on PRs with scores**
 
 ### 6. 🛡️ Robust Error Handling & Zero Silent Failures
 - **No Silent Failures**: Every error is logged, tracked, and visible in SessionMemory
@@ -261,10 +259,7 @@ Dashboard runs on: **http://localhost:5173**
 - 🗺️ Interactive architecture diagrams (Live from `ARCHITECTURE.md`)
 - 📜 Session History & Run Logs
 
-See [`dashboard/DASHBOARD_SETUP.md`](dashboard/DASHBOARD_SETUP.md)
-
-5. Displays results in Actions summary
-6. (Optional) Comments on PRs with scores
+See [`dashboard/DASHBOARD_SETUP.md`](dashboard/DASHBOARD_SETUP.md) for detailed setup and API integration instructions.
 
 **Using CI results in dashboard:**
 1. Download `mutation_results.json` from workflow artifacts
@@ -274,7 +269,6 @@ See [`dashboard/DASHBOARD_SETUP.md`](dashboard/DASHBOARD_SETUP.md)
 
 See [`.github/workflows/MUTATION_TESTING.md`](.github/workflows/MUTATION_TESTING.md) for details.
  On Windows, the feature will show as "skipped" with instructions. Run mutation tests in CI for best results.
- for detailed setup and API integration instructions.
 
 ## 🌐 Deployment
 
