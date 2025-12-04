@@ -52,6 +52,10 @@ def truncate_string(text: str, max_length: int = 100, suffix: str = "...") -> st
         
     Returns:
         Truncated string with suffix if it was shortened
+        
+    Example:
+        >>> truncate_string("Hello World", 8)
+        'Hello...'
     """
     if not text or len(text) <= max_length:
         return text
