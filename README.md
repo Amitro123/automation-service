@@ -111,6 +111,7 @@ GEMINI_MIN_DELAY_SECONDS=2.0   # Min delay between calls
 JULES_API_KEY=your_jules_api_key_here
 JULES_API_URL=https://jules.googleapis.com/v1alpha
 JULES_SOURCE_ID=sources/github/owner/repo  # Get from: curl 'https://jules.googleapis.com/v1alpha/sources' -H 'X-Goog-Api-Key: YOUR_KEY'
+```bash
 **Test Jules Integration:**
 ```bash
 python test_jules_review.py  # Validates config and tests API
@@ -144,6 +145,7 @@ $env:PYTHONPATH = "$PWD/src"
 python -m automation_agent.main
 
 # Linux/Mac
+python -m automation_agent.main
 ## 🧲 Agent Platform Integration (Optional)
 
 Compatible with **Windsurf**, **AntiGravity**, **n8n**, or any agent orchestrator:
@@ -154,7 +156,7 @@ GitHub Push → Agent Platform Webhook → Orchestrator → GitHub API
 2. Calls `code_reviewer.py` → posts review comment/issue
 3. Calls `readme_updater.py` → creates documentation PR
 4. Calls `spec_updater.py` → appends progress entry
-5. Calls `code_review_updater.py` → appends review summary to logs
+5. Calls `code_review_updater.py` → appends review summary to `AUTOMATED_REVIEWS.md`
 6. Platform handles retries, logging, notifications
 
 ## 📋 Workflow
