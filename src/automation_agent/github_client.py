@@ -337,16 +337,19 @@ class GitHubClient:
             Diff content as string, or None if error
         """
         url = f"{self.base_url}/repos/{self.owner}/{self.repo}/pulls/{pr_number}"
+        logger.info(f"[GITHUB] Fetching PR #{pr_number} diff from {url}")
         try:
             async with httpx.AsyncClient(headers=self.headers, timeout=self.timeout) as client:
                 response = await client.get(
                     url,
                     headers={**self.headers, "Accept": "application/vnd.github.v3.diff"}
                 )
+                logger.info(f"[GITHUB] PR diff response: status={response.status_code}, length={len(response.text)} chars")
                 response.raise_for_status()
                 return response.text
         except httpx.HTTPError as e:
-            logger.error(f"Failed to fetch PR diff: {e}")
+            logger.error(f"[GITHUB] Failed to fetch PR #{pr_number} diff: {e}")
+            logger.error(f"[GITHUB] Status code: {e.response.status_code if hasattr(e, 'response') else 'N/A'}")
             return None
 
     async def post_pull_request_comment(self, pr_number: int, body: str) -> bool:
