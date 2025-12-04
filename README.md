@@ -115,7 +115,6 @@ JULES_SOURCE_ID=sources/github/owner/repo  # Get from: curl 'https://jules.googl
 **Test Jules Integration:**
 ```bash
 python test_jules_review.py  # Validates config and tests API
-```bash
 ### PR-Centric Configuration (Optional)
 ```bash
 # Trigger mode: "pr", "push", or "both" (default: both)
@@ -319,5 +318,3 @@ graph TD
     Orchestrator -->|Init Run| SessionMem
     Dashboard -->|Fetch Metrics/History| Webhook
     Webhook -.->|Read| SessionMem
-## 📄 License
-MIT
