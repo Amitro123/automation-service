@@ -15,6 +15,7 @@ from .readme_updater import ReadmeUpdater
 from .spec_updater import SpecUpdater
 from .code_review_updater import CodeReviewUpdater
 from .orchestrator import AutomationOrchestrator
+from .session_memory import SessionMemoryStore
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +55,9 @@ class WebhookServer:
         self.spec_updater = SpecUpdater(self.github_client, self.llm_client)
         self.code_review_updater = CodeReviewUpdater(self.github_client, self.llm_client)
 
+        # Initialize session memory
+        self.session_memory = SessionMemoryStore()
+
         # Initialize orchestrator
         self.orchestrator = AutomationOrchestrator(
             github_client=self.github_client,
@@ -61,6 +65,7 @@ class WebhookServer:
             readme_updater=self.readme_updater,
             spec_updater=self.spec_updater,
             code_review_updater=self.code_review_updater,
+            session_memory=self.session_memory,
             config=self.config,
         )
 
