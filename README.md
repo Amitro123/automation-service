@@ -111,6 +111,7 @@ GEMINI_MIN_DELAY_SECONDS=2.0   # Min delay between calls
 JULES_API_KEY=your_jules_api_key_here
 JULES_API_URL=https://jules.googleapis.com/v1alpha
 JULES_SOURCE_ID=sources/github/owner/repo  # Get from: curl 'https://jules.googleapis.com/v1alpha/sources' -H 'X-Goog-Api-Key: YOUR_KEY'
+```bash
 **Test Jules Integration:**
 ```bash
 python test_jules_review.py  # Validates config and tests API
@@ -217,7 +218,7 @@ automation_agent/
 │       ├── spec_updater.py            # Progress documentation
 │       ├── github_client.py           # GitHub API wrapper
 │       ├── llm_client.py              # OpenAI/Anthropic/Gemini abstraction
-│       ├── utils.py                   # Utility functions (NEW)
+│       ├── utils.py                   # Utility functions
 │       └── main.py                    # Entry point
 ├── dashboard/                         # React + Vite dashboard (NEW)
 │   ├── App.tsx                        # Main dashboard UI
