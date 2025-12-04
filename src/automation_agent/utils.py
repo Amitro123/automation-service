@@ -1,4 +1,4 @@
-﻿"""Shared utilities for the automation agent."""
+"""Shared utilities for the automation agent."""
 
 import logging
 import json
