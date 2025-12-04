@@ -69,10 +69,6 @@ An autonomous GitHub automation system that triggers on **push and pull request 
 - Automatically updated via scripts/CI when system or specs change
 - **Visualized in the Dashboard**
 
-## 9. 📝 Automated Code Review Log (NEW)
-- Tracks the history of automated code reviews.
-- Accessible via AUTOMATED_REVIEWS.md
-
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -142,8 +138,6 @@ python run_api.py
 # Windows (PowerShell)
 $env:PYTHONPATH = "$PWD/src"
 python -m automation_agent.main
-
-# Linux/Mac
 ## 🧲 Agent Platform Integration (Optional)
 
 Compatible with **Windsurf**, **AntiGravity**, **n8n**, or any agent orchestrator:
@@ -217,6 +211,7 @@ automation_agent/
 │       ├── spec_updater.py            # Progress documentation
 │       ├── github_client.py           # GitHub API wrapper
 │       ├── llm_client.py              # OpenAI/Anthropic/Gemini abstraction
+│       ├── **utils.py**                   # Utility functions
 │       └── main.py                    # Entry point
 ├── dashboard/                         # React + Vite dashboard (NEW)
 │   ├── App.tsx                        # Main dashboard UI
