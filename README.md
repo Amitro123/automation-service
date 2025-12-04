@@ -144,6 +144,7 @@ python run_api.py
 $env:PYTHONPATH = "$PWD/src"
 python -m automation_agent.main
 
+# Linux/Mac
 ## 🧲 Agent Platform Integration (Optional)
 
 Compatible with **Windsurf**, **AntiGravity**, **n8n**, or any agent orchestrator:
