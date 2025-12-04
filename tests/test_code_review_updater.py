@@ -20,7 +20,7 @@ def updater(mock_github_client, mock_llm_client):
 async def test_update_review_log_success(updater, mock_github_client, mock_llm_client):
     # Setup
     mock_github_client.get_file_content.return_value = "# Old Log"
-    mock_llm_client.summarize_review.return_value = "### New Entry"
+    mock_llm_client.summarize_review.return_value = ("### New Entry", {})
     
     # Execute
     result = await updater.update_review_log("sha123", "Review Content", "main")
@@ -34,7 +34,7 @@ async def test_update_review_log_success(updater, mock_github_client, mock_llm_c
 async def test_update_review_log_new_file(updater, mock_github_client, mock_llm_client):
     # Setup
     mock_github_client.get_file_content.return_value = None
-    mock_llm_client.summarize_review.return_value = "### New Entry"
+    mock_llm_client.summarize_review.return_value = ("### New Entry", {})
     
     # Execute
     result = await updater.update_review_log("sha123", "Review Content", "main")
@@ -61,7 +61,7 @@ async def test_update_review_log_sanitization(updater, mock_github_client, mock_
     # Setup
     mock_github_client.get_file_content.return_value = "# Old Log"
     # LLM returns content wrapped in markdown code block with embedded code block
-    mock_llm_client.summarize_review.return_value = "```markdown\n### New Entry\nHere is code:\n```python\ndef foo(): pass\n```\n```"
+    mock_llm_client.summarize_review.return_value = ("```markdown\n### New Entry\nHere is code:\n```python\ndef foo(): pass\n```\n```", {})
     
     # Execute
     result = await updater.update_review_log("sha123", "Review Content", "main")
