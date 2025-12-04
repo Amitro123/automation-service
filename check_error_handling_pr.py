@@ -7,6 +7,8 @@ This script provides comprehensive monitoring for:
 - Task completion and error tracking
 - Token usage and cost metrics
 - Automation PR creation
+
+Updated: Testing E2E automation flow
 """
 
 import os
