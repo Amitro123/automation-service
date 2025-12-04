@@ -41,3 +41,18 @@ def parse_json_safe(json_str: str) -> Dict[str, Any]:
     except json.JSONDecodeError as e:
         logger.error(f"Failed to parse JSON: {e}")
         return {}
+
+def truncate_string(text: str, max_length: int = 100, suffix: str = "...") -> str:
+    """Truncate a string to a maximum length with a custom suffix.
+    
+    Args:
+        text: The string to truncate
+        max_length: Maximum length (default 100)
+        suffix: Suffix to append when truncated (default "...")
+        
+    Returns:
+        Truncated string with suffix if it was shortened
+    """
+    if not text or len(text) <= max_length:
+        return text
+    return text[:max_length - len(suffix)] + suffix
