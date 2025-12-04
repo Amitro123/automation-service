@@ -449,12 +449,12 @@ LOW: Polish
 - **Decisions**: Renamed references to `code_review.md` to `AUTOMATED_REVIEWS.md` to align with the latest changes in the codebase.
 - **Next Steps**: Ensure all code uses `AUTOMATED_REVIEWS.md` consistently and that the update logic functions as expected.
 
-### [2024-12-07]
-- **Summary**: Updated documentation to reflect the change in `code_review_updater.py` output from logs to `AUTOMATED_REVIEWS.md`. Added a test for the Jules integration.
-- **Decisions**: Clarified the destination of the review summary output.
-- **Next Steps**: No immediate next steps.
+### [2024-02-17]
+- **Summary**: Updated documentation (README, spec.md) to reflect use of `AUTOMATED_REVIEWS.md` for persistent code review logging, and clarified features.
+- **Decisions**: Renamed references to `code_review.md` to `AUTOMATED_REVIEWS.md` to align with the latest changes in the codebase.
+- **Next Steps**: Ensure all code uses `AUTOMATED_REVIEWS.md` consistently and that the update logic functions as expected.
 
-### [2024-12-07]
-- **Summary**: Updated documentation to reflect the change in `code_review_updater.py` output from logs to `AUTOMATED_REVIEWS.md`. Added a test for the Jules integration.
-- **Decisions**: Clarified the destination of the review summary output.
-- **Next Steps**: No immediate next steps.
+### [2024-02-17]
+- **Summary**: Updated documentation (README, spec.md) to reflect use of `AUTOMATED_REVIEWS.md` for persistent code review logging, and clarified features.
+- **Decisions**: Renamed references to `code_review.md` to `AUTOMATED_REVIEWS.md` to align with the latest changes in the codebase.
+- **Next Steps**: Ensure all code uses `AUTOMATED_REVIEWS.md` consistently and that the update logic functions as expected.
