@@ -454,10 +454,10 @@ LOW: Polish
 - **Decisions**: Added a new section for PR-Centric Automation and Robust Error Handling.
 - **Next Steps**: Update spec.md to match the documentation changes.
 
-### [2024-02-29]
-- **Summary**: Added Automated Code Review Log feature, accessible via AUTOMATED_REVIEWS.md, and updated README to reflect this change. Updated the run_api.py script.
-- **Decisions**: Introduced a new mechanism for tracking and accessing automated code review history.
-- **Next Steps**:  Consider further enhancements to the automated code review log, such as filtering and search capabilities.
+### [2024-05-09]
+- **Summary**: Added "PR-Centric Automation" and "Robust Error Handling & Zero Silent Failures" sections to the README, and updated Review Provider Configuration. Added utils.py and dashboard folder structure.
+- **Decisions**: Added a new section for PR-Centric Automation and Robust Error Handling.
+- **Next Steps**: Update spec.md to match the documentation changes.
 
 ### [2024-05-09]
 - **Summary**: Added "PR-Centric Automation" and "Robust Error Handling & Zero Silent Failures" sections to the README, and updated Review Provider Configuration. Added utils.py and dashboard folder structure.
