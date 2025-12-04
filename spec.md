@@ -459,7 +459,12 @@ LOW: Polish
 - **Decisions**: N/A
 - **Next Steps**: Test the Jules integration.
 
-### [2024-03-08]
-- **Summary**: Removed the "Test Jules Integration" section from the README.md and updated the instructions for running the automation agent on Linux/Mac.
-- **Decisions**: Streamlining the README for clarity and focusing on core agent functionality.
-- **Next Steps**: Review and update the README further, potentially adding more detailed deployment instructions or troubleshooting steps.
+### [2024-01-04]
+- **Summary**: Added a test script `test_jules_review.py` to validate the Jules integration and configuration. Updated the README to reflect the new test script. Minor documentation updates.
+- **Decisions**: Introduced a testing mechanism to ensure the correct setup and functionality of the Jules integration before deployment.
+- **Next Steps**: Continue to build out additional tests.
+
+### [2024-02-29]
+- **Summary**: Added instructions for running the agent on Linux/Mac and updated the README to reflect testing the Jules integration.
+- **Decisions**: N/A
+- **Next Steps**: Test the Jules integration.
