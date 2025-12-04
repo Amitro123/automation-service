@@ -138,42 +138,6 @@ python run_api.py
 $env:PYTHONPATH = "$PWD/src"
 python -m automation_agent.main
 
-# Linux/Mac
-## 🧲 Agent Platform Integration (Optional)
-
-Compatible with **Windsurf**, **AntiGravity**, **n8n**, or any agent orchestrator:
-
-GitHub Push → Agent Platform Webhook → Orchestrator → GitHub API
-**Example flow:**
-1. Platform receives webhook → normalizes payload
-2. Calls `code_reviewer.py` → posts review comment/issue
-3. Calls `readme_updater.py` → creates documentation PR
-4. Calls `spec_updater.py` → appends progress entry
-5. Calls `code_review_updater.py` → appends review summary to logs
-6. Platform handles retries, logging, notifications
-
-## 📋 Workflow
-
-### Standard Flow (Push Events)
-1. **Developer pushes code** → webhook triggers
-2. **Webhook verifies signature** → extracts diff/commit data
-3. **Trigger filter analyzes diff** → classifies as trivial/code/docs change
-4. **Orchestrator runs tasks based on change type:**
-   - Code review → comment/issue + persistent logs (code changes only)
-   - README update → PR (if changes detected)
-   - spec.md update → append entry
-   - code_review.md update → append review summary with session memory
-5. **Results posted** → repo stays documented automatically and progress tracked
-
-### PR-Centric Flow (Pull Request Events)
-1. **Developer opens/updates PR** → webhook triggers
-2. **Trigger filter classifies event** → pr_opened, pr_synchronized, pr_reopened
-3. **Diff analyzed for trivial changes** → skip automation if trivial
-4. **Orchestrator runs context-aware tasks:**
-   - Code review → posted as **PR review comment** (not commit comment)
-   - Documentation updates → grouped into **single automation PR** per source PR
-5. **Results linked to source PR** → clear audit trail
-
 ## 🧪 Testing
 
 ### Health Check
@@ -190,6 +154,9 @@ git push
 - ✅ README PR (if applicable)
 - ✅ spec.md + code_review.md entries appended
 
+### Test Jules Integration
+```bash
+python test_jules_review.py  # Validates config and tests API
 ### Test Status
 **Current Pass Rate**: 100% (99/99 tests passing) as of 2025-11-30
 
@@ -318,3 +285,7 @@ graph TD
     Orchestrator -->|Init Run| SessionMem
     Dashboard -->|Fetch Metrics/History| Webhook
     Webhook -.->|Read| SessionMem
+The diagram updates automatically as the project evolves.
+
+## 📄 License
+MIT
