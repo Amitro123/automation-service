@@ -814,11 +814,16 @@ This PR contains automated documentation updates generated from commit `{commit_
             spec_content = spec_result.get("updated_content")
             review_log_content = review_result.get("updated_log_content")
             
+            # Calculate lengths once for cleaner logging
+            readme_len = len(readme_content) if readme_content else 0
+            spec_len = len(spec_content) if spec_content else 0
+            review_len = len(review_log_content) if review_log_content else 0
+            
             logger.info(
                 f"[GROUPED_PR] Content available: "
-                f"README={'Yes' if readme_content else 'No'}, "
-                f"Spec={'Yes' if spec_content else 'No'}, "
-                f"Review={'Yes' if review_log_content else 'No'}"
+                f"README={'Yes' if readme_content else 'No'} ({readme_len} chars), "
+                f"Spec={'Yes' if spec_content else 'No'} ({spec_len} chars), "
+                f"Review={'Yes' if review_log_content else 'No'} ({review_len} chars)"
             )
             
             # Check if we have anything to commit
