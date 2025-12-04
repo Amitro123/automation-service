@@ -71,10 +71,6 @@ An autonomous GitHub automation system that triggers on **push and pull request 
 - Automatically updated via scripts/CI when system or specs change
 - **Visualized in the Dashboard**
 
-## 9. 📝 Automated Code Review Log
-- Tracks the history of automated code reviews.
-- Accessible via AUTOMATED_REVIEWS.md
-
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -264,10 +260,11 @@ Dashboard runs on: **http://localhost:5173**
 - 📝 Real-time system logs
 - 🗺️ Interactive architecture diagrams (Live from `ARCHITECTURE.md`)
 - 📜 Session History & Run Logs
-- **Displays results in Actions summary**
-- **(Optional) Comments on PRs with scores**
 
-See [`dashboard/DASHBOARD_SETUP.md`](dashboard/DASHBOARD_SETUP.md) for detailed setup and API integration instructions.
+See [`dashboard/DASHBOARD_SETUP.md`](dashboard/DASHBOARD_SETUP.md)
+
+5. Displays results in Actions summary
+6. (Optional) Comments on PRs with scores
 
 **Using CI results in dashboard:**
 1. Download `mutation_results.json` from workflow artifacts
@@ -277,6 +274,7 @@ See [`dashboard/DASHBOARD_SETUP.md`](dashboard/DASHBOARD_SETUP.md) for detailed 
 
 See [`.github/workflows/MUTATION_TESTING.md`](.github/workflows/MUTATION_TESTING.md) for details.
  On Windows, the feature will show as "skipped" with instructions. Run mutation tests in CI for best results.
+ for detailed setup and API integration instructions.
 
 ## 🌐 Deployment
 
