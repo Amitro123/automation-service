@@ -107,8 +107,8 @@ GEMINI_MIN_DELAY_SECONDS=2.0   # Min delay between calls
 JULES_API_KEY=your_jules_api_key_here
 JULES_API_URL=https://jules.googleapis.com/v1alpha
 JULES_SOURCE_ID=sources/github/owner/repo  # Get from: curl 'https://jules.googleapis.com/v1alpha/sources' -H 'X-Goog-Api-Key: YOUR_KEY'
-```bash
 **Test Jules Integration:**
+```bash
 python test_jules_review.py  # Validates config and tests API
 ### PR-Centric Configuration (Optional)
 ```bash
@@ -206,7 +206,7 @@ automation_agent/
 │   └── automation_agent/
 │       ├── webhook_server.py          # Flask webhook endpoint
 │       ├── orchestrator.py            # Coordinates 4 parallel tasks
-│       ├── session_memory.py          # Session Memory Store (NEW)
+│       ├── session_memory.py          # Session Memory Store
 │       ├── code_reviewer.py           # LLM-powered code analysis
 │       ├── code_review_updater.py     # Persistent review logging
 │       ├── readme_updater.py          # Smart README updates
@@ -215,7 +215,7 @@ automation_agent/
 │       ├── llm_client.py              # OpenAI/Anthropic/Gemini abstraction
 │       ├── utils.py                   # Utility functions
 │       └── main.py                    # Entry point
-├── dashboard/                         # React + Vite dashboard (NEW)
+├── dashboard/                         # React + Vite dashboard
 │   ├── App.tsx                        # Main dashboard UI
 │   ├── components/                    # UI components
 │   ├── services/
