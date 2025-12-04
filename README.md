@@ -90,8 +90,6 @@ venv\Scripts\activate
 
 pip install -r requirements.txt
 cp .env.example .env
-```
-
 Edit `.env` with your credentials.
 
 ### Review Provider Configuration (NEW - Dec 2025)
@@ -109,13 +107,9 @@ GEMINI_MIN_DELAY_SECONDS=2.0   # Min delay between calls
 JULES_API_KEY=your_jules_api_key_here
 JULES_API_URL=https://jules.googleapis.com/v1alpha
 JULES_SOURCE_ID=sources/github/owner/repo  # Get from: curl 'https://jules.googleapis.com/v1alpha/sources' -H 'X-Goog-Api-Key: YOUR_KEY'
-```
-
 **Test Jules Integration:**
 ```bash
 python test_jules_review.py  # Validates config and tests API
-```
-
 ### PR-Centric Configuration (Optional)
 ```bash
 # Trigger mode: "pr", "push", or "both" (default: both)
@@ -130,8 +124,6 @@ POST_REVIEW_ON_PR=True
 
 # Group doc updates into single automation PR
 GROUP_AUTOMATION_UPDATES=True
-```
-
 ### Run Locally
 
 #### Option 1: FastAPI Server (Recommended - includes Dashboard API)
@@ -141,8 +133,6 @@ GROUP_AUTOMATION_UPDATES=True
 
 # Linux/Mac
 python run_api.py
-```
-
 #### Option 2: Flask Server (Legacy webhook-only)
 ```bash
 # Windows (PowerShell)
@@ -150,14 +140,12 @@ $env:PYTHONPATH = "$PWD/src"
 python -m automation_agent.main
 
 # Linux/Mac
+python automation_agent/main.py
 ## 🧲 Agent Platform Integration (Optional)
 
 Compatible with **Windsurf**, **AntiGravity**, **n8n**, or any agent orchestrator:
 
-```
 GitHub Push → Agent Platform Webhook → Orchestrator → GitHub API
-```
-
 **Example flow:**
 1. Platform receives webhook → normalizes payload
 2. Calls `code_reviewer.py` → posts review comment/issue
@@ -193,16 +181,12 @@ GitHub Push → Agent Platform Webhook → Orchestrator → GitHub API
 ### Health Check
 ```bash
 curl http://localhost:8080/
-```
-
 ### Test Full Flow
 ```bash
 echo "# Test change" >> test.txt
 git add test.txt
 git commit -m "test: trigger automation"
 git push
-```
-
 **Expected results:**
 - ✅ Code review comment/issue
 - ✅ README PR (if applicable)
@@ -216,9 +200,12 @@ git push
 - ✅ Edge Cases
 - ✅ Load Tests
 
+### End-to-End Tests
+- See `E2E_DIFF_TEST.md` for end-to-end testing definitions.
+- AUTOMATED_REVIEWS.md:  Log of automated review outcomes.
+
 ## 📦 Project Structure
 
-```
 automation_agent/
 ├── src/
 │   └── automation_agent/
@@ -238,117 +225,6 @@ automation_agent/
 │   ├── services/
 │   │   └── apiService.ts              # Backend API client
 │   └── DASHBOARD_SETUP.md             # Dashboard documentation
-└── tests/                             # Pytest test suite
-```
-
-## 🗺️ Roadmap
-
-- ✅ Multi-LLM support (Gemini, local models)
-- 🔗 Multi-repo orchestration
-- 🎛️ Per-branch policies (strict main, relaxed feature branches)
-- 🔔 Integrations: Slack/Jira/n8n notifications
-- 📊 Metrics dashboard for review quality and velocity
-
-## 🔒 Security
-
-- HMAC-SHA256 webhook signature verification
-- Minimal GitHub token scopes
-- No logging of secrets/diffs
-- Environment-only credential storage
-- Guardrails tests with Bandit integrated into CI (`.github/workflows/security.yml`)
-
-## 📊 Dashboard
-
-### Running the Dashboard
-
-The project includes a real-time dashboard for monitoring automation metrics, test coverage, LLM usage, and system status.
-
-**Start the dashboard:**
-```bash
-cd dashboard
-npm install  # First time only
-npm run dev
-```
-
-Dashboard runs on: **http://localhost:5173**
-
-**Features:**
-- 📊 Live test coverage and mutation scores
-- 💰 LLM token usage and cost tracking
-- 📋 Task progress and bug tracking
-- 🔐 Security status from Bandit scans
-- 📝 Real-time system logs
-- 🗺️ Interactive architecture diagrams (Live from `ARCHITECTURE.md`)
-- 📜 Session History & Run Logs
-
-See [`dashboard/DASHBOARD_SETUP.md`](dashboard/DASHBOARD_SETUP.md)
-
-5. Displays results in Actions summary
-6. (Optional) Comments on PRs with scores
-
-**Using CI results in dashboard:**
-1. Download `mutation_results.json` from workflow artifacts
-2. Copy to repo root
-3. Restart API server: `python run_api.py`
-4. Dashboard displays real mutation score
-
-See [`.github/workflows/MUTATION_TESTING.md`](.github/workflows/MUTATION_TESTING.md) for details.
- On Windows, the feature will show as "skipped" with instructions. Run mutation tests in CI for best results.
- for detailed setup and API integration instructions.
-
-## 🌐 Deployment
-
-### Docker Deployment
-```bash
-docker build -t automation-agent .
-docker run -p 8080:8080 --env-file .env automation-agent
-```
-
-### Docker Compose (Recommended)
-```bash
-docker-compose up -d
-```
-
-### CI/CD
-Included GitHub Actions workflow (`.github/workflows/ci.yml`) runs tests on every push and builds Docker image on main branch pushes.
-
-## Diagram
-
-The project includes an ARCHITECTURE.md file with a live Mermaid diagram illustrating the system and project progress.
-
-**Example Mermaid snippet:**
-
-```mermaid
-graph TD
-    %% Backend Core (The Brain)
-    subgraph Backend["Backend Core (The Brain)"]
-        Webhook[Webhook Server]:::component
-        Orchestrator[Async Orchestrator]:::orchestrator
-        SessionMem[Session Memory Store]:::memory
-        
-        %% Parallel Tasks
-        subgraph Tasks["Parallel Tasks"]
-            Reviewer[Code Reviewer]:::component
-            ReadmeUp[README Updater]:::component
-            SpecUp[Spec Updater]:::component
-            ReviewUp[Code Review Updater]:::component
-        end
-    end
-
-    %% Frontend (Consumer)
-    subgraph Frontend["Frontend (Consumer)"]
-        Dashboard[React Dashboard]:::frontend
-    end
-
-    Webhook -->|Trigger| Orchestrator
-    Orchestrator -->|Init Run| SessionMem
-    Dashboard -->|Fetch Metrics/History| Webhook
-    Webhook -.->|Read| SessionMem
-```
-
-The diagram updates automatically as the project evolves.
-
-## 📄 License
-MIT#   T e s t 
- 
- 
+├── tests/                             # Pytest test suite
+├── E2E_DIFF_TEST.md                   # End-to-end test definitions
+├── AUTOMATED_REVIEWS.md               # Log of automated review outcomes
