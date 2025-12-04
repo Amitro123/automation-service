@@ -196,23 +196,44 @@ class GitHubClient:
         Returns:
             True if successful, False otherwise
         """
+        logger.info(f"[GITHUB] Creating branch '{branch_name}' from '{from_branch}'")
+        
         # Get SHA of source branch
         ref_url = f"{self.base_url}/repos/{self.owner}/{self.repo}/git/ref/heads/{from_branch}"
         try:
             async with httpx.AsyncClient(headers=self.headers, timeout=self.timeout) as client:
+                logger.info(f"[GITHUB] Fetching ref from: {ref_url}")
                 response = await client.get(ref_url)
+                
+                # If branch not found, try 'main' as fallback
+                if response.status_code == 404 and from_branch != "main":
+                    logger.warning(f"[GITHUB] Branch '{from_branch}' not found, trying 'main'")
+                    ref_url = f"{self.base_url}/repos/{self.owner}/{self.repo}/git/ref/heads/main"
+                    response = await client.get(ref_url)
+                
                 response.raise_for_status()
                 sha = response.json()["object"]["sha"]
+                logger.info(f"[GITHUB] Got SHA: {sha[:7]}")
+
+                # Check if branch already exists
+                check_url = f"{self.base_url}/repos/{self.owner}/{self.repo}/git/ref/heads/{branch_name}"
+                check_response = await client.get(check_url)
+                if check_response.status_code == 200:
+                    logger.info(f"[GITHUB] Branch '{branch_name}' already exists, reusing")
+                    return True
 
                 # Create new branch
                 create_url = f"{self.base_url}/repos/{self.owner}/{self.repo}/git/refs"
                 payload = {"ref": f"refs/heads/{branch_name}", "sha": sha}
+                logger.info(f"[GITHUB] Creating ref: {payload}")
                 response = await client.post(create_url, json=payload)
                 response.raise_for_status()
-                logger.info(f"Created branch {branch_name}")
+                logger.info(f"[GITHUB] ✅ Created branch {branch_name}")
                 return True
         except httpx.HTTPError as e:
-            logger.error(f"Failed to create branch: {e}")
+            logger.error(f"[GITHUB] ❌ Failed to create branch '{branch_name}': {e}")
+            if hasattr(e, 'response') and e.response is not None:
+                logger.error(f"[GITHUB] Response: {e.response.text[:500]}")
             return False
 
     async def create_pull_request(
