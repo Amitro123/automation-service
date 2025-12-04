@@ -143,9 +143,6 @@ python run_api.py
 # Windows (PowerShell)
 $env:PYTHONPATH = "$PWD/src"
 python -m automation_agent.main
-# **Test Jules Integration:**
-```bash
-python test_jules_review.py  # Validates config and tests API
 ## 🧲 Agent Platform Integration (Optional)
 
 Compatible with **Windsurf**, **AntiGravity**, **n8n**, or any agent orchestrator:
@@ -214,7 +211,7 @@ automation_agent/
 │       ├── orchestrator.py            # Coordinates 4 parallel tasks
 │       ├── session_memory.py          # Session Memory Store (NEW)
 │       ├── code_reviewer.py           # LLM-powered code analysis
-│       ├── code_review_updater.py     # Persistent review logging - Output now to AUTOMATED_REVIEWS.md
+│       ├── code_review_updater.py     # Persistent review logging
 │       ├── readme_updater.py          # Smart README updates
 │       ├── spec_updater.py            # Progress documentation
 │       ├── github_client.py           # GitHub API wrapper
