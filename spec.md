@@ -429,7 +429,7 @@ LOW: Polish
 - **Decisions**: None.
 - **Next Steps**: Review the review summary and consider adding a unit test for the example in the docstring to ensure accuracy and maintainability.
 
-### [2024-02-29]
-- **Summary**: Added instructions for running the agent on Windows using PowerShell, including setting the PYTHONPATH environment variable.
-- **Decisions**: Expanded the documentation to include instructions for Windows users to improve accessibility and usability of the project.
-- **Next Steps**: Consider adding a CI/CD pipeline that supports Windows environments.
+### 2024-03-08
+- **Summary**: Updated documentation to reflect the change from `code_review.md` to `AUTOMATED_REVIEWS.md` for persistent logging of automated reviews. This includes updates to the README and project specification.
+- **Decisions**: Renamed the log file to better reflect its purpose and improve consistency throughout the project.
+- **Next Steps**: Review the new documentation and ensure that all references to the log file are consistent.
