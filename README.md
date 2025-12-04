@@ -1,11 +1,11 @@
 ﻿# 🤖 GitHub Automation Agent
 
-An autonomous GitHub automation system that triggers on **push and pull request events** to perform intelligent code review, automatic README and spec.md updates, and project progress documentation. Features **PR-centric orchestration** with trivial change filtering to optimize LLM token usage.
+An autonomous GitHub automation system that triggers on **push and pull request events** to perform intelligent code review, automatic README and `AUTOMATED_REVIEWS.md` updates, and project progress documentation. Features **PR-centric orchestration** with trivial change filtering to optimize LLM token usage.
 
 ## 💡 Why This Agent?
 
 - **Reduces repetitive code review work** — highlights risky changes and suggests fixes automatically
-- **Keeps docs always fresh** — README, spec.md, and AUTOMATED_REVIEWS.md stay in sync with actual code changes
+- **Keeps docs always fresh** — README, spec.md, and `AUTOMATED_REVIEWS.md` stay in sync with actual code changes
 - **Intelligent layer over GitHub** — uses advanced LLMs + async orchestration instead of rigid YAML workflows
 
 ## ✨ Features
@@ -13,7 +13,7 @@ An autonomous GitHub automation system that triggers on **push and pull request 
 ### 1. 🔍 Automated Code Review
 - **Intelligent Analysis**: Uses LLMs (GPT-4o / Claude 3.5 / Gemini Pro) to analyze code changes
 - **Comprehensive Feedback**: Code quality, bugs, security, performance, best practices
-- **Flexible Output**: Commit comments, PR comments, GitHub issues, and persistent AUTOMATED_REVIEWS.md logging
+- **Flexible Output**: Commit comments, PR comments, GitHub issues, and persistent `AUTOMATED_REVIEWS.md` logging
 - **Structured Reviews**: Strengths, issues, suggestions, security concerns
 - **Session Memory**: Maintains historic context for continuous improvement
 
@@ -69,9 +69,9 @@ An autonomous GitHub automation system that triggers on **push and pull request 
 - Automatically updated via scripts/CI when system or specs change
 - **Visualized in the Dashboard**
 
-### 9. 📝 Automated Code Review Log
+## 9. 📝 Automated Code Review Log
 - Tracks the history of automated code reviews.
-- Accessible via AUTOMATED_REVIEWS.md
+- Accessible via `AUTOMATED_REVIEWS.md`
 
 ## 🚀 Quick Start
 
@@ -111,7 +111,6 @@ GEMINI_MIN_DELAY_SECONDS=2.0   # Min delay between calls
 JULES_API_KEY=your_jules_api_key_here
 JULES_API_URL=https://jules.googleapis.com/v1alpha
 JULES_SOURCE_ID=sources/github/owner/repo  # Get from: curl 'https://jules.googleapis.com/v1alpha/sources' -H 'X-Goog-Api-Key: YOUR_KEY'
-```bash
 **Test Jules Integration:**
 ```bash
 python test_jules_review.py  # Validates config and tests API
@@ -145,7 +144,6 @@ $env:PYTHONPATH = "$PWD/src"
 python -m automation_agent.main
 
 # Linux/Mac
-python run_api.py
 ## 🧲 Agent Platform Integration (Optional)
 
 Compatible with **Windsurf**, **AntiGravity**, **n8n**, or any agent orchestrator:
@@ -169,7 +167,7 @@ GitHub Push → Agent Platform Webhook → Orchestrator → GitHub API
    - Code review → comment/issue + persistent logs (code changes only)
    - README update → PR (if changes detected)
    - spec.md update → append entry
-   - AUTOMATED_REVIEWS.md update → append review summary with session memory
+   - `AUTOMATED_REVIEWS.md` update → append review summary with session memory
 5. **Results posted** → repo stays documented automatically and progress tracked
 
 ### PR-Centric Flow (Pull Request Events)
@@ -195,7 +193,7 @@ git push
 **Expected results:**
 - ✅ Code review comment/issue
 - ✅ README PR (if applicable)
-- ✅ spec.md + AUTOMATED_REVIEWS.md entries appended
+- ✅ spec.md + `AUTOMATED_REVIEWS.md` entries appended
 
 ### Test Status
 **Current Pass Rate**: 100% (99/99 tests passing) as of 2025-11-30
@@ -219,7 +217,7 @@ automation_agent/
 │       ├── spec_updater.py            # Progress documentation
 │       ├── github_client.py           # GitHub API wrapper
 │       ├── llm_client.py              # OpenAI/Anthropic/Gemini abstraction
-│       ├── utils.py                   # Utility functions (NEW)
+│       ├── utils.py                   # Utility functions
 │       └── main.py                    # Entry point
 ├── dashboard/                         # React + Vite dashboard (NEW)
 │   ├── App.tsx                        # Main dashboard UI
@@ -325,7 +323,3 @@ graph TD
     Orchestrator -->|Init Run| SessionMem
     Dashboard -->|Fetch Metrics/History| Webhook
     Webhook -.->|Read| SessionMem
-The diagram updates automatically as the project evolves.
-
-## 📄 License
-MIT
