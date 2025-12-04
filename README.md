@@ -69,6 +69,10 @@ An autonomous GitHub automation system that triggers on **push and pull request 
 - Automatically updated via scripts/CI when system or specs change
 - **Visualized in the Dashboard**
 
+## 9. 📝 Automated Code Review Log
+- Tracks the history of automated code reviews.
+- Accessible via AUTOMATED_REVIEWS.md
+
 ## 🚀 Quick Start
 
 ### Prerequisites
