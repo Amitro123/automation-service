@@ -47,7 +47,7 @@ def truncate_string(text: str, max_length: int = 100, suffix: str = "...") -> st
     
     Args:
         text: The string to truncate
-        max_length: Maximum length (default 100)
+        max_length: Maximum length (default 100), must be non-negative
         suffix: Suffix to append when truncated (default "...")
         
     Returns:
@@ -61,6 +61,11 @@ def truncate_string(text: str, max_length: int = 100, suffix: str = "...") -> st
         >>> truncate_string("", 10)
         ''
     """
-    if not text or len(text) <= max_length:
+    # Handle edge cases explicitly
+    if max_length < 0:
+        return ""
+    if not text:
+        return ""
+    if len(text) <= max_length:
         return text
     return text[:max_length - len(suffix)] + suffix
