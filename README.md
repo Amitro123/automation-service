@@ -115,6 +115,7 @@ JULES_SOURCE_ID=sources/github/owner/repo  # Get from: curl 'https://jules.googl
 **Test Jules Integration:**
 ```bash
 python test_jules_review.py  # Validates config and tests API
+```bash
 ### PR-Centric Configuration (Optional)
 ```bash
 # Trigger mode: "pr", "push", or "both" (default: both)
@@ -274,29 +275,6 @@ See [`dashboard/DASHBOARD_SETUP.md`](dashboard/DASHBOARD_SETUP.md) for detailed 
 See [`.github/workflows/MUTATION_TESTING.md`](.github/workflows/MUTATION_TESTING.md) for details.
  On Windows, the feature will show as "skipped" with instructions. Run mutation tests in CI for best results.
 
-## 📦 Project Structure
-
-automation_agent/
-├── src/
-│   └── automation_agent/
-│       ├── webhook_server.py          # Flask webhook endpoint
-│       ├── orchestrator.py            # Coordinates 4 parallel tasks
-│       ├── session_memory.py          # Session Memory Store
-│       ├── code_reviewer.py           # LLM-powered code analysis
-│       ├── code_review_updater.py     # Persistent review logging
-│       ├── readme_updater.py          # Smart README updates
-│       ├── spec_updater.py            # Progress documentation
-│       ├── github_client.py           # GitHub API wrapper
-│       ├── llm_client.py              # OpenAI/Anthropic/Gemini abstraction
-│       ├── utils.py                   # Utility functions
-│       └── main.py                    # Entry point
-├── dashboard/                         # React + Vite dashboard
-│   ├── App.tsx                        # Main dashboard UI
-│   ├── components/                    # UI components
-│   ├── services/
-│   │   └── apiService.ts              # Backend API client
-│   └── DASHBOARD_SETUP.md             # Dashboard documentation
-└── tests/                             # Pytest test suite
 ## 🌐 Deployment
 
 ### Docker Deployment
