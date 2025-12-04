@@ -45,6 +45,8 @@ An autonomous GitHub automation system that triggers on **push and pull request 
 - **Grouped Automation PRs**: README + spec updates bundled into single PR per source PR
 - **PR Review Comments**: Code reviews posted as PR reviews instead of commit comments
 - **Configurable Thresholds**: Set max lines for trivial detection, doc file patterns
+- **Displays results in Actions summary**
+- **(Optional) Comments on PRs with scores**
 
 ### 6. 🛡️ Robust Error Handling & Zero Silent Failures
 - **No Silent Failures**: Every error is logged, tracked, and visible in SessionMemory
@@ -318,5 +320,7 @@ graph TD
     Orchestrator -->|Init Run| SessionMem
     Dashboard -->|Fetch Metrics/History| Webhook
     Webhook -.->|Read| SessionMem
+The diagram updates automatically as the project evolves.
+
 ## 📄 License
 MIT
