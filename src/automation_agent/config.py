@@ -115,6 +115,24 @@ class Config:
                 errors.append("JULES_SOURCE_ID is required when using Jules review provider (e.g., 'sources/github/owner/repo')")
 
         return errors
+    
+    @classmethod
+    def get_config_summary(cls) -> dict:
+        """Get a summary of current configuration for debugging.
+        
+        Returns:
+            dict: Configuration summary with masked sensitive values
+        """
+        return {
+            "repository": f"{cls.REPOSITORY_OWNER}/{cls.REPOSITORY_NAME}",
+            "llm_provider": cls.LLM_PROVIDER,
+            "llm_model": cls.LLM_MODEL,
+            "review_provider": cls.REVIEW_PROVIDER,
+            "trigger_mode": cls.TRIGGER_MODE,
+            "auto_commit": cls.AUTO_COMMIT,
+            "create_pr": cls.CREATE_PR,
+            "trivial_filter_enabled": cls.TRIVIAL_CHANGE_FILTER_ENABLED,
+        }
 
     @classmethod
     def get_repo_full_name(cls) -> str:
