@@ -449,12 +449,12 @@ LOW: Polish
 - **Decisions**: Added a new section for PR-Centric Automation and Robust Error Handling.
 - **Next Steps**: Update spec.md to match the documentation changes.
 
-### [2024-02-28]
-- **Summary**: Updated README.md to reflect new features and configuration options related to PR-Centric Automation, Robust Error Handling & Zero Silent Failures, Review Provider Configuration, and the new Dashboard. Added Session Memory Store, Dashboard UI, Utility functions.
-- **Decisions**: Added new sections to README.md to highlight the new features and improvements. Updated the file structure to reflect the addition of the dashboard and new modules.
-- **Next Steps**: Update the spec.md file to reflect the new functionality.
+### 2024-05-09
+- **Summary**: Updated spec.md to reflect the addition of "PR-Centric Automation" and "Robust Error Handling & Zero Silent Failures" sections in the README, and updated Review Provider Configuration. Added utils.py and dashboard folder structure.
+- **Decisions**: Aligned the spec with the latest documentation changes, adding sections for PR-Centric Automation and Robust Error Handling.
+- **Next Steps**: No immediate next steps, the spec has been updated to reflect the changes.
 
-### [2024-05-09]
-- **Summary**: Added "PR-Centric Automation" and "Robust Error Handling & Zero Silent Failures" sections to the README, and updated Review Provider Configuration. Added utils.py and dashboard folder structure.
-- **Decisions**: Added a new section for PR-Centric Automation and Robust Error Handling.
-- **Next Steps**: Update spec.md to match the documentation changes.
+### [2024-03-08]
+- **Summary**: Updated README with Jules integration test instructions, added a "Test Jules Integration" section, improved dashboard integration details, and updated the architecture diagram.
+- **Decisions**: Added specific instructions for testing the Jules integration. Clarified how to use CI results in the dashboard.
+- **Next Steps**: Continue to refine dashboard integration and Jules API testing.
