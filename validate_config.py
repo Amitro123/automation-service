@@ -2,41 +2,48 @@
 """Quick script to validate .env configuration before starting server."""
 
 import os
+import sys
 from dotenv import load_dotenv
 
 load_dotenv()
 
-print("=" * 80)
-print("🔍 CONFIGURATION VALIDATION")
-print("=" * 80)
+def validate_configuration():
+    """Validate all required environment variables.
+    
+    Returns:
+        bool: True if all required variables are set, False otherwise
+    """
+    print("=" * 80)
+    print("🔍 CONFIGURATION VALIDATION")
+    print("=" * 80)
 
-required_configs = {
-    "GITHUB_TOKEN": os.getenv("GITHUB_TOKEN"),
-    "GITHUB_WEBHOOK_SECRET": os.getenv("GITHUB_WEBHOOK_SECRET"),
-    "REPOSITORY_OWNER": os.getenv("REPOSITORY_OWNER"),
-    "REPOSITORY_NAME": os.getenv("REPOSITORY_NAME"),
-}
+    required_configs = {
+        "GITHUB_TOKEN": os.getenv("GITHUB_TOKEN"),
+        "GITHUB_WEBHOOK_SECRET": os.getenv("GITHUB_WEBHOOK_SECRET"),
+        "REPOSITORY_OWNER": os.getenv("REPOSITORY_OWNER"),
+        "REPOSITORY_NAME": os.getenv("REPOSITORY_NAME"),
+    }
 
-llm_configs = {
-    "LLM_PROVIDER": os.getenv("LLM_PROVIDER", "gemini"),
-    "GEMINI_API_KEY": os.getenv("GEMINI_API_KEY"),
-    "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY"),
-    "ANTHROPIC_API_KEY": os.getenv("ANTHROPIC_API_KEY"),
-}
+    llm_configs = {
+        "LLM_PROVIDER": os.getenv("LLM_PROVIDER", "gemini"),
+        "GEMINI_API_KEY": os.getenv("GEMINI_API_KEY"),
+        "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY"),
+        "ANTHROPIC_API_KEY": os.getenv("ANTHROPIC_API_KEY"),
+    }
 
-print("\n📋 Required GitHub Configuration:")
-all_valid = True
-for key, value in required_configs.items():
-    if value:
-        masked = value[:4] + "..." + value[-4:] if len(value) > 8 else "***"
-        print(f"   ✅ {key}: {masked}")
-    else:
-        print(f"   ❌ {key}: NOT SET")
-        all_valid = False
+    print("\n📋 Required GitHub Configuration:")
+    all_valid = True
+    for key, value in required_configs.items():
+        if value:
+            masked = value[:4] + "..." + value[-4:] if len(value) > 8 else "***"
+            print(f"   ✅ {key}: {masked}")
+        else:
+            print(f"   ❌ {key}: NOT SET")
+            all_valid = False
 
-print("\n🤖 LLM Configuration:")
-provider = llm_configs["LLM_PROVIDER"]
-print(f"   Provider: {provider}")
+    print("\n🤖 LLM Configuration:")
+    provider = llm_configs["LLM_PROVIDER"]
+    print(f"   Provider: {provider}")
 
 if provider == "gemini":
     if llm_configs["GEMINI_API_KEY"]:
