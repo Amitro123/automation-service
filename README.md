@@ -213,7 +213,7 @@ automation_agent/
 │       ├── spec_updater.py            # Progress documentation
 │       ├── github_client.py           # GitHub API wrapper
 │       ├── llm_client.py              # OpenAI/Anthropic/Gemini abstraction
-│       ├── utils.py                   # Utility functions
+│       └── utils.py                   # Utility functions
 │       └── main.py                    # Entry point
 ├── dashboard/                         # React + Vite dashboard (NEW)
 │   ├── App.tsx                        # Main dashboard UI
