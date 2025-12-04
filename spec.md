@@ -449,7 +449,7 @@ LOW: Polish
 - **Decisions**: The automated code review log was deemed unnecessary and removed from the README. The `run_api.py` was removed as it was not needed. The new dashboard directory was added to visualize the project.
 - **Next Steps**: Update the dashboard with relevant data.
 
-### [2024-02-29]
-- **Summary**: Updated README to reflect current features, removed "NEW" tags and "Automated Code Review Log" section, updated Quick Start instructions with review provider configuration and agent platform integration.
-- **Decisions**: Removed the "Automated Code Review Log" section as it's likely replaced by the dashboard and artifact tracking.
-- **Next Steps**: Update the dashboard to visualize the review history.
+### [2024-12-07]
+- **Summary**: Added `utils.py` module, removed the Automated Code Review Log section from the README.md and updated the dashboard section.
+- **Decisions**: Centralized utility functions into a dedicated module for code organization and reusability.
+- **Next Steps**: Implement utility functions within `utils.py`.
