@@ -449,17 +449,17 @@ LOW: Polish
 - **Decisions**: The automated code review log was deemed unnecessary and removed from the README. The `run_api.py` was removed as it was not needed. The new dashboard directory was added to visualize the project.
 - **Next Steps**: Update the dashboard with relevant data.
 
-### [2024-12-07]
-- **Summary**: Added `utils.py` module, removed the Automated Code Review Log section from the README.md and updated the dashboard section.
-- **Decisions**: Centralized utility functions into a dedicated module for code organization and reusability.
-- **Next Steps**: Implement utility functions within `utils.py`.
+### [2024-02-29]
+- **Summary**: Updated README to reflect current features, removed "NEW" tags and "Automated Code Review Log" section, updated Quick Start instructions with review provider configuration and agent platform integration.
+- **Decisions**: Removed the "Automated Code Review Log" section as it's likely replaced by the dashboard and artifact tracking.
+- **Next Steps**: Update the dashboard to visualize the review history.
 
 ### [2024-02-29]
-- **Summary**: Removed the "Automated Code Review Log" section from the README.md.
-- **Decisions**: The code review log is no longer explicitly called out in the README.  This suggests that the logging and access mechanisms may have changed or been integrated elsewhere (e.g., the dashboard).
-- **Next Steps**: Review the Dashboard implementation to ensure it correctly visualizes the review data. Verify that the automated reviews are still being tracked effectively.
+- **Summary**: Updated spec.md to reflect the removal of "Automated Code Review Log" section and addition of dashboard directory and utils.py file.
+- **Decisions**: Aligned the spec with the latest documentation changes, removing references to the "Automated Code Review Log" and reflecting the addition of the dashboard and utils.py file.
+- **Next Steps**: No immediate next steps, the spec has been updated to reflect the changes.
 
-### 2024-12-05
-- **Summary**: Updated the "Detailed Behavior By Module" section to include a diagram depicting the webhook processing flow.
-- **Decisions**: Added a visual representation of the data flow to aid understanding.
-- **Next Steps**: Expand on the diagram to include the specific modules involved in code review and documentation updates.
+### [2024-02-29]
+- **Summary**: Updated spec.md to reflect the removal of "Automated Code Review Log" section and addition of dashboard directory and utils.py file.
+- **Decisions**: Aligned the spec with the latest documentation changes, removing references to the "Automated Code Review Log" and reflecting the addition of the dashboard and utils.py file.
+- **Next Steps**: No immediate next steps, the spec has been updated to reflect the changes.
