@@ -69,6 +69,10 @@ An autonomous GitHub automation system that triggers on **push and pull request 
 - Automatically updated via scripts/CI when system or specs change
 - **Visualized in the Dashboard**
 
+### 9. 📝 Automated Code Review Log
+- Tracks the history of automated code reviews.
+- Accessible via AUTOMATED_REVIEWS.md
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -107,6 +111,7 @@ GEMINI_MIN_DELAY_SECONDS=2.0   # Min delay between calls
 JULES_API_KEY=your_jules_api_key_here
 JULES_API_URL=https://jules.googleapis.com/v1alpha
 JULES_SOURCE_ID=sources/github/owner/repo  # Get from: curl 'https://jules.googleapis.com/v1alpha/sources' -H 'X-Goog-Api-Key: YOUR_KEY'
+```bash
 **Test Jules Integration:**
 ```bash
 python test_jules_review.py  # Validates config and tests API
@@ -138,7 +143,6 @@ python run_api.py
 # Windows (PowerShell)
 $env:PYTHONPATH = "$PWD/src"
 python -m automation_agent.main
-
 ## 🧲 Agent Platform Integration (Optional)
 
 Compatible with **Windsurf**, **AntiGravity**, **n8n**, or any agent orchestrator:
@@ -205,15 +209,16 @@ automation_agent/
 │   └── automation_agent/
 │       ├── webhook_server.py          # Flask webhook endpoint
 │       ├── orchestrator.py            # Coordinates 4 parallel tasks
-│       ├── session_memory.py          # Session Memory Store (NEW)
+│       ├── session_memory.py          # Session Memory Store
 │       ├── code_reviewer.py           # LLM-powered code analysis
 │       ├── code_review_updater.py     # Persistent review logging
 │       ├── readme_updater.py          # Smart README updates
 │       ├── spec_updater.py            # Progress documentation
 │       ├── github_client.py           # GitHub API wrapper
 │       ├── llm_client.py              # OpenAI/Anthropic/Gemini abstraction
+│       ├── utils.py                   # Utility functions
 │       └── main.py                    # Entry point
-├── dashboard/                         # React + Vite dashboard (NEW)
+├── dashboard/                         # React + Vite dashboard
 │   ├── App.tsx                        # Main dashboard UI
 │   ├── components/                    # UI components
 │   ├── services/
@@ -258,10 +263,7 @@ Dashboard runs on: **http://localhost:5173**
 - 🗺️ Interactive architecture diagrams (Live from `ARCHITECTURE.md`)
 - 📜 Session History & Run Logs
 
-See [`dashboard/DASHBOARD_SETUP.md`](dashboard/DASHBOARD_SETUP.md)
-
-5. Displays results in Actions summary
-6. (Optional) Comments on PRs with scores
+See [`dashboard/DASHBOARD_SETUP.md`](dashboard/DASHBOARD_SETUP.md) for detailed setup and API integration instructions.
 
 **Using CI results in dashboard:**
 1. Download `mutation_results.json` from workflow artifacts
@@ -271,11 +273,6 @@ See [`dashboard/DASHBOARD_SETUP.md`](dashboard/DASHBOARD_SETUP.md)
 
 See [`.github/workflows/MUTATION_TESTING.md`](.github/workflows/MUTATION_TESTING.md) for details.
  On Windows, the feature will show as "skipped" with instructions. Run mutation tests in CI for best results.
- for detailed setup and API integration instructions.
-
-## 📄 Documentation Updates
-- Added `E2E_DIFF_TEST.md` and `AUTOMATED_REVIEWS.md` to track test and review history.
-- Updated the spec.
 
 ## 🌐 Deployment
 
@@ -321,7 +318,3 @@ graph TD
     Orchestrator -->|Init Run| SessionMem
     Dashboard -->|Fetch Metrics/History| Webhook
     Webhook -.->|Read| SessionMem
-The diagram updates automatically as the project evolves.
-
-## 📄 License
-MIT
