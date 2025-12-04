@@ -449,7 +449,7 @@ LOW: Polish
 - **Decisions**: Prioritized comprehensive logging and structured error returns to ensure all failures are captured and addressed. Introduced a configurable review provider to support different LLM APIs and the Jules API.
 - **Next Steps**: Refactor code to use the official Jules API client libraries. Further improve dashboard metrics related to error rates and LLM usage.
 
-### [2024-03-08]
-- **Summary**: Added Automated Code Review Log feature, accessible via AUTOMATED_REVIEWS.md. Updated README.md to reflect this and other changes.
-- **Decisions**: Introduced a new file, AUTOMATED_REVIEWS.md, to track the history of automated code reviews.
-- **Next Steps**:  Integrate the automated review log into the dashboard for better visualization and analysis of review history.
+### [2024-05-09]
+- **Summary**: Added "PR-Centric Automation" and "Robust Error Handling & Zero Silent Failures" sections to the README, and updated Review Provider Configuration. Added utils.py and dashboard folder structure.
+- **Decisions**: Added a new section for PR-Centric Automation and Robust Error Handling.
+- **Next Steps**: Update spec.md to match the documentation changes.
