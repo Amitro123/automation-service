@@ -454,7 +454,7 @@ LOW: Polish
 - **Decisions**: Clarified the destination of the review summary output.
 - **Next Steps**: No immediate next steps.
 
-### 2024-02-29
-- **Summary**: Added a test for the Jules integration and updated the README with test instructions.  Updated the instructions for running the agent in Linux/Mac.  Modified the `code_review_updater.py` behavior to append review summaries to `AUTOMATED_REVIEWS.md` instead of the logs.
-- **Decisions**: Centralized review summaries in a dedicated file for easier access and management.
-- **Next Steps**: Consider adding a CI/CD pipeline to automatically run the Jules integration tests.
+### [2024-12-07]
+- **Summary**: Updated documentation to reflect the change in `code_review_updater.py` output from logs to `AUTOMATED_REVIEWS.md`. Added a test for the Jules integration.
+- **Decisions**: Clarified the destination of the review summary output.
+- **Next Steps**: No immediate next steps.
