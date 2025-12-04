@@ -38,7 +38,7 @@ An autonomous GitHub automation system that triggers on **push and pull request 
 - Security guardrails integrated with Bandit scans and CI/CD enforcement
 - Multi-repository support with auto-detection of required files (README.md, spec.md)
 
-### 5. 🎯 PR-Centric Automation
+### 5. 🎯 PR-Centric Automation (NEW)
 - **Trigger Modes**: Configure to respond to PRs only, pushes only, or both
 - **Trivial Change Filter**: Skip automation for small doc edits, whitespace-only changes
 - **Smart Task Routing**: Code review only runs on code changes, not doc-only PRs
@@ -46,7 +46,7 @@ An autonomous GitHub automation system that triggers on **push and pull request 
 - **PR Review Comments**: Code reviews posted as PR reviews instead of commit comments
 - **Configurable Thresholds**: Set max lines for trivial detection, doc file patterns
 
-### 6. 🛡️ Robust Error Handling & Zero Silent Failures
+### 6. 🛡️ Robust Error Handling & Zero Silent Failures (NEW - Dec 2025)
 - **No Silent Failures**: Every error is logged, tracked, and visible in SessionMemory
 - **Comprehensive Logging**: `[CODE_REVIEW]`, `[ORCHESTRATOR]`, `[JULES]`, `[GROUPED_PR]` prefixes for easy debugging
 - **Structured Error Returns**: All failures include `error_type` and `message` fields
@@ -69,7 +69,7 @@ An autonomous GitHub automation system that triggers on **push and pull request 
 - Automatically updated via scripts/CI when system or specs change
 - **Visualized in the Dashboard**
 
-### 9. 📝 Automated Code Review Log
+## 9. 📝 Automated Code Review Log
 - Tracks the history of automated code reviews.
 - Accessible via AUTOMATED_REVIEWS.md
 
@@ -96,7 +96,7 @@ pip install -r requirements.txt
 cp .env.example .env
 Edit `.env` with your credentials.
 
-### Review Provider Configuration
+### Review Provider Configuration (NEW - Dec 2025)
 ```bash
 # Choose review provider: "llm" or "jules"
 REVIEW_PROVIDER=llm
@@ -111,6 +111,7 @@ GEMINI_MIN_DELAY_SECONDS=2.0   # Min delay between calls
 JULES_API_KEY=your_jules_api_key_here
 JULES_API_URL=https://jules.googleapis.com/v1alpha
 JULES_SOURCE_ID=sources/github/owner/repo  # Get from: curl 'https://jules.googleapis.com/v1alpha/sources' -H 'X-Goog-Api-Key: YOUR_KEY'
+```bash
 **Test Jules Integration:**
 ```bash
 python test_jules_review.py  # Validates config and tests API
@@ -142,9 +143,6 @@ python run_api.py
 # Windows (PowerShell)
 $env:PYTHONPATH = "$PWD/src"
 python -m automation_agent.main
-
-# Linux/Mac
-python run_api.py
 ## 🧲 Agent Platform Integration (Optional)
 
 Compatible with **Windsurf**, **AntiGravity**, **n8n**, or any agent orchestrator:
@@ -211,23 +209,22 @@ automation_agent/
 │   └── automation_agent/
 │       ├── webhook_server.py          # Flask webhook endpoint
 │       ├── orchestrator.py            # Coordinates 4 parallel tasks
-│       ├── session_memory.py          # Session Memory Store
+│       ├── session_memory.py          # Session Memory Store (NEW)
 │       ├── code_reviewer.py           # LLM-powered code analysis
 │       ├── code_review_updater.py     # Persistent review logging
 │       ├── readme_updater.py          # Smart README updates
 │       ├── spec_updater.py            # Progress documentation
 │       ├── github_client.py           # GitHub API wrapper
 │       ├── llm_client.py              # OpenAI/Anthropic/Gemini abstraction
-│       ├── utils.py                   # Utility functions
+│       ├── utils.py                   # Utility functions (NEW)
 │       └── main.py                    # Entry point
-├── dashboard/                         # React + Vite dashboard
+├── dashboard/                         # React + Vite dashboard (NEW)
 │   ├── App.tsx                        # Main dashboard UI
 │   ├── components/                    # UI components
 │   ├── services/
 │   │   └── apiService.ts              # Backend API client
 │   └── DASHBOARD_SETUP.md             # Dashboard documentation
 └── tests/                             # Pytest test suite
-
 ## 🗺️ Roadmap
 
 - ✅ Multi-LLM support (Gemini, local models)
@@ -266,7 +263,10 @@ Dashboard runs on: **http://localhost:5173**
 - 🗺️ Interactive architecture diagrams (Live from `ARCHITECTURE.md`)
 - 📜 Session History & Run Logs
 
-See [`dashboard/DASHBOARD_SETUP.md`](dashboard/DASHBOARD_SETUP.md) for detailed setup and API integration instructions.
+See [`dashboard/DASHBOARD_SETUP.md`](dashboard/DASHBOARD_SETUP.md)
+
+5. Displays results in Actions summary
+6. (Optional) Comments on PRs with scores
 
 **Using CI results in dashboard:**
 1. Download `mutation_results.json` from workflow artifacts
@@ -275,7 +275,8 @@ See [`dashboard/DASHBOARD_SETUP.md`](dashboard/DASHBOARD_SETUP.md) for detailed 
 4. Dashboard displays real mutation score
 
 See [`.github/workflows/MUTATION_TESTING.md`](.github/workflows/MUTATION_TESTING.md) for details.
-On Windows, the feature will show as "skipped" with instructions. Run mutation tests in CI for best results.
+ On Windows, the feature will show as "skipped" with instructions. Run mutation tests in CI for best results.
+ for detailed setup and API integration instructions.
 
 ## 🌐 Deployment
 
