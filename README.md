@@ -1,11 +1,11 @@
 ﻿# 🤖 GitHub Automation Agent
 
-An autonomous GitHub automation system that triggers on **push and pull request events** to perform intelligent code review, automatic README and code_review.md updates, and project progress documentation. Features **PR-centric orchestration** with trivial change filtering to optimize LLM token usage.
+An autonomous GitHub automation system that triggers on **push and pull request events** to perform intelligent code review, automatic README and `AUTOMATED_REVIEWS.md` updates, and project progress documentation. Features **PR-centric orchestration** with trivial change filtering to optimize LLM token usage.
 
 ## 💡 Why This Agent?
 
 - **Reduces repetitive code review work** — highlights risky changes and suggests fixes automatically
-- **Keeps docs always fresh** — README, spec.md, and code_review.md stay in sync with actual code changes
+- **Keeps docs always fresh** — README, spec.md, and `AUTOMATED_REVIEWS.md` stay in sync with actual code changes
 - **Intelligent layer over GitHub** — uses advanced LLMs + async orchestration instead of rigid YAML workflows
 
 ## ✨ Features
@@ -13,7 +13,7 @@ An autonomous GitHub automation system that triggers on **push and pull request 
 ### 1. 🔍 Automated Code Review
 - **Intelligent Analysis**: Uses LLMs (GPT-4o / Claude 3.5 / Gemini Pro) to analyze code changes
 - **Comprehensive Feedback**: Code quality, bugs, security, performance, best practices
-- **Flexible Output**: Commit comments, PR comments, GitHub issues, and persistent code_review.md logging
+- **Flexible Output**: Commit comments, PR comments, GitHub issues, and persistent `AUTOMATED_REVIEWS.md` logging
 - **Structured Reviews**: Strengths, issues, suggestions, security concerns
 - **Session Memory**: Maintains historic context for continuous improvement
 
@@ -69,6 +69,10 @@ An autonomous GitHub automation system that triggers on **push and pull request 
 - Automatically updated via scripts/CI when system or specs change
 - **Visualized in the Dashboard**
 
+## 9. 📝 Automated Code Review Log
+- Tracks the history of automated code reviews.
+- Accessible via `AUTOMATED_REVIEWS.md`
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -90,8 +94,6 @@ venv\Scripts\activate
 
 pip install -r requirements.txt
 cp .env.example .env
-```
-
 Edit `.env` with your credentials.
 
 ### Review Provider Configuration (NEW - Dec 2025)
@@ -109,13 +111,10 @@ GEMINI_MIN_DELAY_SECONDS=2.0   # Min delay between calls
 JULES_API_KEY=your_jules_api_key_here
 JULES_API_URL=https://jules.googleapis.com/v1alpha
 JULES_SOURCE_ID=sources/github/owner/repo  # Get from: curl 'https://jules.googleapis.com/v1alpha/sources' -H 'X-Goog-Api-Key: YOUR_KEY'
-```
-
+```bash
 **Test Jules Integration:**
 ```bash
 python test_jules_review.py  # Validates config and tests API
-```
-
 ### PR-Centric Configuration (Optional)
 ```bash
 # Trigger mode: "pr", "push", or "both" (default: both)
@@ -130,8 +129,6 @@ POST_REVIEW_ON_PR=True
 
 # Group doc updates into single automation PR
 GROUP_AUTOMATION_UPDATES=True
-```
-
 ### Run Locally
 
 #### Option 1: FastAPI Server (Recommended - includes Dashboard API)
@@ -141,29 +138,22 @@ GROUP_AUTOMATION_UPDATES=True
 
 # Linux/Mac
 python run_api.py
-```
-
 #### Option 2: Flask Server (Legacy webhook-only)
 ```bash
 # Windows (PowerShell)
 $env:PYTHONPATH = "$PWD/src"
 python -m automation_agent.main
-
-# Linux/Mac
 ## 🧲 Agent Platform Integration (Optional)
 
 Compatible with **Windsurf**, **AntiGravity**, **n8n**, or any agent orchestrator:
 
-```
 GitHub Push → Agent Platform Webhook → Orchestrator → GitHub API
-```
-
 **Example flow:**
 1. Platform receives webhook → normalizes payload
 2. Calls `code_reviewer.py` → posts review comment/issue
 3. Calls `readme_updater.py` → creates documentation PR
 4. Calls `spec_updater.py` → appends progress entry
-5. Calls `code_review_updater.py` → appends review summary to logs
+5. Calls `code_review_updater.py` → appends review summary to `AUTOMATED_REVIEWS.md`
 6. Platform handles retries, logging, notifications
 
 ## 📋 Workflow
@@ -176,7 +166,7 @@ GitHub Push → Agent Platform Webhook → Orchestrator → GitHub API
    - Code review → comment/issue + persistent logs (code changes only)
    - README update → PR (if changes detected)
    - spec.md update → append entry
-   - code_review.md update → append review summary with session memory
+   - `AUTOMATED_REVIEWS.md` update → append review summary with session memory
 5. **Results posted** → repo stays documented automatically and progress tracked
 
 ### PR-Centric Flow (Pull Request Events)
@@ -193,20 +183,16 @@ GitHub Push → Agent Platform Webhook → Orchestrator → GitHub API
 ### Health Check
 ```bash
 curl http://localhost:8080/
-```
-
 ### Test Full Flow
 ```bash
 echo "# Test change" >> test.txt
 git add test.txt
 git commit -m "test: trigger automation"
 git push
-```
-
 **Expected results:**
 - ✅ Code review comment/issue
 - ✅ README PR (if applicable)
-- ✅ spec.md + code_review.md entries appended
+- ✅ spec.md + `AUTOMATED_REVIEWS.md` entries appended
 
 ### Test Status
 **Current Pass Rate**: 100% (99/99 tests passing) as of 2025-11-30
@@ -218,7 +204,6 @@ git push
 
 ## 📦 Project Structure
 
-```
 automation_agent/
 ├── src/
 │   └── automation_agent/
@@ -231,6 +216,7 @@ automation_agent/
 │       ├── spec_updater.py            # Progress documentation
 │       ├── github_client.py           # GitHub API wrapper
 │       ├── llm_client.py              # OpenAI/Anthropic/Gemini abstraction
+│       ├── utils.py                   # Utility functions
 │       └── main.py                    # Entry point
 ├── dashboard/                         # React + Vite dashboard (NEW)
 │   ├── App.tsx                        # Main dashboard UI
@@ -239,8 +225,6 @@ automation_agent/
 │   │   └── apiService.ts              # Backend API client
 │   └── DASHBOARD_SETUP.md             # Dashboard documentation
 └── tests/                             # Pytest test suite
-```
-
 ## 🗺️ Roadmap
 
 - ✅ Multi-LLM support (Gemini, local models)
@@ -268,8 +252,6 @@ The project includes a real-time dashboard for monitoring automation metrics, te
 cd dashboard
 npm install  # First time only
 npm run dev
-```
-
 Dashboard runs on: **http://localhost:5173**
 
 **Features:**
@@ -302,13 +284,9 @@ See [`.github/workflows/MUTATION_TESTING.md`](.github/workflows/MUTATION_TESTING
 ```bash
 docker build -t automation-agent .
 docker run -p 8080:8080 --env-file .env automation-agent
-```
-
 ### Docker Compose (Recommended)
 ```bash
 docker-compose up -d
-```
-
 ### CI/CD
 Included GitHub Actions workflow (`.github/workflows/ci.yml`) runs tests on every push and builds Docker image on main branch pushes.
 
@@ -344,11 +322,7 @@ graph TD
     Orchestrator -->|Init Run| SessionMem
     Dashboard -->|Fetch Metrics/History| Webhook
     Webhook -.->|Read| SessionMem
-```
-
 The diagram updates automatically as the project evolves.
 
 ## 📄 License
-MIT#   T e s t 
- 
- 
+MIT
