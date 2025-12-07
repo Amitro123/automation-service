@@ -3,6 +3,7 @@
 import json
 import logging
 import subprocess
+import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -37,22 +38,6 @@ def run_mutation_tests(max_runtime_seconds: int = 600) -> Dict[str, Any]:
     """
     import os
     
-    # Check if running on Windows
-    if os.name == 'nt':
-        logger.warning("Mutation tests are not supported on Windows. Use WSL or run in CI.")
-        return {
-            "status": "skipped",
-            "reason": "Mutation tests are only supported on Linux/Mac or CI. Use WSL or run them in a Linux CI environment.",
-            "mutation_score": 0.0,
-            "mutants_total": 0,
-            "mutants_killed": 0,
-            "mutants_survived": 0,
-            "mutants_timeout": 0,
-            "mutants_suspicious": 0,
-            "last_run_time": datetime.now(timezone.utc).isoformat(),
-            "runtime_seconds": 0.0
-        }
-
     # Check for Python files
     if not _has_python_files():
         logger.info("No Python files found in repository. Skipping mutation tests.")
@@ -74,8 +59,9 @@ def run_mutation_tests(max_runtime_seconds: int = 600) -> Dict[str, Any]:
     
     try:
         # Clean previous mutmut cache
+        cmd = [sys.executable, "-m", "mutmut", "run", "--paths-to-mutate=src/automation_agent", "--runner=pytest"]
         run_result = subprocess.run(
-            ["mutmut", "run", "--paths-to-mutate=src/automation_agent", "--runner=pytest"],
+            cmd,
             timeout=max_runtime_seconds,
             capture_output=True,
             text=True,
@@ -88,7 +74,7 @@ def run_mutation_tests(max_runtime_seconds: int = 600) -> Dict[str, Any]:
         
         # Get results summary
         result = subprocess.run(
-            ["mutmut", "results"],
+            [sys.executable, "-m", "mutmut", "results"],
             capture_output=True,
             text=True,
             timeout=30,

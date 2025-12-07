@@ -352,3 +352,27 @@ The diagram updates automatically as the project evolves.
 MIT#   T e s t 
  
  
+## Quality & Evaluation
+
+We maintain high code quality standards through multiple layers of testing and evaluation.
+
+### Security (Bandit)
+We use [Bandit](https://github.com/PyCQA/bandit) to scan for common security issues in Python code.
+- **Run Locally**: andit -r src/ -ll
+- **CI**: Runs on every PR (blocking).
+
+### Fast Tests (Unit & Integration)
+Standard pytest suite for logic and integration testing.
+- **Run Locally**: `python -m pytest`
+- **CI**: Runs on every PR (blocking).
+
+### Mutation Tests (Deep Testing)
+We use mutation testing to verify test suite quality.
+- **Run Locally (Windows/Linux)**: `python src/automation_agent/mutation_service.py` (or check scripts).
+- **CI**: scheduled nightly or manual.
+
+### LLM Evaluation (DeepEval)
+We use [DeepEval](https://github.com/confident-ai/deepeval) to evaluate the quality of LLM-generated code reviews and documentation updates.
+- **Location**: `tests/deepeval/`
+- **Run Locally**: `deepeval test run tests/deepeval/test_*.py` (Requires `GEMINI_API_KEY`)
+- **CI**: Scheduled or on-demand.
