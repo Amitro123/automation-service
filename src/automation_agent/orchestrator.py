@@ -506,6 +506,17 @@ This PR contains automated documentation updates generated from commit `{commit_
                     f"ENABLE_PR_TRIGGER={self.config.ENABLE_PR_TRIGGER}, "
                     f"ENABLE_PUSH_TRIGGER={self.config.ENABLE_PUSH_TRIGGER}")
         
+        # Extract branch name early for trigger filtering
+        if event_type == "pull_request":
+            pr_data = payload.get("pull_request", {})
+            branch = pr_data.get("head", {}).get("ref", "")
+        else:
+            # Push event
+            ref = payload.get("ref", "")
+            branch = ref.replace("refs/heads/", "") if ref.startswith("refs/heads/") else ref
+        
+        logger.info(f"[ORCHESTRATOR] Branch: {branch}")
+        
         # Initialize trigger filter with config
         trigger_filter = TriggerFilter(
             trivial_max_lines=self.config.TRIVIAL_MAX_LINES,
@@ -513,9 +524,9 @@ This PR contains automated documentation updates generated from commit `{commit_
             enable_trivial_filter=self.config.TRIVIAL_CHANGE_FILTER_ENABLED,
         )
         
-        # Check if we should process this event based on trigger mode
+        # Check if we should process this event based on trigger mode and branch
         should_process, skip_reason = trigger_filter.should_process_event(
-            event_type, self.config.TRIGGER_MODE
+            event_type, self.config.TRIGGER_MODE, branch
         )
         logger.info(f"[ORCHESTRATOR] should_process_event: {should_process}, reason={skip_reason}")
         
