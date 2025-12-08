@@ -329,5 +329,16 @@ graph TD
     Orchestrator -->|Init Run| SessionMem
     Dashboard -->|Fetch Metrics/History| Webhook
     Webhook -.->|Read| SessionMem
-## 📄 License
-MIT
+## Scripts for Development
+### Option 3: All-in-One Dev Mode (Recommended for E2E Testing)
+```bash
+# Starts backend + ngrok + frontend together
+python scripts/dev_start.py
+This script:
+- Starts FastAPI backend on http://localhost:8080
+- Starts ngrok tunnel (if installed) for GitHub webhooks
+- Starts React dashboard on http://localhost:5173
+- Color-coded output for each service
+- Press Ctrl+C to stop all services
+
+**Prerequisite**: Install ngrok from https://ngrok.com/download for webhook testing.
