@@ -90,8 +90,6 @@ venv\Scripts\activate
 
 pip install -r requirements.txt
 cp .env.example .env
-```
-
 Edit `.env` with your credentials.
 
 ### Review Provider Configuration (NEW - Dec 2025)
@@ -109,13 +107,9 @@ GEMINI_MIN_DELAY_SECONDS=2.0   # Min delay between calls
 JULES_API_KEY=your_jules_api_key_here
 JULES_API_URL=https://jules.googleapis.com/v1alpha
 JULES_SOURCE_ID=sources/github/owner/repo  # Get from: curl 'https://jules.googleapis.com/v1alpha/sources' -H 'X-Goog-Api-Key: YOUR_KEY'
-```
-
 **Test Jules Integration:**
 ```bash
 python test_jules_review.py  # Validates config and tests API
-```
-
 ### PR-Centric Configuration (Optional)
 ```bash
 # Trigger mode: "pr", "push", or "both" (default: both)
@@ -130,8 +124,6 @@ POST_REVIEW_ON_PR=True
 
 # Group doc updates into single automation PR
 GROUP_AUTOMATION_UPDATES=True
-```
-
 ### Run Locally
 
 #### Option 1: FastAPI Server (Recommended - includes Dashboard API)
@@ -141,8 +133,6 @@ GROUP_AUTOMATION_UPDATES=True
 
 # Linux/Mac
 python run_api.py
-```
-
 #### Option 2: Flask Server (Legacy webhook-only)
 ```bash
 # Windows (PowerShell)
@@ -150,14 +140,26 @@ $env:PYTHONPATH = "$PWD/src"
 python -m automation_agent.main
 
 # Linux/Mac
+export PYTHONPATH=$PWD/src
+python -m automation_agent.main
+#### Option 3: All-in-One Dev Mode (Recommended for E2E Testing)
+```bash
+# Starts backend + ngrok + frontend together
+python scripts/dev_start.py
+This script:
+- Starts FastAPI backend on http://localhost:8080
+- Starts ngrok tunnel (if installed) for GitHub webhooks
+- Starts React dashboard on http://localhost:5173
+- Color-coded output for each service
+- Press Ctrl+C to stop all services
+
+**Prerequisite**: Install ngrok from https://ngrok.com/download for webhook testing.
+
 ## 🧲 Agent Platform Integration (Optional)
 
 Compatible with **Windsurf**, **AntiGravity**, **n8n**, or any agent orchestrator:
 
-```
 GitHub Push → Agent Platform Webhook → Orchestrator → GitHub API
-```
-
 **Example flow:**
 1. Platform receives webhook → normalizes payload
 2. Calls `code_reviewer.py` → posts review comment/issue
@@ -193,16 +195,12 @@ GitHub Push → Agent Platform Webhook → Orchestrator → GitHub API
 ### Health Check
 ```bash
 curl http://localhost:8080/
-```
-
 ### Test Full Flow
 ```bash
 echo "# Test change" >> test.txt
 git add test.txt
 git commit -m "test: trigger automation"
 git push
-```
-
 **Expected results:**
 - ✅ Code review comment/issue
 - ✅ README PR (if applicable)
@@ -218,7 +216,6 @@ git push
 
 ## 📦 Project Structure
 
-```
 automation_agent/
 ├── src/
 │   └── automation_agent/
@@ -239,8 +236,6 @@ automation_agent/
 │   │   └── apiService.ts              # Backend API client
 │   └── DASHBOARD_SETUP.md             # Dashboard documentation
 └── tests/                             # Pytest test suite
-```
-
 ## 🗺️ Roadmap
 
 - ✅ Multi-LLM support (Gemini, local models)
@@ -268,8 +263,6 @@ The project includes a real-time dashboard for monitoring automation metrics, te
 cd dashboard
 npm install  # First time only
 npm run dev
-```
-
 Dashboard runs on: **http://localhost:5173**
 
 **Features:**
@@ -302,13 +295,9 @@ See [`.github/workflows/MUTATION_TESTING.md`](.github/workflows/MUTATION_TESTING
 ```bash
 docker build -t automation-agent .
 docker run -p 8080:8080 --env-file .env automation-agent
-```
-
 ### Docker Compose (Recommended)
 ```bash
 docker-compose up -d
-```
-
 ### CI/CD
 Included GitHub Actions workflow (`.github/workflows/ci.yml`) runs tests on every push and builds Docker image on main branch pushes.
 
@@ -344,35 +333,7 @@ graph TD
     Orchestrator -->|Init Run| SessionMem
     Dashboard -->|Fetch Metrics/History| Webhook
     Webhook -.->|Read| SessionMem
-```
-
 The diagram updates automatically as the project evolves.
 
 ## 📄 License
-MIT#   T e s t 
- 
- 
-## Quality & Evaluation
-
-We maintain high code quality standards through multiple layers of testing and evaluation.
-
-### Security (Bandit)
-We use [Bandit](https://github.com/PyCQA/bandit) to scan for common security issues in Python code.
-- **Run Locally**: andit -r src/ -ll
-- **CI**: Runs on every PR (blocking).
-
-### Fast Tests (Unit & Integration)
-Standard pytest suite for logic and integration testing.
-- **Run Locally**: `python -m pytest`
-- **CI**: Runs on every PR (blocking).
-
-### Mutation Tests (Deep Testing)
-We use mutation testing to verify test suite quality.
-- **Run Locally (Windows/Linux)**: `python src/automation_agent/mutation_service.py` (or check scripts).
-- **CI**: scheduled nightly or manual.
-
-### LLM Evaluation (DeepEval)
-We use [DeepEval](https://github.com/confident-ai/deepeval) to evaluate the quality of LLM-generated code reviews and documentation updates.
-- **Location**: `tests/deepeval/`
-- **Run Locally**: `deepeval test run tests/deepeval/test_*.py` (Requires `GEMINI_API_KEY`)
-- **CI**: Scheduled or on-demand.
+MIT
