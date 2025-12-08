@@ -374,11 +374,13 @@ A comprehensive cleanup and review was performed. Temporary files were removed, 
 ## 4. Conclusion
 The codebase is healthy after test repairs. The security posture is acceptable with no high-severity issues found. The architecture is transitioning to FastAPI, which is positive. The discrepancy in log filenames should be addressed to avoid confusion.
 
-### [2024-02-29] Review Summary
+### [2024-02-29] Code Review Summary
 - **Score**: 7
-- **Key Issues**: Timestamp formatting fragility, misleading UI in MetricsPanel, inaccurate progress calculation heuristics, log file discrepancy.
+- **Key Issues**:
+    - Potential performance issue with progress bar animation in `TaskList.tsx`.
+    - Minimal error handling when reading local `spec.md` in `api_server.py`.
+    - Strong dependency on GitHub for progress calculation.
 - **Action Items**:
-    *   Refine timestamp formatting in `LogViewer.tsx` using `toLocaleDateString` and `toLocaleTimeString`.
-    *   Update tooltip and/or add separate card for `Tokens Used` in `MetricsPanel.tsx`.
-    *   Enhance progress calculation heuristics in `api_server.py` and provide configuration options.
-    *   Change `LOG_FILE` in `code_review_updater.py` to `AUTOMATED_REVIEWS.md`.
+    - Address animation performance in `TaskList.tsx`.
+    - Improve error handling for local `spec.md` file reads in `api_server.py`.
+    - Consider abstracting progress calculation to decouple from GitHub.
