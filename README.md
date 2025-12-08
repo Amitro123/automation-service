@@ -239,7 +239,6 @@ automation_agent/
 └── tests/                             # Pytest test suite
 ## 🗺️ Roadmap
 
-- ✅ Multi-LLM support (Gemini, local models)
 - 🔗 Multi-repo orchestration
 - 🎛️ Per-branch policies (strict main, relaxed feature branches)
 - 🔔 Integrations: Slack/Jira/n8n notifications
