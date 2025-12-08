@@ -333,5 +333,3 @@ graph TD
     Orchestrator -->|Init Run| SessionMem
     Dashboard -->|Fetch Metrics/History| Webhook
     Webhook -.->|Read| SessionMem
-## 📄 License
-MIT
