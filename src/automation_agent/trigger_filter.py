@@ -429,6 +429,10 @@ class TriggerFilter:
         Returns:
             Tuple of (should_process, reason)
         """
+        # Always skip automation branches to prevent infinite loops
+        if branch and branch.startswith("automation/"):
+            return False, f"Automation branch '{branch}' skipped to prevent loops"
+        
         if trigger_mode == "pr":
             if event_type == "pull_request":
                 return True, ""

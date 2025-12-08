@@ -91,13 +91,21 @@ function App() {
         // Fetch History (map to Tasks)
         const historyData = await fetchHistory();
         if (historyData && historyData.length > 0) {
-          const historyTasks: Task[] = historyData.map((run: RunHistoryItem) => ({
-            id: run.id,
-            title: `Run ${run.commit_sha.substring(0, 7)} (${run.branch})`,
-            status: run.status === 'completed' ? Status.Completed :
-              run.status === 'running' ? Status.InProgress :
-                run.status === 'failed' ? Status.Failed : Status.Pending
-          }));
+          const historyTasks: Task[] = historyData.map((run: RunHistoryItem) => {
+            // Determine trigger indicator: PR runs are canonical ✅, push-only are secondary ⚡
+            const isPRRun = run.trigger_type?.startsWith('pr_') || run.pr_number;
+            const triggerIcon = isPRRun ? '✅ PR' : '⚡ Push';
+            const prLabel = run.pr_number ? `#${run.pr_number}` : run.branch;
+
+            return {
+              id: run.id,
+              title: `${triggerIcon} ${run.commit_sha.substring(0, 7)} (${prLabel})`,
+              status: run.status === 'completed' ? Status.Completed :
+                run.status === 'running' ? Status.InProgress :
+                  run.status === 'failed' ? Status.Failed :
+                    run.status === 'skipped' ? Status.Pending : Status.Pending
+            };
+          });
           setTasks(historyTasks);
         }
 

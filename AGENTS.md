@@ -67,20 +67,9 @@ python -m automation_agent.main # http://localhost:8080/
 
 ## 🛠️ Core Workflow (NEVER BREAK THIS)
 
-### Push Event Flow
-```
-GitHub Push Event → webhook_server.py/api_server.py
-→ Verify HMAC signature → extract diff/commit SHA
-→ trigger_filter.py → classify event + analyze diff
-→ IF trivial change: skip automation, log reason
-→ ELSE: orchestrator.py → run tasks IN PARALLEL:
-   ↳ code_reviewer.py → post comment/issue
-   ↳ readme_updater.py → create PR (if changes)
-   ↳ spec_updater.py → append to spec.md
-→ Log results + GitHub artifacts created
-```
+### PR-Centric Flow (Recommended ✅)
+> **This is the canonical flow for grouped automation PRs.**
 
-### Pull Request Event Flow (NEW)
 ```
 GitHub PR Event (opened/synchronized/reopened) → api_server.py
 → Verify HMAC signature → extract PR number + diff
@@ -88,9 +77,30 @@ GitHub PR Event (opened/synchronized/reopened) → api_server.py
 → IF trivial change: skip automation, log reason
 → ELSE: orchestrator.run_automation_with_context():
    ↳ code_reviewer.py → post PR REVIEW (not commit comment)
-   ↳ readme_updater.py + spec_updater.py → grouped into SINGLE automation PR
+   ↳ readme_updater.py + spec_updater.py + review_log → SINGLE automation PR
 → Session memory tracks: trigger_type, run_type, pr_number, skip_reason
 ```
+
+**Result**: One grouped automation PR (`automation/pr-{pr_number}-updates`) with README.md + spec.md + AUTOMATED_REVIEWS.md.
+
+### Push-Only Flow (Secondary)
+> Push events without PRs run automation but **do NOT create any automation PRs**.
+
+```
+GitHub Push Event → webhook_server.py/api_server.py
+→ Verify HMAC signature → extract diff/commit SHA
+→ trigger_filter.py → classify event + analyze diff
+→ IF on automation/* branch: skip (prevents infinite loops)
+→ IF trivial change: skip automation, log reason
+→ ELSE: orchestrator.py → run tasks IN PARALLEL:
+   ↳ code_reviewer.py → post comment/issue
+   ↳ readme_updater.py → returns content only (no PR)
+   ↳ spec_updater.py → returns content only (no PR)
+→ Log: "Skipping automation PR creation because pr_number is None"
+→ SessionMemory logs the run, but GitHub stays clean
+```
+
+**Important**: Push-only events **never create automation PRs**—only SessionMemory logs.
 
 **All tasks log execution to `session_memory.py`**
 

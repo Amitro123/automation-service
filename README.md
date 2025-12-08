@@ -38,13 +38,15 @@ An autonomous GitHub automation system that triggers on **push and pull request 
 - Security guardrails integrated with Bandit scans and CI/CD enforcement
 - Multi-repository support with auto-detection of required files (README.md, spec.md)
 
-### 5. 🎯 PR-Centric Automation (NEW)
-- **Trigger Modes**: Configure to respond to PRs only, pushes only, or both
+### 5. 🎯 PR-Centric Automation (Recommended)
+- **Trigger Modes**: Configure to respond to PRs only (`TRIGGER_MODE=pr`), pushes only, or both
 - **Trivial Change Filter**: Skip automation for small doc edits, whitespace-only changes
 - **Smart Task Routing**: Code review only runs on code changes, not doc-only PRs
-- **Grouped Automation PRs**: README + spec updates bundled into single PR per source PR
+- **Single Grouped Automation PR**: README + spec + AUTOMATED_REVIEWS.md bundled into **one PR** (`automation/pr-{pr_number}-updates`)
 - **PR Review Comments**: Code reviews posted as PR reviews instead of commit comments
-- **Configurable Thresholds**: Set max lines for trivial detection, doc file patterns
+- **Reuses Existing PRs**: Subsequent runs update the same automation PR instead of creating new ones
+
+> **⚠️ Important**: Automation grouping **only works for PR-triggered runs** (`TRIGGER_MODE=pr`). Push-only branches will **not create any automation PRs**—they only log runs to SessionMemory.
 
 ### 6. 🛡️ Robust Error Handling & Zero Silent Failures (NEW - Dec 2025)
 - **No Silent Failures**: Every error is logged, tracked, and visible in SessionMemory
@@ -186,25 +188,50 @@ GitHub Push → Agent Platform Webhook → Orchestrator → GitHub API
 
 ## 📋 Workflow
 
-### Standard Flow (Push Events)
-1. **Developer pushes code** → webhook triggers
-2. **Webhook verifies signature** → extracts diff/commit data
-3. **Trigger filter analyzes diff** → classifies as trivial/code/docs change
-4. **Orchestrator runs tasks based on change type:**
-   - Code review → comment/issue + persistent logs (code changes only)
-   - README update → PR (if changes detected)
-   - spec.md update → append entry
-   - code_review.md update → append review summary with session memory
-5. **Results posted** → repo stays documented automatically and progress tracked
+### PR-Centric Flow (Recommended ✅)
+> **This is the canonical E2E flow for grouped automation PRs.**
 
-### PR-Centric Flow (Pull Request Events)
 1. **Developer opens/updates PR** → webhook triggers
 2. **Trigger filter classifies event** → pr_opened, pr_synchronized, pr_reopened
 3. **Diff analyzed for trivial changes** → skip automation if trivial
 4. **Orchestrator runs context-aware tasks:**
    - Code review → posted as **PR review comment** (not commit comment)
    - Documentation updates → grouped into **single automation PR** per source PR
+   - Updates: README.md, spec.md, AUTOMATED_REVIEWS.md
 5. **Results linked to source PR** → clear audit trail
+
+```mermaid
+sequenceDiagram
+    participant Dev as Developer
+    participant GH as GitHub
+    participant API as api_server.py
+    participant Orch as orchestrator.py
+    participant GitHub as GitHub API
+    
+    Dev->>GH: Opens/Updates PR #123
+    GH->>API: Webhook (pull_request event)
+    API->>Orch: run_automation_with_context()
+    Orch->>Orch: Run tasks in parallel
+    Note right of Orch: code_review, readme_update, spec_update
+    Orch->>GitHub: Create/reuse branch automation/pr-123-updates
+    Orch->>GitHub: Commit README.md, spec.md, AUTOMATED_REVIEWS.md
+    Orch->>GitHub: Find existing PR for branch
+    alt PR exists
+        Orch->>GitHub: Update PR body
+    else No existing PR
+        Orch->>GitHub: Create new PR
+    end
+    Orch->>API: Return results
+```
+
+### Push-Only Flow (Secondary)
+> Push events without PRs run automation but **do not create any automation PRs**.
+
+1. **Developer pushes code** → webhook triggers
+2. **Webhook verifies signature** → extracts diff/commit data
+3. **Trigger filter analyzes diff** → classifies as trivial/code/docs change
+4. **Orchestrator runs tasks** → logs to SessionMemory only
+5. **No PRs created** → GitHub stays clean
 
 ## 🧪 Testing
 

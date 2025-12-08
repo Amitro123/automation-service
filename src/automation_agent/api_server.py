@@ -684,14 +684,25 @@ async def handle_event(orchestrator: AutomationOrchestrator, event_type: str, pa
     try:
         logger.info(f"[HANDLER] Starting handle_event for {event_type}")
         
-        # For push events, check if there are commits
+        # For push events, check if there are commits and skip automation branches
         if event_type == "push":
             commits = payload.get("commits", [])
             if not commits:
                 logger.info("[HANDLER] No commits in push event, skipping")
                 app_state.add_log("INFO", "No commits in push event")
                 return
-            logger.info(f"[HANDLER] Push has {len(commits)} commit(s)")
+            
+            # Extract branch name from ref
+            ref = payload.get("ref", "")
+            branch = ref.replace("refs/heads/", "") if ref.startswith("refs/heads/") else ref
+            
+            # Skip automation branches to prevent infinite loops
+            if branch.startswith("automation/"):
+                logger.info(f"[HANDLER] Skipping push to automation branch: {branch}")
+                app_state.add_log("INFO", f"Skipped push to automation branch: {branch}")
+                return
+            
+            logger.info(f"[HANDLER] Push has {len(commits)} commit(s) on branch: {branch}")
         
         # For PR events, log details and skip automation PRs
         if event_type == "pull_request":

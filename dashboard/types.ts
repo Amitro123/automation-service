@@ -86,10 +86,14 @@ export interface RunHistoryItem {
   id: string;
   commit_sha: string;
   branch: string;
-  status: 'completed' | 'running' | 'failed' | 'pending';
+  status: 'completed' | 'running' | 'failed' | 'pending' | 'skipped';
   start_time: string;
   end_time?: string;
   summary?: string;
   tasks: Record<string, unknown>;
   metrics: Record<string, number>;
+  trigger_type?: 'pr_opened' | 'pr_synchronized' | 'pr_reopened' | 'push_with_pr' | 'push_without_pr';
+  run_type?: 'full_automation' | 'partial' | 'skipped_trivial_change' | 'skipped_docs_only' | 'lightweight_only';
+  pr_number?: number;
+  skip_reason?: string;
 }

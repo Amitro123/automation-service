@@ -99,6 +99,30 @@ Next Steps
 
  Multi-LLM support (Gemini) - Done ✅
 
+### [2025-12-08] Single Grouped Automation PR Enforcement ✅
+- **Summary**: Enforced exactly ONE automation PR per source PR containing all documentation updates.
+- **Canonical E2E Flow** (PR-triggered):
+  1. Developer opens/updates PR → webhook triggers
+  2. Automation creates/reuses branch: `automation/pr-{pr_number}-updates`
+  3. Commits README.md, spec.md, AUTOMATED_REVIEWS.md to same branch
+  4. Creates ONE automation PR (or updates existing one)
+- **Push-only Flow**:
+  - Does NOT create any automation PRs
+  - Logs run to SessionMemory only
+  - Message: `"Skipping automation PR creation because pr_number is None (push-only event)"`
+- **Configuration**:
+  - `TRIGGER_MODE=pr` → Recommended for grouped automation
+  - `GROUP_AUTOMATION_UPDATES=True` → Bundles updates (only works with PRs)
+- **Key Changes**:
+  - `orchestrator.py`: Refactored `_handle_grouped_automation_pr` to find/reuse existing PRs
+  - `orchestrator.py`: Simplified `_run_readme_update` and `_run_spec_update` to only return content
+  - `github_client.py`: Uses `find_open_pr_for_branch` and `update_pull_request` for PR reuse
+  - `api_server.py` + `trigger_filter.py`: Skip `automation/*` branches (prevents infinite loops)
+- **Dashboard**: Shows `✅ PR` vs `⚡ Push` indicators for runs
+- **Acceptance Criteria**: ✅
+  - Feature PR → exactly one automation PR with all 3 files
+  - Push-only → no automation PRs, SessionMemory logged
+
 ### [2025-11-30] Fix Test Suite
 - **Summary**: Comprehensive test suite fixes achieving 98% pass rate.
 - **Decisions**:
