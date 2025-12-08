@@ -38,13 +38,15 @@ An autonomous GitHub automation system that triggers on **push and pull request 
 - Security guardrails integrated with Bandit scans and CI/CD enforcement
 - Multi-repository support with auto-detection of required files (README.md, spec.md)
 
-### 5. 🎯 PR-Centric Automation (NEW)
-- **Trigger Modes**: Configure to respond to PRs only, pushes only, or both
+### 5. 🎯 PR-Centric Automation (Recommended)
+- **Trigger Modes**: Configure to respond to PRs only (`TRIGGER_MODE=pr`), pushes only, or both
 - **Trivial Change Filter**: Skip automation for small doc edits, whitespace-only changes
 - **Smart Task Routing**: Code review only runs on code changes, not doc-only PRs
-- **Grouped Automation PRs**: README + spec updates bundled into single PR per source PR
+- **Single Grouped Automation PR**: README + spec + AUTOMATED_REVIEWS.md bundled into **one PR** (`automation/pr-{pr_number}-updates`)
 - **PR Review Comments**: Code reviews posted as PR reviews instead of commit comments
-- **Configurable Thresholds**: Set max lines for trivial detection, doc file patterns
+- **Reuses Existing PRs**: Subsequent runs update the same automation PR instead of creating new ones
+
+> **⚠️ Important**: Automation grouping **only works for PR-triggered runs** (`TRIGGER_MODE=pr`). Push-only branches will **not create any automation PRs**—they only log runs to SessionMemory.
 
 ### 6. 🛡️ Robust Error Handling & Zero Silent Failures (NEW - Dec 2025)
 - **No Silent Failures**: Every error is logged, tracked, and visible in SessionMemory
@@ -90,8 +92,6 @@ venv\Scripts\activate
 
 pip install -r requirements.txt
 cp .env.example .env
-```
-
 Edit `.env` with your credentials.
 
 ### Review Provider Configuration (NEW - Dec 2025)
@@ -109,13 +109,9 @@ GEMINI_MIN_DELAY_SECONDS=2.0   # Min delay between calls
 JULES_API_KEY=your_jules_api_key_here
 JULES_API_URL=https://jules.googleapis.com/v1alpha
 JULES_SOURCE_ID=sources/github/owner/repo  # Get from: curl 'https://jules.googleapis.com/v1alpha/sources' -H 'X-Goog-Api-Key: YOUR_KEY'
-```
-
 **Test Jules Integration:**
 ```bash
 python test_jules_review.py  # Validates config and tests API
-```
-
 ### PR-Centric Configuration (Optional)
 ```bash
 # Trigger mode: "pr", "push", or "both" (default: both)
@@ -130,8 +126,6 @@ POST_REVIEW_ON_PR=True
 
 # Group doc updates into single automation PR
 GROUP_AUTOMATION_UPDATES=True
-```
-
 ### Run Locally
 
 #### Option 1: FastAPI Server (Recommended - includes Dashboard API)
@@ -141,8 +135,6 @@ GROUP_AUTOMATION_UPDATES=True
 
 # Linux/Mac
 python run_api.py
-```
-
 #### Option 2: Flask Server (Legacy webhook-only)
 ```bash
 # Windows (PowerShell)
@@ -150,14 +142,26 @@ $env:PYTHONPATH = "$PWD/src"
 python -m automation_agent.main
 
 # Linux/Mac
+export PYTHONPATH=$PWD/src
+python -m automation_agent.main
+#### Option 3: All-in-One Dev Mode (Recommended for E2E Testing)
+```bash
+# Starts backend + ngrok + frontend together
+python scripts/dev_start.py
+This script:
+- Starts FastAPI backend on http://localhost:8080
+- Starts ngrok tunnel (if installed) for GitHub webhooks
+- Starts React dashboard on http://localhost:5173
+- Color-coded output for each service
+- Press Ctrl+C to stop all services
+
+**Prerequisite**: Install ngrok from https://ngrok.com/download for webhook testing.
+
 ## 🧲 Agent Platform Integration (Optional)
 
 Compatible with **Windsurf**, **AntiGravity**, **n8n**, or any agent orchestrator:
 
-```
 GitHub Push → Agent Platform Webhook → Orchestrator → GitHub API
-```
-
 **Example flow:**
 1. Platform receives webhook → normalizes payload
 2. Calls `code_reviewer.py` → posts review comment/issue
@@ -168,41 +172,60 @@ GitHub Push → Agent Platform Webhook → Orchestrator → GitHub API
 
 ## 📋 Workflow
 
-### Standard Flow (Push Events)
-1. **Developer pushes code** → webhook triggers
-2. **Webhook verifies signature** → extracts diff/commit data
-3. **Trigger filter analyzes diff** → classifies as trivial/code/docs change
-4. **Orchestrator runs tasks based on change type:**
-   - Code review → comment/issue + persistent logs (code changes only)
-   - README update → PR (if changes detected)
-   - spec.md update → append entry
-   - code_review.md update → append review summary with session memory
-5. **Results posted** → repo stays documented automatically and progress tracked
+### PR-Centric Flow (Recommended ✅)
+> **This is the canonical E2E flow for grouped automation PRs.**
 
-### PR-Centric Flow (Pull Request Events)
 1. **Developer opens/updates PR** → webhook triggers
 2. **Trigger filter classifies event** → pr_opened, pr_synchronized, pr_reopened
 3. **Diff analyzed for trivial changes** → skip automation if trivial
 4. **Orchestrator runs context-aware tasks:**
    - Code review → posted as **PR review comment** (not commit comment)
    - Documentation updates → grouped into **single automation PR** per source PR
+   - Updates: README.md, spec.md, AUTOMATED_REVIEWS.md
 5. **Results linked to source PR** → clear audit trail
+
+```mermaid
+sequenceDiagram
+    participant Dev as Developer
+    participant GH as GitHub
+    participant API as api_server.py
+    participant Orch as orchestrator.py
+    participant GitHub as GitHub API
+    
+    Dev->>GH: Opens/Updates PR #123
+    GH->>API: Webhook (pull_request event)
+    API->>Orch: run_automation_with_context()
+    Orch->>Orch: Run tasks in parallel
+    Note right of Orch: code_review, readme_update, spec_update
+    Orch->>GitHub: Create/reuse branch automation/pr-123-updates
+    Orch->>GitHub: Commit README.md, spec.md, AUTOMATED_REVIEWS.md
+    Orch->>GitHub: Find existing PR for branch
+    alt PR exists
+        Orch->>GitHub: Update PR body
+    else No existing PR
+        Orch->>GitHub: Create new PR
+    end
+    Orch->>API: Return results
+### Push-Only Flow (Secondary)
+> Push events without PRs run automation but **do not create any automation PRs**.
+
+1. **Developer pushes code** → webhook triggers
+2. **Webhook verifies signature** → extracts diff/commit data
+3. **Trigger filter analyzes diff** → classifies as trivial/code/docs change
+4. **Orchestrator runs tasks** → logs to SessionMemory only
+5. **No PRs created** → GitHub stays clean
 
 ## 🧪 Testing
 
 ### Health Check
 ```bash
 curl http://localhost:8080/
-```
-
 ### Test Full Flow
 ```bash
 echo "# Test change" >> test.txt
 git add test.txt
 git commit -m "test: trigger automation"
 git push
-```
-
 **Expected results:**
 - ✅ Code review comment/issue
 - ✅ README PR (if applicable)
@@ -218,7 +241,6 @@ git push
 
 ## 📦 Project Structure
 
-```
 automation_agent/
 ├── src/
 │   └── automation_agent/
@@ -239,8 +261,6 @@ automation_agent/
 │   │   └── apiService.ts              # Backend API client
 │   └── DASHBOARD_SETUP.md             # Dashboard documentation
 └── tests/                             # Pytest test suite
-```
-
 ## 🗺️ Roadmap
 
 - ✅ Multi-LLM support (Gemini, local models)
@@ -268,8 +288,6 @@ The project includes a real-time dashboard for monitoring automation metrics, te
 cd dashboard
 npm install  # First time only
 npm run dev
-```
-
 Dashboard runs on: **http://localhost:5173**
 
 **Features:**
@@ -302,13 +320,9 @@ See [`.github/workflows/MUTATION_TESTING.md`](.github/workflows/MUTATION_TESTING
 ```bash
 docker build -t automation-agent .
 docker run -p 8080:8080 --env-file .env automation-agent
-```
-
 ### Docker Compose (Recommended)
 ```bash
 docker-compose up -d
-```
-
 ### CI/CD
 Included GitHub Actions workflow (`.github/workflows/ci.yml`) runs tests on every push and builds Docker image on main branch pushes.
 
@@ -344,35 +358,7 @@ graph TD
     Orchestrator -->|Init Run| SessionMem
     Dashboard -->|Fetch Metrics/History| Webhook
     Webhook -.->|Read| SessionMem
-```
-
 The diagram updates automatically as the project evolves.
 
 ## 📄 License
-MIT#   T e s t 
- 
- 
-## Quality & Evaluation
-
-We maintain high code quality standards through multiple layers of testing and evaluation.
-
-### Security (Bandit)
-We use [Bandit](https://github.com/PyCQA/bandit) to scan for common security issues in Python code.
-- **Run Locally**: andit -r src/ -ll
-- **CI**: Runs on every PR (blocking).
-
-### Fast Tests (Unit & Integration)
-Standard pytest suite for logic and integration testing.
-- **Run Locally**: `python -m pytest`
-- **CI**: Runs on every PR (blocking).
-
-### Mutation Tests (Deep Testing)
-We use mutation testing to verify test suite quality.
-- **Run Locally (Windows/Linux)**: `python src/automation_agent/mutation_service.py` (or check scripts).
-- **CI**: scheduled nightly or manual.
-
-### LLM Evaluation (DeepEval)
-We use [DeepEval](https://github.com/confident-ai/deepeval) to evaluate the quality of LLM-generated code reviews and documentation updates.
-- **Location**: `tests/deepeval/`
-- **Run Locally**: `deepeval test run tests/deepeval/test_*.py` (Requires `GEMINI_API_KEY`)
-- **CI**: Scheduled or on-demand.
+MIT
