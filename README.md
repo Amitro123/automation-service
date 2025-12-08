@@ -301,6 +301,21 @@ docker-compose up -d
 ### CI/CD
 Included GitHub Actions workflow (`.github/workflows/ci.yml`) runs tests on every push and builds Docker image on main branch pushes.
 
+## Development
+
+### Running the Development Environment
+
+To streamline local development and E2E testing, a unified startup script is available. This script starts the FastAPI backend, ngrok (for webhook testing), and the React frontend simultaneously.
+
+```bash
+python scripts/dev_start.py
+This script:
+- Starts FastAPI backend on http://localhost:8080
+- Starts ngrok tunnel (if installed) for GitHub webhooks.  Install ngrok from https://ngrok.com/download for webhook testing.
+- Starts React dashboard on http://localhost:5173
+- Color-coded output for each service
+- Press Ctrl+C to stop all services
+
 ## Diagram
 
 The project includes an ARCHITECTURE.md file with a live Mermaid diagram illustrating the system and project progress.
