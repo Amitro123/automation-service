@@ -335,7 +335,5 @@ graph TD
     Orchestrator -->|Init Run| SessionMem
     Dashboard -->|Fetch Metrics/History| Webhook
     Webhook -.->|Read| SessionMem
-The diagram updates automatically as the project evolves.
-
 ## 📄 License
 MIT
