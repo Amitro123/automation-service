@@ -281,7 +281,6 @@ See [`dashboard/DASHBOARD_SETUP.md`](dashboard/DASHBOARD_SETUP.md) for detailed 
 2. Copy to repo root
 3. Restart API server: `python run_api.py`
 4. Dashboard displays real mutation score
- On Windows, the feature will show as "skipped" with instructions. Run mutation tests in CI for best results.
  See [`.github/workflows/MUTATION_TESTING.md`](.github/workflows/MUTATION_TESTING.md) for details.
 
 ## 🌐 Deployment
