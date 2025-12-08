@@ -1,6 +1,6 @@
 # 📋 GitHub Automation Agent - Product Specification & Progress
 
-**Last Updated:** 2025-12-08 19:07 UTC
+**Last Updated:** 2025-12-08 19:51 UTC
 **Status:** Phase 3 Complete ✅ | Phase 4 Deployment 🚀 | PR-Centric Automation ✅ | Zero Silent Failures ✅
 
 ## 🎯 Product Mission
@@ -444,6 +444,6 @@ LOW: Polish
 
 
 ### [2024-02-29]
-- **Summary**: Implemented PR-centric automation flow as the recommended approach, with a secondary push-only flow. Grouped automation tasks (README, spec updates, and review logs) into a single automation PR for PR-triggered events. Updated documentation to reflect the new flows and clarify the distinction between PR-triggered and push-only automation, including the behavior of creating automation PRs.
-- **Decisions**: Prioritized PR-centric flow for grouped automation PRs. Push-only events are now secondary and do not create automation PRs, improving GitHub cleanliness.
-- **Next Steps**: Monitor the behavior of the new flows and address any edge cases. Further refine the grouping logic for automation PRs.
+- **Summary**: Enhanced dashboard metrics and log viewer. Added "Total Runs" metric to the MetricsPanel and LLMMetrics, reflecting the number of times the agent has been run. Improved LogViewer timestamp formatting to include date and time, and added a cursor:help style to the tokens used metric. Updated progress calculation in API server to be more robust.
+- **Decisions**: Added totalRuns to LLMMetrics to track the number of times the agent has been run.  Improved timestamp formatting for better readability.  Revamped progress calculation to consider checkbox-style tasks, checkmark markers, and development logs to produce a more accurate progress value.
+- **Next Steps**: Continue to refine dashboard metrics and improve progress calculation accuracy.
