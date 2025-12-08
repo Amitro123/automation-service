@@ -38,7 +38,7 @@ An autonomous GitHub automation system that triggers on **push and pull request 
 - Security guardrails integrated with Bandit scans and CI/CD enforcement
 - Multi-repository support with auto-detection of required files (README.md, spec.md)
 
-### 5. 🎯 PR-Centric Automation (NEW)
+### 5. 🎯 PR-Centric Automation
 - **Trigger Modes**: Configure to respond to PRs only, pushes only, or both
 - **Trivial Change Filter**: Skip automation for small doc edits, whitespace-only changes
 - **Smart Task Routing**: Code review only runs on code changes, not doc-only PRs
@@ -46,7 +46,7 @@ An autonomous GitHub automation system that triggers on **push and pull request 
 - **PR Review Comments**: Code reviews posted as PR reviews instead of commit comments
 - **Configurable Thresholds**: Set max lines for trivial detection, doc file patterns
 
-### 6. 🛡️ Robust Error Handling & Zero Silent Failures (NEW - Dec 2025)
+### 6. 🛡️ Robust Error Handling & Zero Silent Failures
 - **No Silent Failures**: Every error is logged, tracked, and visible in SessionMemory
 - **Comprehensive Logging**: `[CODE_REVIEW]`, `[ORCHESTRATOR]`, `[JULES]`, `[GROUPED_PR]` prefixes for easy debugging
 - **Structured Error Returns**: All failures include `error_type` and `message` fields
@@ -92,7 +92,7 @@ pip install -r requirements.txt
 cp .env.example .env
 Edit `.env` with your credentials.
 
-### Review Provider Configuration (NEW - Dec 2025)
+### Review Provider Configuration
 ```bash
 # Choose review provider: "llm" or "jules"
 REVIEW_PROVIDER=llm
@@ -107,6 +107,7 @@ GEMINI_MIN_DELAY_SECONDS=2.0   # Min delay between calls
 JULES_API_KEY=your_jules_api_key_here
 JULES_API_URL=https://jules.googleapis.com/v1alpha
 JULES_SOURCE_ID=sources/github/owner/repo  # Get from: curl 'https://jules.googleapis.com/v1alpha/sources' -H 'X-Goog-Api-Key: YOUR_KEY'
+```bash
 **Test Jules Integration:**
 ```bash
 python test_jules_review.py  # Validates config and tests API
@@ -221,7 +222,7 @@ automation_agent/
 │   └── automation_agent/
 │       ├── webhook_server.py          # Flask webhook endpoint
 │       ├── orchestrator.py            # Coordinates 4 parallel tasks
-│       ├── session_memory.py          # Session Memory Store (NEW)
+│       ├── session_memory.py          # Session Memory Store
 │       ├── code_reviewer.py           # LLM-powered code analysis
 │       ├── code_review_updater.py     # Persistent review logging
 │       ├── readme_updater.py          # Smart README updates
@@ -229,7 +230,7 @@ automation_agent/
 │       ├── github_client.py           # GitHub API wrapper
 │       ├── llm_client.py              # OpenAI/Anthropic/Gemini abstraction
 │       └── main.py                    # Entry point
-├── dashboard/                         # React + Vite dashboard (NEW)
+├── dashboard/                         # React + Vite dashboard
 │   ├── App.tsx                        # Main dashboard UI
 │   ├── components/                    # UI components
 │   ├── services/
@@ -333,7 +334,5 @@ graph TD
     Orchestrator -->|Init Run| SessionMem
     Dashboard -->|Fetch Metrics/History| Webhook
     Webhook -.->|Read| SessionMem
-The diagram updates automatically as the project evolves.
-
 ## 📄 License
 MIT
