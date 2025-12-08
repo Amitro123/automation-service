@@ -141,6 +141,7 @@ python -m automation_agent.main
 
 # Linux/Mac
 export PYTHONPATH=$PWD/src
+python -m automation_agent.main
 #### Option 3: All-in-One Dev Mode (Recommended for E2E Testing)
 ```bash
 # Starts backend + ngrok + frontend together
@@ -332,7 +333,5 @@ graph TD
     Orchestrator -->|Init Run| SessionMem
     Dashboard -->|Fetch Metrics/History| Webhook
     Webhook -.->|Read| SessionMem
-The diagram updates automatically as the project evolves.
-
 ## 📄 License
 MIT
