@@ -1,6 +1,6 @@
 # 📋 GitHub Automation Agent - Product Specification & Progress
 
-**Last Updated:** 2025-12-08 18:02 UTC
+**Last Updated:** 2025-12-08 18:03 UTC
 **Status:** Phase 3 Complete ✅ | Phase 4 Deployment 🚀 | PR-Centric Automation ✅ | Zero Silent Failures ✅
 
 ## 🎯 Product Mission
@@ -423,6 +423,16 @@ LOW: Polish
 - **Summary**: Added a unified development startup script (`scripts/dev_start.py`) to streamline local development and E2E testing. This script starts the FastAPI backend, ngrok (for webhook testing), and the React frontend simultaneously.  Also updated the README.md to include instructions for running the dev script. Updated requirements.txt to use a more recent openai library version.
 - **Decisions**: Centralized development startup to simplify the developer experience and facilitate end-to-end testing of the agent, including webhook handling. The script uses subprocesses for each component, and includes robust error handling and output streaming with color-coding.  Also included logic to check if ngrok is installed and provide helpful messages if it is not.
 - **Next Steps**:  Ensure the dev script functions correctly across different operating systems (Windows, Linux, macOS).  Consider adding command-line arguments to customize the startup process (e.g., specifying port numbers, disabling ngrok).
+
+### [2024-02-29]
+- **Summary**: Code review improvements and identified issues.
+- **Decisions**: Focus on resolving key issues identified in the code review, specifically addressing Ngrok path/URL handling, frontend startup, platform-specific commands, `run_api.py` dependency, backend startup race condition, and the `LOG_FILE` discrepancy.
+- **Next Steps**: Implement the action items from the code review summary: Improve Ngrok path handling, Improve Ngrok URL retrieval, Implement frontend startup, and change `LOG_FILE` in `code_review_updater.py` to `AUTOMATED_REVIEWS.md`.
+
+### [2024-05-10]
+- **Summary**: Added a unified development startup script (`scripts/dev_start.py`) to streamline local development and E2E testing. This script starts the FastAPI backend, ngrok (for webhook testing), and the React frontend simultaneously. Also updated the README.md to include instructions for running the dev script. Updated requirements.txt to use a more recent openai library version.
+- **Decisions**: Centralized development startup to simplify the developer experience and facilitate end-to-end testing of the agent, including webhook handling. The script uses subprocesses for each component, and includes robust error handling and output streaming with color-coding. Also included logic to check if ngrok is installed and provide helpful messages if it is not.
+- **Next Steps**: Ensure the dev script functions correctly across different operating systems (Windows, Linux, macOS). Consider adding command-line arguments to customize the startup process (e.g., specifying port numbers, disabling ngrok).
 
 ### [2024-02-29]
 - **Summary**: Code review improvements and identified issues.
