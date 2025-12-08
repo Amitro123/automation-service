@@ -374,7 +374,11 @@ A comprehensive cleanup and review was performed. Temporary files were removed, 
 ## 4. Conclusion
 The codebase is healthy after test repairs. The security posture is acceptable with no high-severity issues found. The architecture is transitioning to FastAPI, which is positive. The discrepancy in log filenames should be addressed to avoid confusion.
 
-### 2024-02-29 Review Summary
+### [2024-02-29] Review Summary
 - **Score**: 7
-- **Key Issues**: Push-only event behavior ambiguity, Potential dashboard trigger indicator logic error, Undefined purpose of `AUTOMATED_REVIEWS.md`.
-- **Action Items**: Clarify push-only behavior in documentation, improve dashboard trigger indicator logic, define purpose of `AUTOMATED_REVIEWS.md`.
+- **Key Issues**: Timestamp formatting fragility, misleading UI in MetricsPanel, inaccurate progress calculation heuristics, log file discrepancy.
+- **Action Items**:
+    *   Refine timestamp formatting in `LogViewer.tsx` using `toLocaleDateString` and `toLocaleTimeString`.
+    *   Update tooltip and/or add separate card for `Tokens Used` in `MetricsPanel.tsx`.
+    *   Enhance progress calculation heuristics in `api_server.py` and provide configuration options.
+    *   Change `LOG_FILE` in `code_review_updater.py` to `AUTOMATED_REVIEWS.md`.
