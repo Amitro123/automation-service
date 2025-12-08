@@ -1,6 +1,6 @@
 # 📋 GitHub Automation Agent - Product Specification & Progress
 
-**Last Updated:** 2025-12-08 18:03 UTC
+**Last Updated:** 2025-12-08 18:04 UTC
 **Status:** Phase 3 Complete ✅ | Phase 4 Deployment 🚀 | PR-Centric Automation ✅ | Zero Silent Failures ✅
 
 ## 🎯 Product Mission
@@ -423,6 +423,11 @@ LOW: Polish
 - **Summary**: Added a unified development startup script (`scripts/dev_start.py`) to streamline local development and E2E testing. This script starts the FastAPI backend, ngrok (for webhook testing), and the React frontend simultaneously.  Also updated the README.md to include instructions for running the dev script. Updated requirements.txt to use a more recent openai library version.
 - **Decisions**: Centralized development startup to simplify the developer experience and facilitate end-to-end testing of the agent, including webhook handling. The script uses subprocesses for each component, and includes robust error handling and output streaming with color-coding.  Also included logic to check if ngrok is installed and provide helpful messages if it is not.
 - **Next Steps**:  Ensure the dev script functions correctly across different operating systems (Windows, Linux, macOS).  Consider adding command-line arguments to customize the startup process (e.g., specifying port numbers, disabling ngrok).
+
+### [2024-05-15]
+- **Summary**: Refactored README.md to include comprehensive documentation on PR-centric automation, robust error handling, security features, architecture diagrams, and review provider configuration (LLM vs. Jules). Added test instructions for Jules integration. Expanded on error handling, and session memory tracking.
+- **Decisions**: Prioritized clear documentation and configuration options for new features. Introduced the Jules API as a review provider option. Expanded dashboard visibility and run status for error tracking.
+- **Next Steps**: Further testing and refinement of the Jules API integration.
 
 ### [2024-05-15]
 - **Summary**: Refactored README.md to include comprehensive documentation on PR-centric automation, robust error handling, security features, architecture diagrams, and review provider configuration (LLM vs. Jules). Added test instructions for Jules integration. Expanded on error handling, and session memory tracking.
