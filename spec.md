@@ -1,6 +1,6 @@
 # 📋 GitHub Automation Agent - Product Specification & Progress
 
-**Last Updated:** 2025-12-08 18:02 UTC
+**Last Updated:** 2025-12-08 18:05 UTC
 **Status:** Phase 3 Complete ✅ | Phase 4 Deployment 🚀 | PR-Centric Automation ✅ | Zero Silent Failures ✅
 
 ## 🎯 Product Mission
@@ -423,3 +423,8 @@ LOW: Polish
 - **Summary**: Added a unified development startup script (`scripts/dev_start.py`) to streamline local development and E2E testing. This script starts the FastAPI backend, ngrok (for webhook testing), and the React frontend simultaneously.  Also updated the README.md to include instructions for running the dev script. Updated requirements.txt to use a more recent openai library version.
 - **Decisions**: Centralized development startup to simplify the developer experience and facilitate end-to-end testing of the agent, including webhook handling. The script uses subprocesses for each component, and includes robust error handling and output streaming with color-coding.  Also included logic to check if ngrok is installed and provide helpful messages if it is not.
 - **Next Steps**:  Ensure the dev script functions correctly across different operating systems (Windows, Linux, macOS).  Consider adding command-line arguments to customize the startup process (e.g., specifying port numbers, disabling ngrok).
+
+### [2024-03-08]
+- **Summary**: Updated documentation to reflect the change from `code_review.md` to `AUTOMATED_REVIEWS.md` for persistent logging of automated reviews. Also updated the README and project description.
+- **Decisions**: Renamed the file to better reflect its purpose and improve clarity.
+- **Next Steps**: Update any other documentation or code that references the old file name.
