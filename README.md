@@ -22,16 +22,10 @@ REVIEW_PROVIDER=llm
 pip install -r requirements.txt
 cp .env.example .env
 Edit `.env` with your credentials.
-
 ### Review Provider Configuration
 ```bash
 # Choose review provider: "llm" or "jules"
 REVIEW_PROVIDER=llm
-```bash
-pip install -r requirements.txt
-cp .env.example .env
-Edit `.env` with your credentials.
-
 automation_agent/
 │   └── automation_agent/
 │       ├── webhook_server.py          # Flask webhook endpoint
