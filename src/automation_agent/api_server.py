@@ -50,6 +50,7 @@ class LLMMetrics(BaseModel):
     estimatedCost: float
     efficiencyScore: float
     sessionMemoryUsage: float
+    totalRuns: int = 0
 
 
 class TaskItem(BaseModel):
@@ -360,20 +361,67 @@ def create_api_server(config: Config) -> FastAPI:
             return []
 
     async def _calculate_progress() -> float:
-        """Calculate project progress based on spec.md tasks."""
+        """Calculate project progress based on spec.md content.
+        
+        Uses multiple heuristics:
+        1. Checkbox tasks: [x] vs [ ]
+        2. ✅ markers indicating completed items
+        3. Development Log entries (### [...] markers)
+        
+        Reads local spec.md first, falls back to GitHub if not found.
+        """
+        import re
+        import os
+        
+        content = None
+        
+        # Try local file first
         try:
-            content = await github_client.get_file_content("spec.md")
-            if not content:
+            local_spec = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "spec.md")
+            if os.path.exists(local_spec):
+                with open(local_spec, "r", encoding="utf-8") as f:
+                    content = f.read()
+                logger.debug(f"Read progress from local spec.md ({len(content)} chars)")
+        except Exception as e:
+            logger.debug(f"Could not read local spec.md: {e}")
+        
+        # Fallback to GitHub API
+        if not content:
+            try:
+                content = await github_client.get_file_content("spec.md")
+            except Exception as e:
+                logger.error(f"Failed to fetch spec.md from GitHub: {e}")
                 return 0.0
+        
+        if not content:
+            return 0.0
+        
+        try:
+            # Count checkbox-style tasks
+            checkbox_total = content.count("- [ ]") + content.count("- [x]")
+            checkbox_completed = content.count("- [x]")
             
-            # Simple heuristic: Count [x] vs [ ]
-            total_tasks = content.count("- [ ]") + content.count("- [x]")
-            completed_tasks = content.count("- [x]")
+            # Count ✅ markers (often used to mark completed milestones)
+            checkmark_count = content.count("✅")
             
-            if total_tasks == 0:
+            # Count Development Log entries (### [...] date markers)
+            log_entries = len(re.findall(r"### \[\d{4}-\d{2}-\d{2}\]", content))
+            
+            # Calculate progress:
+            # If checkboxes exist, use them as primary metric
+            if checkbox_total > 0:
+                progress = (checkbox_completed / checkbox_total) * 100
+            elif checkmark_count > 0:
+                # Estimate: assume we're tracking ~10 total milestones
+                progress = min((checkmark_count / 10) * 100, 100)
+            elif log_entries > 0:
+                # Estimate progress based on number of development log entries
+                # Assume ~10 log entries represents 100% progress
+                progress = min((log_entries / 10) * 100, 100)
+            else:
                 return 0.0
                 
-            return round((completed_tasks / total_tasks) * 100, 1)
+            return round(progress, 1)
         except Exception as e:
             logger.error(f"Failed to calculate progress: {e}")
             return 0.0
@@ -447,7 +495,8 @@ def create_api_server(config: Config) -> FastAPI:
                 tokensUsed=global_metrics.get("total_tokens", 0),
                 estimatedCost=global_metrics.get("total_cost", 0.0),
                 efficiencyScore=efficiency_score,
-                sessionMemoryUsage=session_memory_usage
+                sessionMemoryUsage=session_memory_usage,
+                totalRuns=global_metrics.get("total_runs", 0)
             ),
             tasks=tasks,
             bugs=bugs,
@@ -461,6 +510,30 @@ def create_api_server(config: Config) -> FastAPI:
             projectProgress=project_progress
         )
     
+    @app.get("/api/spec")
+    async def get_spec():
+        """Get the content of spec.md (local preferred, then GitHub)."""
+        import os
+        
+        # Try local first
+        try:
+            local_spec = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "spec.md")
+            if os.path.exists(local_spec):
+                with open(local_spec, "r", encoding="utf-8") as f:
+                    return {"content": f.read()}
+        except Exception:
+            pass
+            
+        # Fallback to GitHub
+        try:
+            content = await github_client.get_file_content("spec.md")
+            if content:
+                return {"content": content}
+        except Exception as e:
+            logger.error(f"Failed to fetch spec.md: {e}")
+            
+        return {"content": "Failed to load spec.md"}
+
     @app.get("/api/logs")
     async def get_logs(limit: int = 50):
         logs = list(app_state.logs)
@@ -684,14 +757,25 @@ async def handle_event(orchestrator: AutomationOrchestrator, event_type: str, pa
     try:
         logger.info(f"[HANDLER] Starting handle_event for {event_type}")
         
-        # For push events, check if there are commits
+        # For push events, check if there are commits and skip automation branches
         if event_type == "push":
             commits = payload.get("commits", [])
             if not commits:
                 logger.info("[HANDLER] No commits in push event, skipping")
                 app_state.add_log("INFO", "No commits in push event")
                 return
-            logger.info(f"[HANDLER] Push has {len(commits)} commit(s)")
+            
+            # Extract branch name from ref
+            ref = payload.get("ref", "")
+            branch = ref.replace("refs/heads/", "") if ref.startswith("refs/heads/") else ref
+            
+            # Skip automation branches to prevent infinite loops
+            if branch.startswith("automation/"):
+                logger.info(f"[HANDLER] Skipping push to automation branch: {branch}")
+                app_state.add_log("INFO", f"Skipped push to automation branch: {branch}")
+                return
+            
+            logger.info(f"[HANDLER] Push has {len(commits)} commit(s) on branch: {branch}")
         
         # For PR events, log details and skip automation PRs
         if event_type == "pull_request":

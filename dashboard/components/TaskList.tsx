@@ -28,18 +28,26 @@ const TaskList: React.FC<TaskListProps> = ({ tasks, progress, onViewSpec }) => {
             </div>
             Project Progress
           </h3>
-          <span className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">{progress}%</span>
+          <span
+            className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 cursor-help"
+            title="Based on ✅ markers and [x] checkboxes in spec.md"
+          >
+            {progress}%
+          </span>
         </div>
 
-        <div className="w-full bg-slate-800/50 rounded-full h-2.5 shadow-inner border border-white/5">
+        <div
+          className="w-full bg-slate-800/50 rounded-full h-3 shadow-inner border border-white/5 cursor-help"
+          title={`Progress: ${progress}% - Calculated from spec.md milestones`}
+        >
           <div
             className="bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 h-full rounded-full transition-all duration-1000 shadow-[0_0_15px_rgba(6,182,212,0.5)] relative overflow-hidden"
-            style={{ width: `${progress}%` }}
+            style={{ width: `${Math.max(progress, 2)}%` }}
           >
             <div className="absolute inset-0 bg-white/20 w-full h-full animate-[shimmer_2s_infinite]"></div>
           </div>
         </div>
-        <p className="text-[10px] text-slate-500 mt-2 text-right">Based on spec.md completion</p>
+        <p className="text-[10px] text-slate-500 mt-2 text-right">Based on ✅ markers in local spec.md</p>
       </div>
 
       <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2 scrollbar-hide relative z-10">

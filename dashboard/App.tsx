@@ -74,6 +74,7 @@ function App() {
             estimatedCost: data.llm.estimatedCost,
             efficiencyScore: data.llm.efficiencyScore,
             sessionMemoryUsage: data.llm.sessionMemoryUsage,
+            totalRuns: data.llm.totalRuns || 0,
           });
           if (data.logs.length > 0) {
             setLogs(data.logs.map(l => ({ ...l, level: l.level as 'INFO' | 'WARN' | 'ERROR' })));
@@ -91,13 +92,22 @@ function App() {
         // Fetch History (map to Tasks)
         const historyData = await fetchHistory();
         if (historyData && historyData.length > 0) {
-          const historyTasks: Task[] = historyData.map((run: RunHistoryItem) => ({
-            id: run.id,
-            title: `Run ${run.commit_sha.substring(0, 7)} (${run.branch})`,
-            status: run.status === 'completed' ? Status.Completed :
-              run.status === 'running' ? Status.InProgress :
-                run.status === 'failed' ? Status.Failed : Status.Pending
-          }));
+          const historyTasks: Task[] = historyData.map((run: RunHistoryItem) => {
+            // Determine trigger indicator: PR runs are canonical ✅, push-only are secondary ⚡
+            // Logic: if trigger_type starts with 'pr_' OR if pr_number exists (and is not null/undefined)
+            const isPRRun = run.trigger_type?.startsWith('pr_') || (run.pr_number !== null && run.pr_number !== undefined && run.pr_number !== 0);
+            const triggerIcon = isPRRun ? '✅ PR' : '⚡ Push';
+            const prLabel = run.pr_number ? `#${run.pr_number}` : run.branch;
+
+            return {
+              id: run.id,
+              title: `${triggerIcon} ${run.commit_sha.substring(0, 7)} (${prLabel})`,
+              status: run.status === 'completed' ? Status.Completed :
+                run.status === 'running' ? Status.InProgress :
+                  run.status === 'failed' ? Status.Failed :
+                    run.status === 'skipped' ? Status.Pending : Status.Pending
+            };
+          });
           setTasks(historyTasks);
         }
 

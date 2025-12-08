@@ -261,8 +261,9 @@ class AutomationOrchestrator:
                 return result
 
             if updated_readme:
-                # If grouped updates enabled for PR, return content without creating PR
-                if pr_number and self.config.GROUP_AUTOMATION_UPDATES:
+                # When GROUP_AUTOMATION_UPDATES is enabled, always return content only
+                # The grouped PR handler will commit all files together (if pr_number exists)
+                if self.config.GROUP_AUTOMATION_UPDATES:
                     result = {
                         "success": True,
                         "status": "completed",
@@ -270,6 +271,7 @@ class AutomationOrchestrator:
                         "note": "Content ready for grouped PR",
                     }
                 elif self.config.CREATE_PR:
+                    # Legacy: individual PR per file (when GROUP_AUTOMATION_UPDATES=False)
                     pr_result = await self._create_documentation_pr(
                         branch=branch,
                         readme_content=updated_readme,
@@ -347,8 +349,9 @@ class AutomationOrchestrator:
                 return result
 
             if updated_spec:
-                # If grouped updates enabled for PR, return content without creating PR
-                if pr_number and self.config.GROUP_AUTOMATION_UPDATES:
+                # When GROUP_AUTOMATION_UPDATES is enabled, always return content only
+                # The grouped PR handler will commit all files together (if pr_number exists)
+                if self.config.GROUP_AUTOMATION_UPDATES:
                     result = {
                         "success": True,
                         "status": "completed",
@@ -356,6 +359,7 @@ class AutomationOrchestrator:
                         "note": "Content ready for grouped PR",
                     }
                 elif self.config.CREATE_PR:
+                    # Legacy: individual PR per file (when GROUP_AUTOMATION_UPDATES=False)
                     pr_result = await self._create_documentation_pr(
                         branch=branch,
                         spec_content=updated_spec,
@@ -383,6 +387,7 @@ class AutomationOrchestrator:
                     result = {
                         "success": True,
                         "status": "completed",
+                        "updated_content": updated_spec,
                         "note": "Updates generated but not committed",
                     }
             else:
@@ -506,6 +511,17 @@ This PR contains automated documentation updates generated from commit `{commit_
                     f"ENABLE_PR_TRIGGER={self.config.ENABLE_PR_TRIGGER}, "
                     f"ENABLE_PUSH_TRIGGER={self.config.ENABLE_PUSH_TRIGGER}")
         
+        # Extract branch name early for trigger filtering
+        if event_type == "pull_request":
+            pr_data = payload.get("pull_request", {})
+            branch = pr_data.get("head", {}).get("ref", "")
+        else:
+            # Push event
+            ref = payload.get("ref", "")
+            branch = ref.replace("refs/heads/", "") if ref.startswith("refs/heads/") else ref
+        
+        logger.info(f"[ORCHESTRATOR] Branch: {branch}")
+        
         # Initialize trigger filter with config
         trigger_filter = TriggerFilter(
             trivial_max_lines=self.config.TRIVIAL_MAX_LINES,
@@ -513,9 +529,9 @@ This PR contains automated documentation updates generated from commit `{commit_
             enable_trivial_filter=self.config.TRIVIAL_CHANGE_FILTER_ENABLED,
         )
         
-        # Check if we should process this event based on trigger mode
+        # Check if we should process this event based on trigger mode and branch
         should_process, skip_reason = trigger_filter.should_process_event(
-            event_type, self.config.TRIGGER_MODE
+            event_type, self.config.TRIGGER_MODE, branch
         )
         logger.info(f"[ORCHESTRATOR] should_process_event: {should_process}, reason={skip_reason}")
         
@@ -617,8 +633,16 @@ This PR contains automated documentation updates generated from commit `{commit_
                 results_dict[name] = result
         
         # Handle PR-centric grouping of automation updates
-        if context.pr_number and self.config.GROUP_AUTOMATION_UPDATES:
-            await self._handle_grouped_automation_pr(context, results_dict, run_id)
+        if self.config.GROUP_AUTOMATION_UPDATES:
+            if context.pr_number:
+                # Create single grouped automation PR with all updates
+                await self._handle_grouped_automation_pr(context, results_dict, run_id)
+            else:
+                # Push-only event: skip automation PR creation entirely
+                logger.info(
+                    "[ORCHESTRATOR] Skipping automation PR creation because pr_number is None (push-only event). "
+                    "To get grouped automation PRs, trigger automation via a Pull Request."
+                )
         
         # Check for critical failures (Jules 404, LLM 429)
         critical_failures = []
@@ -795,8 +819,13 @@ This PR contains automated documentation updates generated from commit `{commit_
     ) -> None:
         """Handle grouping automation updates into a single PR for a source PR.
         
-        Collects README, spec, and code review log updates and commits them
-        all to a single automation PR instead of creating separate PRs.
+        Creates or updates a single automation PR containing:
+        - README.md updates
+        - spec.md updates  
+        - AUTOMATED_REVIEWS.md updates
+        
+        Uses branch: automation/pr-{pr_number}-updates
+        Reuses existing automation PR if one already exists for this branch.
         """
         try:
             logger.info(f"[GROUPED_PR] Starting grouped PR creation for PR #{context.pr_number}")
@@ -831,21 +860,21 @@ This PR contains automated documentation updates generated from commit `{commit_
                 logger.info("[GROUPED_PR] No content to commit, skipping PR creation")
                 return
             
-            # Create automation branch
-            automation_branch = f"automation/pr-{context.pr_number}-docs"
+            # Standardized automation branch name per user requirement
+            automation_branch = f"automation/pr-{context.pr_number}-updates"
             base_branch = context.pr_base_branch or "main"
             
             logger.info(
-                f"[GROUPED_PR] Creating branch '{automation_branch}' from '{base_branch}'"
+                f"[GROUPED_PR] Using branch '{automation_branch}' from base '{base_branch}'"
             )
             
-            # Create the branch from the PR's base
+            # Create or reuse the automation branch
             try:
                 branch_created = await self.github.create_branch(automation_branch, from_branch=base_branch)
                 if not branch_created:
-                    logger.error(f"[GROUPED_PR] ❌ Failed to create automation branch: {automation_branch}")
+                    logger.error(f"[GROUPED_PR] ❌ Failed to create/access automation branch: {automation_branch}")
                     return
-                logger.info(f"[GROUPED_PR] ✅ Branch created: {automation_branch}")
+                logger.info(f"[GROUPED_PR] ✅ Branch ready: {automation_branch}")
             except Exception as e:
                 logger.error(f"[GROUPED_PR] ❌ Exception creating branch: {e}", exc_info=True)
                 return
@@ -907,9 +936,51 @@ This PR contains automated documentation updates generated from commit `{commit_
             
             logger.info(f"[GROUPED_PR] Successfully committed {len(files_committed)} files: {', '.join(files_committed)}")
             
-            # Create the PR with all updates
-            pr_title = f"🤖 Automation updates for PR #{context.pr_number}"
-            pr_body = f"""## Automated Documentation Updates
+            # Check if automation PR already exists for this branch
+            existing_pr = await self.github.find_open_pr_for_branch(automation_branch)
+            
+            if existing_pr:
+                # Update existing PR body to reflect new files
+                existing_pr_number = existing_pr.get("number")
+                logger.info(f"[GROUPED_PR] Found existing automation PR #{existing_pr_number}, updating...")
+                
+                pr_body = f"""## Automated Documentation Updates
+
+This PR contains automated documentation updates for PR #{context.pr_number}: {context.pr_title}
+
+### Updates Included:
+{"- ✅ README.md updated" if readme_content else ""}
+{"- ✅ spec.md updated" if spec_content else ""}
+{"- ✅ " + CodeReviewUpdater.LOG_FILE + " updated" if review_log_content else ""}
+
+### Files Changed
+{chr(10).join(f"- `{f}`" for f in files_committed)}
+
+### Related PR
+- #{context.pr_number}
+
+---
+*This PR was created automatically by the GitHub Automation Agent.*
+*Last updated: {run_id}*
+"""
+                try:
+                    await self.github.update_pull_request(
+                        pr_number=existing_pr_number,
+                        body=pr_body,
+                    )
+                    self.session_memory.update_automation_pr(
+                        run_id, existing_pr_number, automation_branch
+                    )
+                    logger.info(
+                        f"[GROUPED_PR] ✅ Updated existing automation PR #{existing_pr_number} "
+                        f"for source PR #{context.pr_number} with files: {', '.join(files_committed)}"
+                    )
+                except Exception as e:
+                    logger.error(f"[GROUPED_PR] ❌ Failed to update existing PR: {e}", exc_info=True)
+            else:
+                # Create new PR with all updates
+                pr_title = f"🤖 Automation updates for PR #{context.pr_number}"
+                pr_body = f"""## Automated Documentation Updates
 
 This PR contains automated documentation updates for PR #{context.pr_number}: {context.pr_title}
 
@@ -927,29 +998,29 @@ This PR contains automated documentation updates for PR #{context.pr_number}: {c
 ---
 *This PR was created automatically by the GitHub Automation Agent.*
 """
-            
-            logger.info(f"[GROUPED_PR] Creating PR with title: {pr_title}")
-            
-            try:
-                automation_pr_number = await self.github.create_pull_request(
-                    title=pr_title,
-                    body=pr_body,
-                    head=automation_branch,
-                    base=base_branch,
-                )
                 
-                if automation_pr_number:
-                    self.session_memory.update_automation_pr(
-                        run_id, automation_pr_number, automation_branch
+                logger.info(f"[GROUPED_PR] Creating new PR with title: {pr_title}")
+                
+                try:
+                    automation_pr_number = await self.github.create_pull_request(
+                        title=pr_title,
+                        body=pr_body,
+                        head=automation_branch,
+                        base=base_branch,
                     )
-                    logger.info(
-                        f"[GROUPED_PR] ✅ Created grouped automation PR #{automation_pr_number} "
-                        f"for source PR #{context.pr_number} with files: {', '.join(files_committed)}"
-                    )
-                else:
-                    logger.error(f"[GROUPED_PR] ❌ Failed to create automation PR for source PR #{context.pr_number}")
-            except Exception as e:
-                logger.error(f"[GROUPED_PR] ❌ Exception creating PR: {e}", exc_info=True)
+                    
+                    if automation_pr_number:
+                        self.session_memory.update_automation_pr(
+                            run_id, automation_pr_number, automation_branch
+                        )
+                        logger.info(
+                            f"[GROUPED_PR] ✅ Created grouped automation PR #{automation_pr_number} "
+                            f"for source PR #{context.pr_number} with files: {', '.join(files_committed)}"
+                        )
+                    else:
+                        logger.error(f"[GROUPED_PR] ❌ Failed to create automation PR for source PR #{context.pr_number}")
+                except Exception as e:
+                    logger.error(f"[GROUPED_PR] ❌ Exception creating PR: {e}", exc_info=True)
         
         except Exception as e:
             logger.error(f"[GROUPED_PR] ❌ Fatal error in grouped PR creation: {e}", exc_info=True)
