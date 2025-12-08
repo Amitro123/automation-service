@@ -367,12 +367,36 @@ def create_api_server(config: Config) -> FastAPI:
         1. Checkbox tasks: [x] vs [ ]
         2. ✅ markers indicating completed items
         3. Development Log entries (### [...] markers)
+        
+        Reads local spec.md first, falls back to GitHub if not found.
         """
+        import re
+        import os
+        
+        content = None
+        
+        # Try local file first
         try:
-            content = await github_client.get_file_content("spec.md")
-            if not content:
+            local_spec = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "spec.md")
+            if os.path.exists(local_spec):
+                with open(local_spec, "r", encoding="utf-8") as f:
+                    content = f.read()
+                logger.debug(f"Read progress from local spec.md ({len(content)} chars)")
+        except Exception as e:
+            logger.debug(f"Could not read local spec.md: {e}")
+        
+        # Fallback to GitHub API
+        if not content:
+            try:
+                content = await github_client.get_file_content("spec.md")
+            except Exception as e:
+                logger.error(f"Failed to fetch spec.md from GitHub: {e}")
                 return 0.0
-            
+        
+        if not content:
+            return 0.0
+        
+        try:
             # Count checkbox-style tasks
             checkbox_total = content.count("- [ ]") + content.count("- [x]")
             checkbox_completed = content.count("- [x]")
@@ -381,7 +405,6 @@ def create_api_server(config: Config) -> FastAPI:
             checkmark_count = content.count("✅")
             
             # Count Development Log entries (### [...] date markers)
-            import re
             log_entries = len(re.findall(r"### \[\d{4}-\d{2}-\d{2}\]", content))
             
             # Calculate progress:
@@ -389,12 +412,12 @@ def create_api_server(config: Config) -> FastAPI:
             if checkbox_total > 0:
                 progress = (checkbox_completed / checkbox_total) * 100
             elif checkmark_count > 0:
-                # Estimate: assume we're tracking ~20 total milestones
-                progress = min((checkmark_count / 20) * 100, 100)
+                # Estimate: assume we're tracking ~10 total milestones
+                progress = min((checkmark_count / 10) * 100, 100)
             elif log_entries > 0:
                 # Estimate progress based on number of development log entries
-                # Assume ~15 log entries represents 100% progress
-                progress = min((log_entries / 15) * 100, 100)
+                # Assume ~10 log entries represents 100% progress
+                progress = min((log_entries / 10) * 100, 100)
             else:
                 return 0.0
                 
@@ -487,6 +510,30 @@ def create_api_server(config: Config) -> FastAPI:
             projectProgress=project_progress
         )
     
+    @app.get("/api/spec")
+    async def get_spec():
+        """Get the content of spec.md (local preferred, then GitHub)."""
+        import os
+        
+        # Try local first
+        try:
+            local_spec = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "spec.md")
+            if os.path.exists(local_spec):
+                with open(local_spec, "r", encoding="utf-8") as f:
+                    return {"content": f.read()}
+        except Exception:
+            pass
+            
+        # Fallback to GitHub
+        try:
+            content = await github_client.get_file_content("spec.md")
+            if content:
+                return {"content": content}
+        except Exception as e:
+            logger.error(f"Failed to fetch spec.md: {e}")
+            
+        return {"content": "Failed to load spec.md"}
+
     @app.get("/api/logs")
     async def get_logs(limit: int = 50):
         logs = list(app_state.logs)

@@ -94,7 +94,8 @@ function App() {
         if (historyData && historyData.length > 0) {
           const historyTasks: Task[] = historyData.map((run: RunHistoryItem) => {
             // Determine trigger indicator: PR runs are canonical ✅, push-only are secondary ⚡
-            const isPRRun = run.trigger_type?.startsWith('pr_') || run.pr_number;
+            // Logic: if trigger_type starts with 'pr_' OR if pr_number exists (and is not null/undefined)
+            const isPRRun = run.trigger_type?.startsWith('pr_') || (run.pr_number !== null && run.pr_number !== undefined && run.pr_number !== 0);
             const triggerIcon = isPRRun ? '✅ PR' : '⚡ Push';
             const prLabel = run.pr_number ? `#${run.pr_number}` : run.branch;
 

@@ -111,13 +111,13 @@ const MetricsPanel: React.FC<MetricsPanelProps> = ({ coverage, llm }) => {
         </h3>
 
         <div className="grid grid-cols-2 gap-4 mb-6 relative z-10">
-          <div className="bg-white/5 p-3 rounded-2xl border border-white/5 backdrop-blur-sm flex flex-col justify-between h-20 overflow-hidden group/stat cursor-help" title={`${llm.tokensUsed.toLocaleString()} total tokens used`}>
-            <p className="text-[10px] text-violet-300 uppercase tracking-wider font-bold truncate">Total Runs</p>
-            <p className="text-xl lg:text-2xl font-bold text-white tracking-tight truncate">
+          <div className="bg-white/5 p-3 rounded-2xl border border-white/5 backdrop-blur-sm flex flex-col justify-between h-20 group/stat cursor-help" title={`Total Tokens Used: ${llm.tokensUsed.toLocaleString()}`}>
+            <p className="text-[10px] text-violet-300 uppercase tracking-wider font-bold">Total Runs</p>
+            <p className="text-xl lg:text-2xl font-bold text-white tracking-tight">
               {llm.totalRuns || 0}
             </p>
           </div>
-          <div className="bg-white/5 p-3 rounded-2xl border border-white/5 backdrop-blur-sm flex flex-col justify-between h-20">
+          <div className="bg-white/5 p-3 rounded-2xl border border-white/5 backdrop-blur-sm flex flex-col justify-between h-20 cursor-help" title="Estimated LLM API cost based on total tokens used across all runs">
             <p className="text-[10px] text-emerald-300 uppercase tracking-wider font-bold">Est. Cost</p>
             <p className="text-xl lg:text-2xl font-bold text-white tracking-tight">${llm.estimatedCost.toFixed(2)}</p>
           </div>

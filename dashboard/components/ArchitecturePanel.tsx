@@ -20,19 +20,26 @@ const ArchitecturePanel: React.FC<ArchitecturePanelProps> = ({ diagramDefinition
       theme: 'dark',
       securityLevel: 'loose',
       fontFamily: 'Inter, sans-serif',
+      fontSize: 20,
       themeVariables: {
         darkMode: true,
-        background: 'transparent',
-        primaryColor: '#38bdf8',
-        secondaryColor: '#a78bfa',
+        background: '#0f172a',
+        primaryColor: '#3b82f6', // Brighter blue
+        secondaryColor: '#c084fc', // Bright purple
         tertiaryColor: '#34d399',
-        primaryBorderColor: '#7dd3fc',
-        lineColor: '#94a3b8',
-        textColor: '#f1f5f9',
-        mainBkg: 'transparent',
+        primaryBorderColor: '#60a5fa',
+        lineColor: '#e2e8f0', // Very light gray for lines
+        textColor: '#ffffff',
+        mainBkg: '#1e293b',
+        nodeBorder: '#60a5fa',
+        clusterBkg: '#1e3a5f',
+        clusterBorder: '#60a5fa',
+        titleColor: '#ffffff',
+        edgeLabelBackground: '#1e293b',
       }
     });
   }, []);
+
 
   useEffect(() => {
     const renderDiagram = async () => {
