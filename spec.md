@@ -1,6 +1,6 @@
 # 📋 GitHub Automation Agent - Product Specification & Progress
 
-**Last Updated:** 2025-12-08 18:04 UTC
+**Last Updated:** 2025-12-08 18:10 UTC
 **Status:** Phase 3 Complete ✅ | Phase 4 Deployment 🚀 | PR-Centric Automation ✅ | Zero Silent Failures ✅
 
 ## 🎯 Product Mission
@@ -433,3 +433,8 @@ LOW: Polish
 - **Summary**: Updated README to reflect changes in PR-Centric Automation, Error Handling, and Review Provider Configuration. Removed redundant "NEW" markers. Updated the dashboard section and deployment instructions.
 - **Decisions**: Clarified the role of the dashboard and its integration with CI results.
 - **Next Steps**: Continue to refine the documentation and ensure it accurately reflects the latest features and functionality.
+
+### 2024-05-09
+- **Summary**: Updated README.md to reflect the removal of "NEW" tag for session_memory.py and dashboard.
+- **Decisions**: Removed the "NEW" tags as the features are no longer new.
+- **Next Steps**: No immediate next steps.
