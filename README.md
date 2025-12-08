@@ -141,7 +141,6 @@ python -m automation_agent.main
 
 # Linux/Mac
 export PYTHONPATH=$PWD/src
-python -m automation_agent.main
 #### Option 3: All-in-One Dev Mode (Recommended for E2E Testing)
 ```bash
 # Starts backend + ngrok + frontend together
