@@ -23,7 +23,7 @@ An autonomous GitHub automation system that triggers on **push and pull request 
 - **Code Review Updater**: Appends review summaries to persistent logs
 
 ### 3. 📊 Real-Time Dashboard
-- **Live Metrics**: Real test coverage from coverage.xml, LLM usage tracking, token costs, calculated efficiency scores
+- **Live Metrics**: Real test coverage from coverage.xml, LLM usage tracking, token costs, calculated efficiency scores, and total runs.
 - **Real Data Integration**: Fetches live bugs from GitHub issues, open PRs with check status, session memory metrics
 - **Visual Progress**: Task tracking with real statuses from automation runs
 - **Architecture Visualization**: Interactive Mermaid diagrams with clear component descriptions
@@ -34,7 +34,7 @@ An autonomous GitHub automation system that triggers on **push and pull request 
 ### 4. 📊 Project Progress & Metrics
 - Visual progress tracking with real-time updates
 - Test coverage and mutation testing integration using tools like mutmut
-- LLM usage stats: token consumption, cost estimation, efficiency
+- LLM usage stats: token consumption, cost estimation, efficiency, and total runs.
 - Security guardrails integrated with Bandit scans and CI/CD enforcement
 - Multi-repository support with auto-detection of required files (README.md, spec.md)
 
@@ -281,7 +281,7 @@ automation_agent/
 
 ### Running the Dashboard
 
-The project includes a real-time dashboard for monitoring automation metrics, test coverage, LLM usage, and system status.
+The project includes a real-time dashboard for monitoring automation metrics, test coverage, LLM usage, and system status.  The dashboard now displays the total number of runs.
 
 **Start the dashboard:**
 ```bash
@@ -298,6 +298,7 @@ Dashboard runs on: **http://localhost:5173**
 - 📝 Real-time system logs
 - 🗺️ Interactive architecture diagrams (Live from `ARCHITECTURE.md`)
 - 📜 Session History & Run Logs
+- 🔢 Total Runs
 
 See [`dashboard/DASHBOARD_SETUP.md`](dashboard/DASHBOARD_SETUP.md)
 
@@ -362,3 +363,26 @@ The diagram updates automatically as the project evolves.
 
 ## 📄 License
 MIT
+## Quality & Evaluation
+
+We maintain high code quality standards through multiple layers of testing and evaluation.
+
+### Security (Bandit)
+We use [Bandit](https://github.com/PyCQA/bandit) to scan for common security issues in Python code.
+- **Run Locally**: andit -r src/ -ll
+- **CI**: Runs on every PR (blocking).
+
+### Fast Tests (Unit & Integration)
+Standard pytest suite for logic and integration testing.
+- **Run Locally**: `python -m pytest`
+- **CI**: Runs on every PR (blocking).
+
+### Mutation Tests (Deep Testing)
+We use mutation testing to verify test suite quality.
+- **Run Locally (Windows/Linux)**: `python src/automation_agent/mutation_service.py` (or check scripts).
+- **CI**: scheduled nightly or manual.
+
+### LLM Evaluation (DeepEval)
+We use [DeepEval](https://github.com/confident-ai/deepeval) to evaluate the quality of LLM-generated code reviews and documentation updates.
+- **Location**: `tests/deepeval/`
+- **Run
