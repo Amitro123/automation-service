@@ -178,7 +178,7 @@ GitHub Push → Agent Platform Webhook → Orchestrator → GitHub API
    - Code review → comment/issue + persistent logs (code changes only)
    - README update → PR (if changes detected)
    - spec.md update → append entry
-   - code_review.md update → append review summary with session memory
+   - AUTOMATED_REVIEWS.md update → append review summary with session memory
 5. **Results posted** → repo stays documented automatically and progress tracked
 
 ### PR-Centric Flow (Pull Request Events)
