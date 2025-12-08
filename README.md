@@ -221,7 +221,7 @@ automation_agent/
 │   └── automation_agent/
 │       ├── webhook_server.py          # Flask webhook endpoint
 │       ├── orchestrator.py            # Coordinates 4 parallel tasks
-│       ├── session_memory.py          # Session Memory Store (NEW)
+│       ├── session_memory.py          # Session Memory Store
 │       ├── code_reviewer.py           # LLM-powered code analysis
 │       ├── code_review_updater.py     # Persistent review logging
 │       ├── readme_updater.py          # Smart README updates
@@ -229,7 +229,7 @@ automation_agent/
 │       ├── github_client.py           # GitHub API wrapper
 │       ├── llm_client.py              # OpenAI/Anthropic/Gemini abstraction
 │       └── main.py                    # Entry point
-├── dashboard/                         # React + Vite dashboard (NEW)
+├── dashboard/                         # React + Vite dashboard
 │   ├── App.tsx                        # Main dashboard UI
 │   ├── components/                    # UI components
 │   ├── services/
@@ -330,5 +330,3 @@ graph TD
     Orchestrator -->|Init Run| SessionMem
     Dashboard -->|Fetch Metrics/History| Webhook
     Webhook -.->|Read| SessionMem
-## 📄 License
-MIT
