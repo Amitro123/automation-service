@@ -204,7 +204,7 @@ git push
 **Expected results:**
 - ✅ Code review comment/issue
 - ✅ README PR (if applicable)
-- ✅ spec.md + code_review.md entries appended
+- ✅ spec.md + AUTOMATED_REVIEWS.md entries appended  <-- Updated log file
 
 ### Test Status
 **Current Pass Rate**: 100% (99/99 tests passing) as of 2025-11-30
