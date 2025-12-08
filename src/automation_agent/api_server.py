@@ -50,6 +50,7 @@ class LLMMetrics(BaseModel):
     estimatedCost: float
     efficiencyScore: float
     sessionMemoryUsage: float
+    totalRuns: int = 0
 
 
 class TaskItem(BaseModel):
@@ -360,20 +361,44 @@ def create_api_server(config: Config) -> FastAPI:
             return []
 
     async def _calculate_progress() -> float:
-        """Calculate project progress based on spec.md tasks."""
+        """Calculate project progress based on spec.md content.
+        
+        Uses multiple heuristics:
+        1. Checkbox tasks: [x] vs [ ]
+        2. ✅ markers indicating completed items
+        3. Development Log entries (### [...] markers)
+        """
         try:
             content = await github_client.get_file_content("spec.md")
             if not content:
                 return 0.0
             
-            # Simple heuristic: Count [x] vs [ ]
-            total_tasks = content.count("- [ ]") + content.count("- [x]")
-            completed_tasks = content.count("- [x]")
+            # Count checkbox-style tasks
+            checkbox_total = content.count("- [ ]") + content.count("- [x]")
+            checkbox_completed = content.count("- [x]")
             
-            if total_tasks == 0:
+            # Count ✅ markers (often used to mark completed milestones)
+            checkmark_count = content.count("✅")
+            
+            # Count Development Log entries (### [...] date markers)
+            import re
+            log_entries = len(re.findall(r"### \[\d{4}-\d{2}-\d{2}\]", content))
+            
+            # Calculate progress:
+            # If checkboxes exist, use them as primary metric
+            if checkbox_total > 0:
+                progress = (checkbox_completed / checkbox_total) * 100
+            elif checkmark_count > 0:
+                # Estimate: assume we're tracking ~20 total milestones
+                progress = min((checkmark_count / 20) * 100, 100)
+            elif log_entries > 0:
+                # Estimate progress based on number of development log entries
+                # Assume ~15 log entries represents 100% progress
+                progress = min((log_entries / 15) * 100, 100)
+            else:
                 return 0.0
                 
-            return round((completed_tasks / total_tasks) * 100, 1)
+            return round(progress, 1)
         except Exception as e:
             logger.error(f"Failed to calculate progress: {e}")
             return 0.0
@@ -447,7 +472,8 @@ def create_api_server(config: Config) -> FastAPI:
                 tokensUsed=global_metrics.get("total_tokens", 0),
                 estimatedCost=global_metrics.get("total_cost", 0.0),
                 efficiencyScore=efficiency_score,
-                sessionMemoryUsage=session_memory_usage
+                sessionMemoryUsage=session_memory_usage,
+                totalRuns=global_metrics.get("total_runs", 0)
             ),
             tasks=tasks,
             bugs=bugs,

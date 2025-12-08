@@ -65,6 +65,7 @@ export interface LLMMetrics {
   estimatedCost: number;
   efficiencyScore: number;
   sessionMemoryUsage: number;
+  totalRuns: number;
 }
 
 export interface DashboardMetrics {

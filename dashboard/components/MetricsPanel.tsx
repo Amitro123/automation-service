@@ -111,10 +111,10 @@ const MetricsPanel: React.FC<MetricsPanelProps> = ({ coverage, llm }) => {
         </h3>
 
         <div className="grid grid-cols-2 gap-4 mb-6 relative z-10">
-          <div className="bg-white/5 p-3 rounded-2xl border border-white/5 backdrop-blur-sm flex flex-col justify-between h-20 overflow-hidden">
-            <p className="text-[10px] text-violet-300 uppercase tracking-wider font-bold truncate">Tokens Used</p>
-            <p className="text-xl lg:text-2xl font-bold text-white tracking-tight truncate" title={llm.tokensUsed.toLocaleString()}>
-              {llm.tokensUsed.toLocaleString()}
+          <div className="bg-white/5 p-3 rounded-2xl border border-white/5 backdrop-blur-sm flex flex-col justify-between h-20 overflow-hidden group/stat cursor-help" title={`${llm.tokensUsed.toLocaleString()} total tokens used`}>
+            <p className="text-[10px] text-violet-300 uppercase tracking-wider font-bold truncate">Total Runs</p>
+            <p className="text-xl lg:text-2xl font-bold text-white tracking-tight truncate">
+              {llm.totalRuns || 0}
             </p>
           </div>
           <div className="bg-white/5 p-3 rounded-2xl border border-white/5 backdrop-blur-sm flex flex-col justify-between h-20">

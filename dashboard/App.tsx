@@ -74,6 +74,7 @@ function App() {
             estimatedCost: data.llm.estimatedCost,
             efficiencyScore: data.llm.efficiencyScore,
             sessionMemoryUsage: data.llm.sessionMemoryUsage,
+            totalRuns: data.llm.totalRuns || 0,
           });
           if (data.logs.length > 0) {
             setLogs(data.logs.map(l => ({ ...l, level: l.level as 'INFO' | 'WARN' | 'ERROR' })));

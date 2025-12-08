@@ -33,9 +33,21 @@ const LogViewer: React.FC<LogViewerProps> = ({ logs, onLogClick }) => {
 
   const formatTime = (timestamp: string) => {
     try {
-      // If it's already a time string like "18:31:26", just return it
-      if (timestamp.includes(':') && timestamp.length < 10) return timestamp;
-      return new Date(timestamp).toLocaleTimeString();
+      // If it's already a time string like "18:31:26", add today's date prefix
+      if (timestamp.includes(':') && timestamp.length < 10) {
+        const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        return `${today}, ${timestamp}`;
+      }
+      // Full ISO timestamp - format with date and local time
+      const date = new Date(timestamp);
+      return date.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+      });
     } catch {
       return timestamp;
     }
@@ -69,7 +81,7 @@ const LogViewer: React.FC<LogViewerProps> = ({ logs, onLogClick }) => {
               className={`flex gap-4 p-1.5 rounded-lg transition-colors group/line ${isClickable ? 'hover:bg-white/10 cursor-pointer' : 'hover:bg-white/5'
                 }`}
             >
-              <span className="text-slate-600 min-w-[70px] group-hover/line:text-slate-500 transition-colors font-medium">
+              <span className="text-slate-600 min-w-[130px] group-hover/line:text-slate-500 transition-colors font-medium">
                 {formatTime(log.timestamp)}
               </span>
               <span className={`font-bold min-w-[50px] tracking-wide ${log.level === 'ERROR' ? 'text-rose-500' :
