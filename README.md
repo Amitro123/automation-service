@@ -150,6 +150,24 @@ $env:PYTHONPATH = "$PWD/src"
 python -m automation_agent.main
 
 # Linux/Mac
+export PYTHONPATH=$PWD/src
+python -m automation_agent.main
+```
+
+#### Option 3: All-in-One Dev Mode (Recommended for E2E Testing)
+```bash
+# Starts backend + ngrok + frontend together
+python scripts/dev_start.py
+```
+This script:
+- Starts FastAPI backend on http://localhost:8080
+- Starts ngrok tunnel (if installed) for GitHub webhooks
+- Starts React dashboard on http://localhost:5173
+- Color-coded output for each service
+- Press Ctrl+C to stop all services
+
+**Prerequisite**: Install ngrok from https://ngrok.com/download for webhook testing.
+
 ## 🧲 Agent Platform Integration (Optional)
 
 Compatible with **Windsurf**, **AntiGravity**, **n8n**, or any agent orchestrator:
