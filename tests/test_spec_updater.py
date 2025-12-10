@@ -38,7 +38,10 @@ async def test_update_spec_failure(spec_updater, mock_github_client, mock_llm_cl
     
     result = await spec_updater.update_spec("sha123")
     
-    assert result is None
+    assert result is not None
+    assert result["success"] is False
+    assert result["error_type"] == "spec_update_error"
+    assert "Error" in result["message"]
 
 @pytest.mark.asyncio
 async def test_update_spec_no_commit_info(spec_updater, mock_github_client):

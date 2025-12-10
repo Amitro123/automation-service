@@ -71,7 +71,11 @@ class SpecUpdater:
             }
         except Exception as e:
             logger.error(f"Failed to generate spec update: {e}")
-            return None
+            return {
+                "success": False,
+                "error_type": "spec_update_error",
+                "message": str(e)
+            }
 
         if not updated_spec:
             logger.error("Failed to generate spec update")

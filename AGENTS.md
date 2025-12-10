@@ -312,7 +312,7 @@ Your changes are successful if:
   - Never overwrite the log, always append.
   - If `AUTOMATED_REVIEWS.md` is missing, create it.
   - Use `LLMClient.summarize_review` for consistency.
-  - Note: Uses `AUTOMATED_REVIEWS.md` (not `code_review.md`) to avoid collision with `CODE_REVIEW.md` on case-insensitive filesystems.
+  - Note: Uses `AUTOMATED_REVIEWS.md` to avoid collision with `CODE_REVIEW.md` (manual reports).
 
 ---
 

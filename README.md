@@ -5,7 +5,7 @@ An autonomous GitHub automation system that triggers on **push and pull request 
 ## 💡 Why This Agent?
 
 - **Reduces repetitive code review work** — highlights risky changes and suggests fixes automatically
-- **Keeps docs always fresh** — README, spec.md, and code_review.md stay in sync with actual code changes
+- **Keeps docs always fresh** — README, spec.md, and AUTOMATED_REVIEWS.md stay in sync with actual code changes
 - **Intelligent layer over GitHub** — uses advanced LLMs + async orchestration instead of rigid YAML workflows
 
 ## ✨ Features
@@ -251,10 +251,10 @@ git push
 **Expected results:**
 - ✅ Code review comment/issue
 - ✅ README PR (if applicable)
-- ✅ spec.md + code_review.md entries appended
+- ✅ spec.md + AUTOMATED_REVIEWS.md entries appended
 
 ### Test Status
-**Current Pass Rate**: 100% (99/99 tests passing) as of 2025-11-30
+**Current Pass Rate**: 100% (147/147 tests passing) as of 2025-12-10
 
 - ✅ Unit Tests
 - ✅ Integration Tests

@@ -366,9 +366,8 @@ A comprehensive cleanup and review was performed. Temporary files were removed, 
 - **Recommendation**: Deprecate `webhook_server.py` in favor of `api_server.py` for all webhook handling.
 
 ### 3.3 Documentation & Implementation Mismatch
-- **Conflict**: `AGENTS.md` and `spec.md` refer to `AUTOMATED_REVIEWS.md` for automated logs and `CODE_REVIEW.md` for human reports.
-- **Finding**: `src/automation_agent/code_review_updater.py` sets `LOG_FILE = "CODE_REVIEW.md"`.
-- **Impact**: The automated system writes to the file intended for human reports (`CODE_REVIEW.md`), potentially mixing content and violating the spec.
+- **Concept**: `AUTOMATED_REVIEWS.md` (persistent log) vs `CODE_REVIEW.md` (legacy/manual report).
+- **Rule**: Automated tools MUST write to `AUTOMATED_REVIEWS.md`. `CODE_REVIEW.md` is reserved for human reports or detailed analysis snippets.
 - **Recommendation**: Change `LOG_FILE` in `code_review_updater.py` to `AUTOMATED_REVIEWS.md` to align with `AGENTS.md`.
 
 ## 4. Conclusion

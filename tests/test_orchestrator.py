@@ -224,6 +224,7 @@ async def test_readme_update_auto_commit(orchestrator, mock_readme_updater, mock
     # Configure mocks
     mock_config.CREATE_PR = False
     mock_config.AUTO_COMMIT = True
+    mock_config.GROUP_AUTOMATION_UPDATES = False
     mock_readme_updater.update_readme.return_value = "Updated README"
     mock_github_client.update_file.return_value = True
 
@@ -245,6 +246,7 @@ async def test_spec_update_auto_commit(orchestrator, mock_spec_updater, mock_git
     # Configure mocks
     mock_config.CREATE_PR = False
     mock_config.AUTO_COMMIT = True
+    mock_config.GROUP_AUTOMATION_UPDATES = False
     mock_spec_updater.update_spec.return_value = "Updated Spec"
     mock_github_client.update_file.return_value = True
 

@@ -297,7 +297,7 @@ class TestTriggerModeFiltering:
         should_process, reason = filter.should_process_event("push", "pr")
         
         assert should_process is False
-        assert "Push events disabled" in reason
+        assert "Push to main branch disabled" in reason
 
     def test_push_mode_accepts_push_events(self):
         """Test that push mode accepts push events."""

@@ -50,3 +50,6 @@ verification_result.txt
 
 # Session Memory
 session_memory.json
+
+# DeepEval
+.deepeval/
