@@ -582,28 +582,84 @@ def create_api_server(config: Config) -> FastAPI:
                 "group_automation_updates": config.GROUP_AUTOMATION_UPDATES,
                 "post_review_on_pr": config.POST_REVIEW_ON_PR,
                 "repository_owner": config.REPOSITORY_OWNER,
-                "repository_name": config.REPOSITORY_NAME
+                "repository_name": config.REPOSITORY_NAME,
+                "code_review_system_prompt": config.CODE_REVIEW_SYSTEM_PROMPT,
+                "docs_update_system_prompt": config.DOCS_UPDATE_SYSTEM_PROMPT,
+                "llm_provider": config.LLM_PROVIDER,
+                "llm_model": config.LLM_MODEL,
+                "review_provider": config.REVIEW_PROVIDER
             },
             "file_config": file_config
         }
     
     @app.post("/api/config/validate")
-    async def validate_config(config_data: Dict[str, Any]):
-        """Validate configuration object."""
+    async def validate_config(config_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Validate configuration object.
+        
+        Args:
+            config_data: Configuration dictionary to validate.
+            
+        Returns:
+            Dict with 'valid' boolean and optional 'errors' list.
+        """
+        logger.info("[CONFIG] Validating configuration")
         # Simple validation for now
         errors = []
         if "trigger_mode" in config_data and config_data["trigger_mode"] not in ["pr", "push", "both"]:
             errors.append("Invalid trigger_mode. Must be 'pr', 'push', or 'both'")
         
+        logger.info(f"[CONFIG] Validation result: valid={len(errors) == 0}")
         if errors:
             return {"valid": False, "errors": errors}
         return {"valid": True}
+    
+    @app.patch("/api/config")
+    async def update_config(updates: Dict[str, Any]):
+        """Update configuration with validation and persistence."""
+        import json
+        
+        # Validate updates
+        validation = await validate_config(updates)
+        if not validation["valid"]:
+            return {"success": False, "errors": validation["errors"]}
+        
+        # Load current config file
+        file_config = config.load_config_file()
+        
+        # Apply updates
+        file_config.update(updates)
+        
+        # Persist to file
+        try:
+            with open(config.CONFIG_FILE, "w") as f:
+                json.dump(file_config, f, indent=2)
+            
+            # Reload config
+            config.load()
+            
+            return {
+                "success": True,
+                "message": "Configuration updated successfully",
+                "updated_config": file_config
+            }
+        except Exception as e:
+            logger.error(f"Failed to update config: {e}")
+            return {"success": False, "errors": [str(e)]}
 
     @app.post("/api/config/apply")
-    async def apply_config(config_data: Dict[str, Any]):
-        """Apply configuration to studioai.config.json."""
-        import json
-        import os
+    async def apply_config(config_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Apply configuration to studioai.config.json.
+        
+        Args:
+            config_data: Configuration updates to apply.
+            
+        Returns:
+            Dict with 'success' boolean and 'message' string.
+            
+        Raises:
+            HTTPException: If configuration update fails.
+        """
+        logger.info(f"[CONFIG] Applying configuration: {list(config_data.keys())}")
         
         CONFIG_FILE = "studioai.config.json"
         
@@ -621,10 +677,12 @@ def create_api_server(config: Config) -> FastAPI:
                 
             # Reload config in memory
             config.load()
+            logger.info("[CONFIG] Configuration applied successfully")
             
             return {"success": True, "message": "Configuration applied"}
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+        except OSError as e:
+            logger.error(f"[CONFIG] Failed to apply configuration: {e}")
+            raise HTTPException(status_code=500, detail=str(e)) from e
 
     @app.post("/api/mutation/run")
     async def run_mutation_tests_endpoint(background_tasks: BackgroundTasks):

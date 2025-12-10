@@ -270,24 +270,14 @@ class LLMClient:
         Returns:
             Code review text
         """
+        from .config import Config
+        
         # Truncate diff if too long
         if len(diff) > 8000:
             diff = diff[:8000] + "\n\n[... diff truncated ...]"
 
-        prompt = f"""You are an expert code reviewer. Analyze the following code changes (git diff) and provide a comprehensive review.
-
-Code Changes:
-```diff
-{diff}
-```
-
-Instructions:
-1. Analyze code quality, potential bugs, security issues, and performance.
-2. Provide specific, actionable feedback.
-3. Structure the review with clear headings (Strengths, Issues, Suggestions).
-4. Be constructive and professional.
-
-Review:"""
+        system_prompt = Config.CODE_REVIEW_SYSTEM_PROMPT
+        prompt = f"{system_prompt}\n\nCode Changes:\n```diff\n{diff}\n```\n\nReview:"
         return await self.generate(prompt, max_tokens=2000)
 
     async def update_readme(self, diff: str, current_readme: str) -> tuple[str, Dict[str, Any]]:
@@ -300,28 +290,13 @@ Review:"""
         Returns:
             Updated README content
         """
+        from .config import Config
+        
         if len(diff) > 8000:
             diff = diff[:8000] + "\n\n[... diff truncated ...]"
 
-        prompt = f"""You are a technical documentation expert. Update the README.md based on the following code changes.
-
-Code Changes:
-```diff
-{diff}
-```
-
-Current README:
-```markdown
-{current_readme}
-```
-
-Instructions:
-1. Identify new features, configuration changes, or usage updates from the diff.
-2. Update the README to reflect these changes.
-3. Return the FULL updated README content in markdown format.
-4. Do not include any conversational text, just the markdown.
-
-Updated README:"""
+        system_prompt = Config.DOCS_UPDATE_SYSTEM_PROMPT
+        prompt = f"{system_prompt}\n\nCode Changes:\n```diff\n{diff}\n```\n\nCurrent README:\n```markdown\n{current_readme}\n```\n\nUpdated README:"
         return await self.generate(prompt, max_tokens=4000)
 
     async def update_spec(self, commit_info: Dict[str, Any], diff: str, current_spec: str) -> tuple[str, Dict[str, Any]]:

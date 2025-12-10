@@ -48,6 +48,31 @@ run_api.py # FastAPI server launcher (NEW)
 - Use `Config.validate()` to ensure required values exist.
 
 ### StudioAI CLI
+- **Purpose**: Interactive configuration wizard + status checks.
+- **Commands**:
+  - `studioai init` → Initialize `studioai.config.json` with interactive prompts.
+  - `studioai configure` → Edit existing config interactively.
+  - `studioai status` → Show current config + GitHub connection status.
+  - `studioai test-pr-flow` → Simulate a PR event for testing.
+
+### Runtime Configuration
+- **Config File**: `studioai.config.json` (created by CLI or API)
+- **Precedence**: Environment Variables > Config File > Defaults
+- **Runtime Editing**: 
+  - **Dashboard**: Visual config panel with toggles, dropdowns, and save button
+  - **API**: `PATCH /api/config` endpoint for programmatic updates
+  - **CLI**: `studioai configure` for interactive updates
+- **No Restart Required**: All config changes apply immediately to new automation runs
+
+### Prompt Playground
+- **Purpose**: Customize LLM behavior for code reviews and documentation updates
+- **Access**: Dashboard UI with tabbed interface (Code Review / Docs Update)
+- **Features**:
+  - Live editing of system prompts
+  - Character counter
+  - Reset to defaults
+  - Immediate persistence to `studioai.config.json`
+- **Impact**: Tune tone, strictness, focus areas without code changes
 The CLI (`src/automation_agent/cli.py`) is the user-facing interface for configuration.
 - When adding new config vars, update:
     1. `Config` class in `config.py` (add property and default).

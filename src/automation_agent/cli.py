@@ -1,8 +1,9 @@
+"""StudioAI CLI - Interactive configuration and management tool."""
+
 import typer
 import json
 import os
 import requests
-import asyncio
 from typing import Optional
 from enum import Enum
 from pathlib import Path
@@ -10,10 +11,10 @@ from pathlib import Path
 # Use relative imports if possible, or fall back to installed package
 try:
     from automation_agent.config import Config
-    from automation_agent.api_server import app  # Check if we can import app directly? Likely safer to rely on config.
 except ImportError:
-    # Attempt to handle if run file directly
-    pass
+    import sys
+    print("Error: Could not import required modules. Ensure the package is installed.", file=sys.stderr)
+    sys.exit(1)
 
 app = typer.Typer(help="StudioAI CLI - GitHub Automation Agent Configuration & Management")
 
@@ -24,6 +25,10 @@ class TriggerMode(str, Enum):
     PUSH = "push"
     BOTH = "both"
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 @app.command()
 def init(
     owner: str = typer.Option(..., prompt="GitHub Owner"),
@@ -31,8 +36,10 @@ def init(
     trigger_mode: TriggerMode = typer.Option(TriggerMode.PR, prompt="Trigger Mode (pr/push/both)"),
     group_updates: bool = typer.Option(True, prompt="Group Automation Updates?"),
     post_review_on_pr: bool = typer.Option(True, prompt="Post Review on PR?")
-):
+) -> None:
     """Initialize StudioAI configuration."""
+    logger.info(f"[CODE_REVIEW] Initializing configuration: owner={owner}, repo={repo}, mode={trigger_mode.value}")
+    
     config_data = {
         "repository_owner": owner,
         "repository_name": repo,
@@ -44,22 +51,30 @@ def init(
     with open(CONFIG_FILE, "w") as f:
         json.dump(config_data, f, indent=4)
     
+    logger.info(f"[CODE_REVIEW] Configuration saved to {CONFIG_FILE}")
     typer.echo(f"✅ Configuration saved to {CONFIG_FILE}")
     typer.echo("Note: Environment variables (.env) take precedence over these settings.")
-
 @app.command()
 def configure(
     trigger_mode: Optional[TriggerMode] = typer.Option(None),
     group_updates: Optional[bool] = typer.Option(None),
     post_review_on_pr: Optional[bool] = typer.Option(None)
-):
+) -> None:
     """Update existing configuration."""
+    logger.info("[CODE_REVIEW] Updating configuration")
+    
     if not os.path.exists(CONFIG_FILE):
+        logger.error(f"[CODE_REVIEW] Config file not found: {CONFIG_FILE}")
         typer.echo("Config file not found. Run 'studioai init' first.")
         raise typer.Exit(code=1)
         
-    with open(CONFIG_FILE, "r") as f:
-        config = json.load(f)
+    try:
+        with open(CONFIG_FILE, "r") as f:
+            config = json.load(f)
+    except json.JSONDecodeError as e:
+        logger.error(f"[CODE_REVIEW] Invalid JSON in config file: {e}")
+        typer.echo(f"Error: Config file is corrupted: {e}")
+        raise typer.Exit(code=1) from e
         
     if trigger_mode:
         config["trigger_mode"] = trigger_mode.value
@@ -71,16 +86,24 @@ def configure(
     with open(CONFIG_FILE, "w") as f:
         json.dump(config, f, indent=4)
         
+    logger.info(f"[CODE_REVIEW] Configuration updated in {CONFIG_FILE}")
     typer.echo(f"✅ Configuration updated in {CONFIG_FILE}")
 
 @app.command()
-def status():
+def status() -> None:
     """Check system status via API."""
+    logger.info("[CODE_REVIEW] Checking system status")
+    
     try:
-        # Assuming local API for now, typically config.PORT
-        # We need to load config to know port, or assume default
-        # Ideally we'd have a robust way to find the running server URL
-        url = "http://localhost:8080/api/metrics" 
+        # Load config to get actual port if available
+        try:
+            Config.load()
+            port = Config.PORT if hasattr(Config, 'PORT') else 8080
+        except Exception:
+            port = 8080
+        
+        url = f"http://localhost:{port}/api/metrics"
+        logger.info(f"[CODE_REVIEW] Fetching metrics from {url}")
         response = requests.get(url, timeout=5)
         response.raise_for_status()
         data = response.json()
@@ -90,16 +113,13 @@ def status():
         typer.echo(f"Success Rate: {data.get('success_rate', 'N/A')}")
         typer.echo(f"Total Runs: {data.get('total_runs', 'N/A')}")
         
-        # Could show recent runs here if API supported it
-        # history = requests.get("http://localhost:8080/api/history").json()
-        # ...
-        
-    except Exception as e:
+    except requests.RequestException as e:
+        logger.error(f"[CODE_REVIEW] Failed to connect to API: {e}")
         typer.echo(f"❌ Failed to connect to API: {e}")
         typer.echo("Is the backend running?")
 
 @app.command()
-def test_pr_flow():
+def test_pr_flow() -> None:
     """Trigger a smoke test for PR flow."""
     typer.echo("🔬 Running PR Flow Smoke Test...")
     # This invokes the internal orchestrator logic in a DRY run or TEST mode if possible

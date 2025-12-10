@@ -1,3 +1,7 @@
+# Dependencies - Keep in sync with pyproject.toml
+# Version constraints should match between both files
+# pyproject.toml is the source of truth for package installation
+
 # Web Frameworks
 flask>=3.0.0
 flask-cors>=4.0.0
@@ -12,9 +16,8 @@ aiohttp>=3.9.0
 # LLM Providers
 openai>=1.40.0
 anthropic==0.18.1
-google-generativeai
-typer>=0.9.0>=0.3.0
-
+google-generativeai>=0.3.0
+typer>=0.9.0
 # Core
 python-dotenv==1.0.0
 pyyaml>=6.0

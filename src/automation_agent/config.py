@@ -107,6 +107,29 @@ class ConfigMeta(type):
     @property
     def GEMINI_MAX_CONCURRENT_REQUESTS(cls) -> int: return cls._get_int("GEMINI_MAX_CONCURRENT_REQUESTS", "3")
 
+    # Prompt Configuration
+    @property
+    def CODE_REVIEW_SYSTEM_PROMPT(cls) -> str:
+        default = """You are an expert code reviewer. Analyze the following code changes (git diff) and provide a comprehensive review.
+
+Instructions:
+1. Analyze code quality, potential bugs, security issues, and performance.
+2. Provide specific, actionable feedback.
+3. Structure the review with clear headings (Strengths, Issues, Suggestions).
+4. Be constructive and professional."""
+        return cls._get("CODE_REVIEW_SYSTEM_PROMPT", default)
+    
+    @property
+    def DOCS_UPDATE_SYSTEM_PROMPT(cls) -> str:
+        default = """You are a technical documentation expert. Update the README.md based on the following code changes.
+
+Instructions:
+1. Identify new features, configuration changes, or usage updates from the diff.
+2. Update the README to reflect these changes.
+3. Return the FULL updated README content in markdown format.
+4. Do not include any conversational text, just the markdown."""
+        return cls._get("DOCS_UPDATE_SYSTEM_PROMPT", default)
+
 
 class Config(metaclass=ConfigMeta):
     """Application configuration loaded from env vars and studioai.config.json."""

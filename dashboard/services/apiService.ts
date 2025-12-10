@@ -134,6 +134,7 @@ function getMockMetrics(): DashboardMetrics {
       estimatedCost: 1.45,
       efficiencyScore: 88,
       sessionMemoryUsage: 42,
+      totalRuns: 12,
     },
     tasks: [
       { id: 't1', title: 'Implement JWT Authentication', status: Status.Completed },
@@ -157,14 +158,27 @@ function getMockMetrics(): DashboardMetrics {
   };
 }
 
-export const fetchSpecContent = async (): Promise<string | null> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/spec`);
-    if (!response.ok) return null;
-    const data = await response.json();
-    return data.content;
-  } catch (error) {
-    console.error('Error fetching spec content:', error);
-    return null;
+export async function fetchSpecContent(): Promise<string> {
+  const response = await fetch(`${API_BASE_URL}/spec`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch spec content');
   }
-};
+  const data = await response.json();
+  return data.content || 'No spec content available';
+}
+
+export async function fetchConfig() {
+  const response = await fetch(`${API_BASE_URL}/config`);
+  if (!response.ok) throw new Error('Failed to fetch config');
+  return response.json();
+}
+
+export async function updateConfig(updates: any) {
+  const response = await fetch(`${API_BASE_URL}/config`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updates)
+  });
+  if (!response.ok) throw new Error('Failed to update config');
+  return response.json();
+}

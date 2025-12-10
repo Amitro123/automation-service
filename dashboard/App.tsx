@@ -16,6 +16,7 @@ import MetricsPanel from './components/MetricsPanel';
 import TaskList from './components/TaskList';
 import IssuesPanel from './components/IssuesPanel';
 import ConfigPanel from '@/components/ConfigPanel';
+import PromptPlayground from '@/components/PromptPlayground';
 import ArchitecturePanel from './components/ArchitecturePanel';
 import LogViewer from './components/LogViewer';
 import {
@@ -30,7 +31,7 @@ import {
 } from './constants';
 import { Repository, LogEntry, Task, Status, PRItem, BugItem } from './types';
 import { generateProjectFile } from './services/geminiService';
-import { fetchDashboardMetrics, fetchArchitecture, fetchHistory, RunHistoryItem, fetchSpecContent } from './services/apiService';
+import { fetchDashboardMetrics, fetchArchitecture, fetchHistory, RunHistoryItem, fetchSpecContent, fetchConfig, updateConfig } from './services/apiService';
 import SpecViewerModal from './components/SpecViewerModal';
 
 function App() {
@@ -198,6 +199,23 @@ function App() {
     }
   };
 
+  // Config save handler
+  const handleConfigSave = async (updates: any) => {
+    try {
+      const result = await updateConfig(updates);
+      if (result.success) {
+        // Refresh config
+        const configData = await fetchConfig();
+        setConfig(configData.effective);
+      } else {
+        throw new Error(result.errors?.join(', ') || 'Update failed');
+      }
+    } catch (error) {
+      console.error('Config save error:', error);
+      throw error;
+    }
+  };
+
   const handleLogClick = (log: LogEntry) => {
     // Simple logic to find a related PR or Run
     // In a real app, we'd parse the log message for IDs
@@ -338,7 +356,12 @@ function App() {
 
           {/* Right Column: Issues & PRs */}
           <div className="flex flex-col gap-8 xl:col-span-1 h-full overflow-hidden">
-            <ConfigPanel config={config} />
+            <ConfigPanel config={config} onSave={handleConfigSave} />
+            <PromptPlayground
+              initialCodeReviewPrompt={config?.code_review_system_prompt}
+              initialDocsPrompt={config?.docs_update_system_prompt}
+              onSave={handleConfigSave}
+            />
             <IssuesPanel bugs={bugs} prs={prs} />
           </div>
         </div>

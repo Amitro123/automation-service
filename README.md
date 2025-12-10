@@ -8,20 +8,41 @@ An autonomous GitHub automation system that triggers on **push and pull request 
 - **Keeps docs always fresh** — README, spec.md, and AUTOMATED_REVIEWS.md stay in sync with actual code changes
 - **Intelligent layer over GitHub** — uses advanced LLMs + async orchestration instead of rigid YAML workflows
 
-## ✨ Features
+## Features
 
-### 1. 🔍 Automated Code Review
-- **Intelligent Analysis**: Uses LLMs (GPT-4o / Claude 3.5 / Gemini Pro) to analyze code changes
-- **Comprehensive Feedback**: Code quality, bugs, security, performance, best practices
-- **Flexible Output**: Commit comments, PR comments, GitHub issues, and persistent code_review.md logging
-- **Structured Reviews**: Strengths, issues, suggestions, security concerns
-- **Session Memory**: Maintains historic context for continuous improvement
+- **Automated Code Review**: Intelligent analysis of pull requests with actionable feedback
+- **Documentation Updates**: Automatic README.md and spec.md updates based on code changes
+- **Session Memory**: Context-aware automation that learns from previous interactions
+- **PR-Centric Workflow**: Optimized for pull request triggers with grouped automation updates
+- **Runtime Configuration**: Edit trigger modes, prompts, and settings via dashboard or CLI without restart
+- **Prompt Playground**: Customize LLM behavior for code reviews and documentation updates in real-time
+- **Dashboard**: Real-time monitoring with metrics, logs, architecture visualization, and config management
+- **Multi-Provider Support**: Works with OpenAI, Anthropic Claude, Google Gemini, and Jules
+- **Rate Limiting**: Smart rate limiting for Gemini API to prevent quota exhaustion
+- **Trivial Change Filter**: Skip automation for minor documentation-only changes
 
-### 2. 📝 Automatic Documentation Updates
-- **README Updater**: Context-aware, analyzes diffs to update docs
-- **Spec Updater**: Dynamically appends development progress logs
-- **Code Review Updater**: Appends review summaries to persistent logs
+## StudioAI CLI
 
+The `studioai` CLI provides easy configuration management:
+
+```bash
+# Initialize configuration
+studioai init
+
+# Interactive configuration
+studioai configure
+
+# Check system status
+studioai status
+
+# Test PR automation flow
+studioai test-pr-flow
+```
+
+Configuration is stored in `studioai.config.json` and can also be edited via:
+- **Dashboard**: Visual config panel with toggles and dropdowns
+- **API**: `PATCH /api/config` endpoint for programmatic updates
+- **Environment Variables**: Override any setting via env vars
 ### 3. 📊 Real-Time Dashboard
 - **Live Metrics**: Real test coverage from coverage.xml, LLM usage tracking, token costs, calculated efficiency scores
 - **Real Data Integration**: Fetches live bugs from GitHub issues, open PRs with check status, session memory metrics
@@ -115,13 +136,13 @@ The system loads configuration in the following order (highest precedence first)
 3.  **Defaults**: Hardcoded safe defaults.
 
 ### CLI Commands
+
 | Command | Description |
 | :--- | :--- |
 | `studioai init` | Runs the interactive setup wizard. |
 | `studioai configure` | Updates configuration non-interactively (e.g., `--trigger-mode both`). |
 | `studioai status` | Checks system health and recent run stats via the API. |
 | `studioai test-pr-flow` | Triggers a smoke test for the PR automation flow. |
-
 ### Configuration Options (`studioai.config.json`)
 ```json
 {
