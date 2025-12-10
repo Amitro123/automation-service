@@ -566,7 +566,66 @@ def create_api_server(config: Config) -> FastAPI:
             "group_automation_updates": config.GROUP_AUTOMATION_UPDATES,
             "post_review_on_pr": config.POST_REVIEW_ON_PR,
         }
+
+    # Configuration API
+    @app.get("/api/config")
+    async def get_config():
+        """Get effective configuration."""
+        import json
+        
+        # Load file config if exists to indicate what's from file vs env
+        file_config = config.load_config_file()
+        
+        return {
+            "effective": {
+                "trigger_mode": config.TRIGGER_MODE,
+                "group_automation_updates": config.GROUP_AUTOMATION_UPDATES,
+                "post_review_on_pr": config.POST_REVIEW_ON_PR,
+                "repository_owner": config.REPOSITORY_OWNER,
+                "repository_name": config.REPOSITORY_NAME
+            },
+            "file_config": file_config
+        }
     
+    @app.post("/api/config/validate")
+    async def validate_config(config_data: Dict[str, Any]):
+        """Validate configuration object."""
+        # Simple validation for now
+        errors = []
+        if "trigger_mode" in config_data and config_data["trigger_mode"] not in ["pr", "push", "both"]:
+            errors.append("Invalid trigger_mode. Must be 'pr', 'push', or 'both'")
+        
+        if errors:
+            return {"valid": False, "errors": errors}
+        return {"valid": True}
+
+    @app.post("/api/config/apply")
+    async def apply_config(config_data: Dict[str, Any]):
+        """Apply configuration to studioai.config.json."""
+        import json
+        import os
+        
+        CONFIG_FILE = "studioai.config.json"
+        
+        try:
+            # Read existing to preserve fields not in update
+            existing = {}
+            if os.path.exists(CONFIG_FILE):
+                with open(CONFIG_FILE, "r") as f:
+                    existing = json.load(f)
+            
+            existing.update(config_data)
+            
+            with open(CONFIG_FILE, "w") as f:
+                json.dump(existing, f, indent=4)
+                
+            # Reload config in memory
+            config.load()
+            
+            return {"success": True, "message": "Configuration applied"}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
     @app.post("/api/mutation/run")
     async def run_mutation_tests_endpoint(background_tasks: BackgroundTasks):
         """Trigger mutation tests to run in the background."""

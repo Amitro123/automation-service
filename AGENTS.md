@@ -40,11 +40,28 @@ dashboard/ # React + Vite dashboard
 ├── services/apiService.ts # FastAPI client
 └── components/ # UI components
 run_api.py # FastAPI server launcher (NEW)
-.env.example # Configuration template
+.env.example ## Configuration & CLI
+**Primary Config Source**: `src/automation_agent/config.py`.
+- PRECEDENCE: `os.environ` > `studioai.config.json` > Defaults.
+- **Do NOT** hardcode values. Always use `Config.MY_VAR`.
+- **Do NOT** manually edit `studioai.config.json` without verifying key names.
+- Use `Config.validate()` to ensure required values exist.
+
+### StudioAI CLI
+The CLI (`src/automation_agent/cli.py`) is the user-facing interface for configuration.
+- When adding new config vars, update:
+    1. `Config` class in `config.py` (add property and default).
+    2. `init` and `configure` commands in `cli.py` (if user-configurable).
+    3. `ConfigMeta` in `config.py` (for static access compatibility).
+
 requirements.txt # Dependencies
 README.md # User documentation
 spec.md # Product spec + progress log
 
+
+## Testing
+- **Run Tests**: `pytest`
+- **CLI Tests**: `pytest tests/test_cli_config.py`
 
 ## 🚀 Setup & Run
 

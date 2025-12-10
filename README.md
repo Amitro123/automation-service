@@ -96,6 +96,43 @@ cp .env.example .env
 
 Edit `.env` with your credentials.
 
+## StudioAI CLI & Configuration
+
+This project features a **StudioAI CLI** for easy configuration and management, enabling a Spec-Driven Development workflow.
+
+### Quick Start
+Initialize the automation agent with the interactive wizard:
+```bash
+python -m automation_agent.cli init
+# OR if installed via pip
+studioai init
+```
+
+### Configuration Precedence
+The system loads configuration in the following order (highest precedence first):
+1.  **Environment Variables** (`.env`): Overrides everything.
+2.  **Configuration File** (`studioai.config.json`): Managed by the CLI.
+3.  **Defaults**: Hardcoded safe defaults.
+
+### CLI Commands
+| Command | Description |
+| :--- | :--- |
+| `studioai init` | Runs the interactive setup wizard. |
+| `studioai configure` | Updates configuration non-interactively (e.g., `--trigger-mode both`). |
+| `studioai status` | Checks system health and recent run stats via the API. |
+| `studioai test-pr-flow` | Triggers a smoke test for the PR automation flow. |
+
+### Configuration Options (`studioai.config.json`)
+```json
+{
+  "trigger_mode": "both",           // "pr", "push", or "both"
+  "group_automation_updates": true, // Group changes into single PR
+  "post_review_on_pr": true,        // Post review comments directly on PR
+  "repository_owner": "Owner",
+  "repository_name": "Repo"
+}
+```
+
 ### Review Provider Configuration (NEW - Dec 2025)
 ```bash
 # Choose review provider: "llm" or "jules"
@@ -419,5 +456,7 @@ We use mutation testing to verify test suite quality.
 ### LLM Evaluation (DeepEval)
 We use [DeepEval](https://github.com/confident-ai/deepeval) to evaluate the quality of LLM-generated code reviews and documentation updates.
 - **Location**: `tests/deepeval/`
-- **Run Locally**: `deepeval test run tests/deepeval/test_*.py` (Requires `GEMINI_API_KEY`)
-- **CI**: Scheduled or on-demand.
+- **Run Locally**: `deepeval test run tests/deepeval/test_*.py`
+- **Requirement**: `GEMINI_API_KEY` (or configured provider key) must be set.
+- **Note**: If the API key is missing, these tests will automatically **skip** to prevent blocking development.
+- **CI**: Runs on `main` and `ai-eval` branches, or scheduled/manual triggers.

@@ -4,12 +4,19 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '0 0 * * *' # Nightly
+  push:
+    branches:
+      - main
+      - ai-eval
+  pull_request:
+    branches:
+      - main
+      - ai-eval
 
 jobs:
   deepeval:
     runs-on: ubuntu-latest
-    env:
-      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
       
     steps:
       - uses: actions/checkout@v4
@@ -27,6 +34,7 @@ jobs:
           
       - name: Run DeepEval Tests
         env:
-            PYTHONPATH: src
+          PYTHONPATH: src
+          GEMINI_API_KEY: "${{ secrets.GEMINI_API_KEY || '' }}"
         run: |
           deepeval test run tests/deepeval/test_*.py

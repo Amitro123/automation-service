@@ -15,6 +15,7 @@ import {
 import MetricsPanel from './components/MetricsPanel';
 import TaskList from './components/TaskList';
 import IssuesPanel from './components/IssuesPanel';
+import ConfigPanel from '@/components/ConfigPanel';
 import ArchitecturePanel from './components/ArchitecturePanel';
 import LogViewer from './components/LogViewer';
 import {
@@ -55,10 +56,23 @@ function App() {
   const [prs, setPrs] = useState<PRItem[]>([]);
   const [projectProgress, setProjectProgress] = useState(0);
 
+  const [config, setConfig] = useState<any>(null);
+
   // Fetch real data from FastAPI backend
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // Fetch Config
+        try {
+          const configRes = await fetch('http://localhost:8080/api/config');
+          if (configRes.ok) {
+            const configData = await configRes.json();
+            setConfig(configData.effective);
+          }
+        } catch (e) {
+          console.error("Failed to fetch config", e);
+        }
+
         const data = await fetchDashboardMetrics();
         if (data) {
           setIsConnected(true);
@@ -324,6 +338,7 @@ function App() {
 
           {/* Right Column: Issues & PRs */}
           <div className="flex flex-col gap-8 xl:col-span-1 h-full overflow-hidden">
+            <ConfigPanel config={config} />
             <IssuesPanel bugs={bugs} prs={prs} />
           </div>
         </div>

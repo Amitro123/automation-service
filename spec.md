@@ -440,4 +440,29 @@ LOW: Polish
 - Configure Jules API with actual source ID (optional)
 - Monitor production runs for any edge cases
 - Consider adding more diagnostic tools
-- Document common troubleshooting scenarios
+
+### [2025-12-10] StudioAI CLI & Spec-Driven Config ✅
+- **Summary**: Transitioned to a spec-driven, CLI-first configuration system for easier management and automation.
+- **Features**:
+  - **StudioAI CLI**: `init`, `configure`, `status` commands.
+  - **Spec-Driven Config**: `studioai.config.json` support with precedence logic.
+  - **Config API**: Endpoints to read/validate/apply configuration.
+  - **Dashboard**: Configuration panel with real-time settings view.
+- **Decisions**:
+  - **Precedence**: Env Vars > Config File > Defaults (Backward Compatibility).
+  - **Config Metaclass**: Used to support static property access (`Config.VAR`) while allowing dynamic loading.
+  - **CLI Tools**: Built with `typer` for robust command-line handling.
+- **Files Modified**:
+  - `src/automation_agent/cli.py` (New)
+  - `src/automation_agent/config.py` (Refactored)
+  - `src/automation_agent/api_server.py` (Endpoints added)
+  - `dashboard/App.tsx`, `dashboard/src/components/ConfigPanel.tsx` (Dashboard UI)
+
+### [2025-12-10] AI Evaluation Workflow Improvements ✅
+- **Summary**: Enhanced AI evaluation workflow to support graceful skipping and reduce noise.
+- **Changes**:
+  - **Graceful Skipping**: `tests/deepeval/conftest.py` automatically skips tests if `GEMINI_API_KEY` is missing.
+  - **Workflow Optimization**: `.github/workflows/evaluation.yml` now only runs on `main` and `ai-eval` branches.
+  - **Documentation**: `README.md` updated to clarify API key requirements for DeepEval.
+- **Impact**: Feature branches without keys no longer fail CI; main branch quality checks remain enforced.
+

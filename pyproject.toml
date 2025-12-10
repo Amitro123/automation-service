@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "automation-service"
+version = "0.1.0"
+description = "GitHub Automation Agent"
+requires-python = ">=3.9"
+dependencies = [
+    "flask",
+    "requests",
+    "gunicorn",
+    "openai",
+    "anthropic",
+    "python-dotenv",
+    "types-requests",
+    "fastapi",
+    "uvicorn",
+    "httpx",
+    "google-generativeai",
+    "typer>=0.9.0",
+]
+
+[project.scripts]
+studioai = "automation_agent.cli:app"
+run-automation = "automation_agent.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
