@@ -521,8 +521,8 @@ def create_api_server(config: Config) -> FastAPI:
             if os.path.exists(local_spec):
                 with open(local_spec, "r", encoding="utf-8") as f:
                     return {"content": f.read()}
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed to read local spec.md: {e}")
             
         # Fallback to GitHub
         try:

@@ -52,7 +52,7 @@ class ConfigMeta(type):
 
     # Webhook Server Configuration
     @property
-    def HOST(cls) -> str: return cls._get("HOST", "0.0.0.0")
+    def HOST(cls) -> str: return cls._get("HOST", "127.0.0.1")
     @property
     def PORT(cls) -> int: return cls._get_int("PORT", "8080")
     @property
