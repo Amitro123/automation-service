@@ -233,7 +233,7 @@ Next Steps
 [x] Dashboard Integration (React + Vite) connected to live API
 [x] Session Memory & Live Architecture Diagram
 [x] GitHub Actions CI/CD (security.yml fixed)
-[ ] Docker container + health checks
+[x] Docker container + health checks + docker-compose with dashboard
 [ ] Agent platform hooks (Windsurf/AntiGravity)
 [ ] Multi-repo support
 [ ] Per-branch policies

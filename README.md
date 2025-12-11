@@ -401,15 +401,44 @@ See [`.github/workflows/MUTATION_TESTING.md`](.github/workflows/MUTATION_TESTING
 
 ## 🌐 Deployment
 
-### Docker Deployment
+### Docker Compose (Recommended)
+
+The easiest way to deploy both backend and dashboard together:
+
+```bash
+# 1. Create .env file with your credentials
+cp .env.example .env
+# Edit .env with your API keys
+
+# 2. Start all services
+docker-compose up -d
+
+# 3. Access the application
+# Backend API: http://localhost:8080
+# Dashboard: http://localhost:5173
+
+# 4. View logs
+docker-compose logs -f
+
+# 5. Stop services
+docker-compose down
+```
+
+**Services included:**
+- `backend` - FastAPI server with automation engine
+- `dashboard` - React dashboard with nginx
+
+See **[DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md)** for complete deployment guide including:
+- Production configuration
+- Health checks and monitoring
+- Troubleshooting
+- Security best practices
+- CI/CD integration
+
+### Docker (Backend Only)
 ```bash
 docker build -t automation-agent .
 docker run -p 8080:8080 --env-file .env automation-agent
-```
-
-### Docker Compose (Recommended)
-```bash
-docker-compose up -d
 ```
 
 ### CI/CD
