@@ -110,6 +110,19 @@ Real-time monitoring and manual control via React dashboard (http://localhost:51
 - Automatically updated via scripts/CI when system or specs change
 - **Visualized in the Dashboard**
 
+---
+
+## 📸 Dashboard Preview
+
+### Interactive Manual Trigger
+![Manual Trigger Flow](./assets/manual-trigger-flow.webp)
+
+*Trigger automation for any commit or branch with instant feedback - watch the purple gradient panel in action with loading states and toast notifications*
+
+> **Features Shown**: Manual trigger input → Loading spinner → Success toast → Real-time log updates
+
+---
+
 ## 🚀 Quick Start
 
 ### Prerequisites
