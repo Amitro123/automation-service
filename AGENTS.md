@@ -428,3 +428,105 @@ When working on this codebase:
 4. **Never allow silent failures** - every error must be visible
 5. **Test with** `python check_e2e.py` after changes
 6. **Verify Jules integration with** `python test_jules_review.py`
+
+---
+
+## 🐳 Docker Compose Deployment (NEW - Dec 2025)
+
+### Quick Start
+```bash
+# 1. Create .env file
+cp .env.example .env
+# Edit with your credentials
+
+# 2. Start all services
+docker-compose up -d
+
+# 3. Access
+# Backend API: http://localhost:8080
+# Dashboard: http://localhost:5173
+
+# 4. View logs
+docker-compose logs -f
+
+# 5. Stop
+docker-compose down
+```
+
+### Architecture
+- **Backend Service** (`automation-agent-backend`):
+  - FastAPI server with automation engine
+  - Health checks every 30s
+  - Persistent volumes for session data
+  - Port: 8080
+
+- **Dashboard Service** (`automation-agent-dashboard`):
+  - React + Vite build with nginx
+  - API proxy to backend
+  - Health checks every 30s
+  - Port: 5173 (nginx on port 80 internally)
+
+- **Networking**:
+  - Bridge network `automation-network`
+  - Services communicate via service names
+  - Dashboard proxies `/api/*` to `http://backend:8080`
+
+### Files
+- `Dockerfile` - Backend container (FastAPI + health checks)
+- `dashboard/Dockerfile` - Frontend container (multi-stage: Node builder + nginx)
+- `dashboard/nginx.conf` - Production web server config (SPA routing + API proxy)
+- `docker-compose.yml` - Multi-service orchestration
+- `DOCKER_DEPLOYMENT.md` - Comprehensive deployment guide
+
+### Configuration
+- **HOST Binding**: Defaults to `127.0.0.1` for local dev, set to `0.0.0.0` for Docker
+- **Environment Variables**: All config via `.env` file or Docker secrets
+- **Health Checks**: Both services have automated health monitoring
+- **Persistent Data**: Volumes for `session_memory.json`, `coverage.xml`, docs
+
+### Security Improvements (Dec 2025)
+- ✅ Fixed silent exception handler in `api_server.py`
+- ✅ Changed default HOST from `0.0.0.0` to `127.0.0.1` (local dev security)
+- ✅ Docker explicitly sets `HOST=0.0.0.0` when needed
+- ✅ All 150 tests passing after security fixes
+
+See **[DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md)** for production deployment, troubleshooting, and best practices.
+
+---
+
+## 🎮 Dashboard Actions API (NEW - Dec 2025)
+
+### Manual Trigger & Retry Endpoints
+
+**`POST /api/runs/{run_id}/retry`**
+- Retry a failed automation run
+- Reconstructs original event payload (PR or push)
+- Triggers automation in background
+- Returns: `{ success, message, original_run_id, commit_sha, pr_number }`
+
+**`POST /api/manual-run`**
+- Manually trigger automation for any commit or branch
+- Request body: `{ commit_sha?: string, branch?: string }`
+- Resolves branch to latest commit if needed
+- Returns: `{ success, message, commit_sha, branch }`
+
+**Frontend Components**:
+- `ManualTrigger.tsx` - Gradient purple panel with commit/branch inputs
+- `TaskList.tsx` - Retry button for failed runs with loading states
+- Both include toast notifications and automatic data refresh
+
+**Usage**:
+```bash
+# Retry a failed run
+curl -X POST http://localhost:8080/api/runs/run_abc123/retry
+
+# Manual trigger by branch
+curl -X POST http://localhost:8080/api/manual-run \
+  -H "Content-Type: application/json" \
+  -d '{"branch": "main"}'
+
+# Manual trigger by commit
+curl -X POST http://localhost:8080/api/manual-run \
+  -H "Content-Type: application/json" \
+  -d '{"commit_sha": "abc123def456"}'
+```

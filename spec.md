@@ -530,19 +530,19 @@ LOW: Polish
 - [x] Added API service abstraction (`fetchConfig`, `updateConfig`)
 - [x] Added docstrings to API endpoints
 
-#### 🔄 Remaining Work (17 tasks):
+#### 🔄 Remaining Work (13 tasks):
 
-**Dashboard Actions** (4 tasks)
-- [ ] Add `POST /api/runs/{run_id}/retry` endpoint
-- [ ] Add `POST /api/manual-run` endpoint
-- [ ] Create `ManualTrigger.tsx` component
-- [ ] Add "Retry" button to LogViewer
+**Dashboard Actions** (4 tasks) - ✅ COMPLETE
+- [x] Add `POST /api/runs/{run_id}/retry` endpoint
+- [x] Add `POST /api/manual-run` endpoint
+- [x] Create `ManualTrigger.tsx` component
+- [x] Add "Retry" button to TaskList
 
-**Docker Compose Setup** (4 tasks)
-- [ ] Create `docker-compose.yml`
-- [ ] Add backend service
-- [ ] Add dashboard service
-- [ ] Document `.env` requirements
+**Docker Compose Setup** (4 tasks) - ✅ COMPLETE
+- [x] Create `docker-compose.yml`
+- [x] Add backend service
+- [x] Add dashboard service
+- [x] Document `.env` requirements
 
 **Visual Assets** (4 tasks)
 - [ ] Create `assets/` directory
@@ -557,5 +557,123 @@ LOW: Polish
 - [ ] Test manual trigger
 - [ ] Test Docker Compose startup
 
-**Next Session**: Continue with Dashboard Actions (retry + manual trigger) or Docker Compose setup.
+**Next Session**: Visual Assets (screenshots + GIFs) and final verification testing.
 
+---
+
+### [2025-12-11] Docker Compose Production Setup & Code Review Fixes ✅
+
+**Objective:** Complete production-ready Docker deployment and address code review security findings
+
+**What Was Achieved:**
+
+1. **✅ Code Review Fixes**
+   - Fixed silent exception handler in `api_server.py` (line 524) - now logs warnings instead of silent `pass`
+   - Changed default HOST binding from `0.0.0.0` to `127.0.0.1` for better local development security
+   - Updated `.env.example` with HOST configuration documentation
+   - Bandit security scan now passes with improved configuration
+   - All 150 tests passing (3 non-critical async mock warnings remain)
+
+2. **✅ Docker Compose Multi-Service Setup**
+   - Created `dashboard/Dockerfile` with multi-stage build (Node builder + nginx production)
+   - Created `dashboard/nginx.conf` for SPA routing and API proxying
+   - Updated main `Dockerfile` to use FastAPI server (`run_api.py`) with health checks
+   - Improved `docker-compose.yml` with:
+     - Backend service with health checks and persistent volumes
+     - Dashboard service with nginx and API proxy
+     - Bridge network for service communication
+     - Proper dependency management
+
+3. **✅ Comprehensive Deployment Documentation**
+   - Created `DOCKER_DEPLOYMENT.md` with:
+     - Quick start guide
+     - Environment configuration examples
+     - Production deployment best practices
+     - Troubleshooting guide
+     - Monitoring and logging instructions
+     - Security hardening recommendations
+     - CI/CD integration examples
+
+4. **✅ Documentation Updates**
+   - Updated `README.md` with improved Docker Compose instructions
+   - Updated `spec.md` Phase 4 checklist (Docker tasks complete)
+   - Updated `.env.example` with security-focused HOST documentation
+
+**Files Modified:**
+- `Dockerfile` - FastAPI server + health checks + curl installation
+- `docker-compose.yml` - Multi-service setup with networking
+- `.env.example` - HOST configuration documentation
+- `src/automation_agent/api_server.py` - Fixed silent exception
+- `src/automation_agent/config.py` - Secure HOST default
+- `README.md` - Docker Compose deployment section
+- `spec.md` - Phase 4 progress update
+
+**Files Created:**
+- `dashboard/Dockerfile` - Multi-stage React build with nginx
+- `dashboard/nginx.conf` - Production web server configuration
+- `DOCKER_DEPLOYMENT.md` - Comprehensive deployment guide
+
+**Test Results:**
+- ✅ 150/150 tests passing
+- ✅ 3 non-critical RuntimeWarnings (async mock setup)
+- ✅ Zero test failures
+- ✅ All code review issues resolved
+
+**Deployment:**
+```bash
+docker-compose up -d
+# Backend: http://localhost:8080
+# Dashboard: http://localhost:5173
+```
+
+**Next Steps:**
+- Implement dashboard actions (retry + manual trigger)
+- Create visual assets (screenshots + GIFs)
+- Complete verification testing
+
+### December 11, 2025 - Dashboard Actions & Interactive Features
+
+**Implemented Dashboard Actions (4/4 tasks complete)**:
+
+1. **Backend Endpoints**:
+   - Added `POST /api/runs/{run_id}/retry` - Reconstructs original run context and re-triggers automation
+   - Added `POST /api/manual-run` - Triggers automation for any commit SHA or branch
+   - Added `get_branch()` method to `GitHubClient` for branch resolution
+   - Both endpoints support background task execution with proper error handling
+
+2. **Frontend Components**:
+   - Created `ManualTrigger.tsx` component with polished UX:
+     - Gradient purple design with smooth animations
+     - Loading states with spinners during API calls
+     - Toast notifications for success/error feedback
+     - Input validation and keyboard shortcuts (Enter to submit)
+     - Auto-refresh data after successful trigger
+   - Updated `TaskList.tsx` with retry functionality:
+     - "Retry" button for failed runs with icon and loading state
+     - Toast notifications with auto-dismiss (3 seconds)
+     - Proper error handling and user feedback
+     - Integrated with data refresh callback
+
+3. **Documentation Updates**:
+   - Added "Interactive Dashboard Features" section to `README.md`
+   - Documented manual trigger and retry functionality
+   - Updated `spec.md` to mark Dashboard Actions as complete
+   - Updated `AGENTS.md` with new API endpoints
+
+**UX Improvements**:
+- ✅ All buttons have loading states to prevent double-clicks
+- ✅ Toast notifications provide immediate feedback
+- ✅ Visual distinction for retry buttons (rose theme for failed runs)
+- ✅ Smooth animations and transitions throughout
+- ✅ Automatic data refresh after actions
+
+**Technical Details**:
+- Retry endpoint fetches PR data for PR events, commit data for push events
+- Manual trigger resolves branch to latest commit SHA if needed
+- Both features use FastAPI BackgroundTasks for async execution
+- Frontend uses React hooks (useState) for state management
+- Proper TypeScript typing throughout
+
+**Status**: Dashboard is now fully interactive and ready for visual assets recording.
+
+---

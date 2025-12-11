@@ -21,7 +21,9 @@ An autonomous GitHub automation system that triggers on **push and pull request 
 - **Rate Limiting**: Smart rate limiting for Gemini API to prevent quota exhaustion
 - **Trivial Change Filter**: Skip automation for minor documentation-only changes
 
-## StudioAI CLI
+## 🎯 Key Capabilities
+
+### 1. StudioAI CLI
 
 The `studioai` CLI provides easy configuration management:
 
@@ -43,23 +45,38 @@ Configuration is stored in `studioai.config.json` and can also be edited via:
 - **Dashboard**: Visual config panel with toggles and dropdowns
 - **API**: `PATCH /api/config` endpoint for programmatic updates
 - **Environment Variables**: Override any setting via env vars
-### 3. 📊 Real-Time Dashboard
-- **Live Metrics**: Real test coverage from coverage.xml, LLM usage tracking, token costs, calculated efficiency scores
-- **Real Data Integration**: Fetches live bugs from GitHub issues, open PRs with check status, session memory metrics
-- **Visual Progress**: Task tracking with real statuses from automation runs
-- **Architecture Visualization**: Interactive Mermaid diagrams with clear component descriptions
-- **System Logs**: Real-time log viewer with filtering
-- **Security Status**: Bandit scan results and vulnerability tracking
-- **Multi-Repository**: Switch between repositories with live updates
 
-### 4. 📊 Project Progress & Metrics
+### 2. Interactive Dashboard
+
+Real-time monitoring and manual control via React dashboard (http://localhost:5173):
+
+**Manual Trigger**:
+- Trigger automation for any commit or branch without waiting for events
+- Input: Commit SHA or branch name  
+- Use case: Re-run automation after config changes, test on old commits
+- Location: Purple gradient panel at top of left column
+
+**Retry Failed Runs**:
+- One-click retry for failed automation runs
+- Automatically reconstructs original run context (PR or push)
+- Instant feedback with loading states and toast notifications
+- Location: "Retry" button next to failed runs
+
+**Features**:
+- ✅ Loading states with spinners
+- ✅ Toast notifications for success/error  
+- ✅ Automatic data refresh
+- ✅ Real-time log viewer
+- ✅ Live metrics and test coverage
+- ✅ Architecture visualization
+### 3. Project Progress & Metrics
 - Visual progress tracking with real-time updates
 - Test coverage and mutation testing integration using tools like mutmut
 - LLM usage stats: token consumption, cost estimation, efficiency
 - Security guardrails integrated with Bandit scans and CI/CD enforcement
 - Multi-repository support with auto-detection of required files (README.md, spec.md)
 
-### 5. 🎯 PR-Centric Automation (Recommended)
+### 4. 🎯 PR-Centric Automation (Recommended)
 - **Trigger Modes**: Configure to respond to PRs only (`TRIGGER_MODE=pr`), pushes only, or both
 - **Trivial Change Filter**: Skip automation for small doc edits, whitespace-only changes
 - **Smart Task Routing**: Code review only runs on code changes, not doc-only PRs
@@ -69,7 +86,7 @@ Configuration is stored in `studioai.config.json` and can also be edited via:
 
 > **⚠️ Important**: Automation grouping **only works for PR-triggered runs** (`TRIGGER_MODE=pr`). Push-only branches will **not create any automation PRs**—they only log runs to SessionMemory.
 
-### 6. 🛡️ Robust Error Handling & Zero Silent Failures (NEW - Dec 2025)
+### 5. 🛡️ Robust Error Handling & Zero Silent Failures
 - **No Silent Failures**: Every error is logged, tracked, and visible in SessionMemory
 - **Comprehensive Logging**: `[CODE_REVIEW]`, `[ORCHESTRATOR]`, `[JULES]`, `[GROUPED_PR]` prefixes for easy debugging
 - **Structured Error Returns**: All failures include `error_type` and `message` fields
@@ -81,13 +98,14 @@ Configuration is stored in `studioai.config.json` and can also be edited via:
 - **Dashboard Visibility**: All failures visible in `/api/history` with detailed error reasons
 - **Run Status**: Properly set to `failed`, `completed_with_issues`, or `completed` based on task results
 
-### 7. 🔒 Security Features
+### 6. 🔒 Security Features
 - HMAC-SHA256 verification of webhook signatures
 - Minimal GitHub token scopes
 - No secrets logged; credential storage limited to environment variables
 - Automated security scans integrated in CI
+- Default `HOST=127.0.0.1` for local development (Docker uses `0.0.0.0`)
 
-### 8. 🗺️ Dynamic Architecture Diagram
+### 7. 🗺️ Dynamic Architecture Diagram
 - ARCHITECTURE.md includes a live Mermaid diagram reflecting system components and project progress
 - Automatically updated via scripts/CI when system or specs change
 - **Visualized in the Dashboard**
@@ -227,6 +245,8 @@ This script:
 - Press Ctrl+C to stop all services
 
 **Prerequisite**: Install ngrok from https://ngrok.com/download for webhook testing.
+
+
 
 ## 🧲 Agent Platform Integration (Optional)
 

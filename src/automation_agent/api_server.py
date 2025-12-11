@@ -553,6 +553,150 @@ def create_api_server(config: Config) -> FastAPI:
         """Get automation runs associated with a specific PR."""
         return session_memory.get_runs_by_pr(pr_number, limit)
 
+    @app.post("/api/runs/{run_id}/retry")
+    async def retry_run(run_id: str, background_tasks: BackgroundTasks):
+        """Retry a failed automation run.
+        
+        Args:
+            run_id: ID of the run to retry
+            background_tasks: FastAPI background tasks
+            
+        Returns:
+            Success message with original run ID
+        """
+        # Fetch run from session memory
+        run = session_memory.get_run(run_id)
+        if not run:
+            raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
+        
+        # Extract context from original run
+        commit_sha = run["commit_sha"]
+        branch = run["branch"]
+        pr_number = run.get("pr_number")
+        
+        logger.info(f"[API] Retrying run {run_id}: commit={commit_sha[:7]}, pr={pr_number or 'N/A'}")
+        
+        # Reconstruct payload for orchestrator
+        if pr_number:
+            # PR event - fetch PR data
+            try:
+                pr_data = await github_client.get_pull_request(pr_number)
+                payload = {
+                    "action": "synchronize",  # Treat retry as synchronize
+                    "number": pr_number,
+                    "pull_request": pr_data,
+                }
+                event_type = "pull_request"
+            except Exception as e:
+                logger.error(f"Failed to fetch PR {pr_number}: {e}")
+                raise HTTPException(status_code=500, detail=f"Failed to fetch PR data: {e}")
+        else:
+            # Push event - use commit data
+            try:
+                commit_info = await github_client.get_commit_info(commit_sha)
+                payload = {
+                    "ref": f"refs/heads/{branch}",
+                    "head_commit": {
+                        "id": commit_sha,
+                        "message": commit_info.get("commit", {}).get("message", "Retry"),
+                    },
+                    "commits": [commit_info],
+                }
+                event_type = "push"
+            except Exception as e:
+                logger.error(f"Failed to fetch commit {commit_sha}: {e}")
+                raise HTTPException(status_code=500, detail=f"Failed to fetch commit data: {e}")
+        
+        # Trigger automation in background
+        background_tasks.add_task(handle_event, orchestrator, event_type, payload)
+        
+        app_state.add_log("INFO", f"Retry triggered for run {run_id[:12]}...")
+        
+        return {
+            "success": True,
+            "message": "Retry triggered successfully",
+            "original_run_id": run_id,
+            "commit_sha": commit_sha,
+            "pr_number": pr_number,
+        }
+
+    @app.post("/api/manual-run")
+    async def manual_run(
+        request: Request,
+        background_tasks: BackgroundTasks,
+    ):
+        """Manually trigger automation for a commit or branch.
+        
+        Request body:
+            commit_sha: Commit SHA (optional if branch provided)
+            branch: Branch name (optional if commit_sha provided)
+            
+        Returns:
+            Success message with run details
+        """
+        body = await request.json()
+        commit_sha = body.get("commit_sha")
+        branch = body.get("branch")
+        
+        # Validate inputs
+        if not commit_sha and not branch:
+            raise HTTPException(
+                status_code=400,
+                detail="Either 'commit_sha' or 'branch' must be provided"
+            )
+        
+        logger.info(f"[API] Manual run requested: commit={commit_sha or 'N/A'}, branch={branch or 'N/A'}")
+        
+        # If branch provided without commit, get latest commit
+        if branch and not commit_sha:
+            try:
+                # Get branch info
+                branch_info = await github_client.get_branch(branch)
+                commit_sha = branch_info["commit"]["sha"]
+                logger.info(f"[API] Resolved branch {branch} to commit {commit_sha[:7]}")
+            except Exception as e:
+                logger.error(f"Failed to get branch {branch}: {e}")
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Branch '{branch}' not found: {e}"
+                )
+        
+        # Verify commit exists
+        try:
+            commit_info = await github_client.get_commit_info(commit_sha)
+            if not commit_info:
+                raise HTTPException(status_code=404, detail=f"Commit {commit_sha} not found")
+        except Exception as e:
+            logger.error(f"Failed to fetch commit {commit_sha}: {e}")
+            raise HTTPException(status_code=404, detail=f"Commit not found: {e}")
+        
+        # Get branch from commit if not provided
+        if not branch:
+            # Try to get branch from commit (may not always be available)
+            branch = commit_info.get("commit", {}).get("tree", {}).get("sha", "master")
+        
+        # Build payload for orchestrator
+        payload = {
+            "ref": f"refs/heads/{branch}",
+            "head_commit": {
+                "id": commit_sha,
+                "message": commit_info.get("commit", {}).get("message", "Manual trigger"),
+            },
+            "commits": [commit_info],
+        }
+        
+        # Trigger automation in background
+        background_tasks.add_task(handle_event, orchestrator, "push", payload)
+        
+        app_state.add_log("INFO", f"Manual run triggered: {commit_sha[:7]} on {branch}")
+        
+        return {
+            "success": True,
+            "message": "Manual run triggered successfully",
+            "commit_sha": commit_sha,
+            "branch": branch,
+        }
+
     @app.get("/api/trigger-config")
     async def get_trigger_config():
         """Get current trigger configuration for dashboard display."""

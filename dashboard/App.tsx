@@ -19,6 +19,7 @@ import ConfigPanel from '@/components/ConfigPanel';
 import PromptPlayground from '@/components/PromptPlayground';
 import ArchitecturePanel from './components/ArchitecturePanel';
 import LogViewer from './components/LogViewer';
+import { ManualTrigger } from './components/ManualTrigger';
 import {
   REPOSITORIES,
   MOCK_TASKS,
@@ -144,6 +145,55 @@ function App() {
     const interval = setInterval(fetchData, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  const handleRefreshData = () => {
+    // Force refresh data immediately
+    const fetchData = async () => {
+      try {
+        const data = await fetchDashboardMetrics();
+        if (data) {
+          setIsConnected(true);
+          setCoverage({
+            total: data.coverage.total,
+            uncoveredLines: data.coverage.uncoveredLines,
+            mutationScore: data.coverage.mutationScore,
+            mutationStatus: data.coverage.mutationStatus,
+            mutationReason: data.coverage.mutationReason,
+          });
+          setMetrics({
+            tokensUsed: data.llm.tokensUsed,
+            estimatedCost: data.llm.estimatedCost,
+            efficiencyScore: data.llm.efficiencyScore,
+            sessionMemoryUsage: data.llm.sessionMemoryUsage,
+            totalRuns: data.llm.totalRuns || 0,
+          });
+          if (data.logs.length > 0) {
+            setLogs(data.logs.map(l => ({ ...l, level: l.level as 'INFO' | 'WARN' | 'ERROR' })));
+          }
+        }
+        const historyData = await fetchHistory();
+        if (historyData && historyData.length > 0) {
+          const historyTasks: Task[] = historyData.map((run: RunHistoryItem) => {
+            const isPRRun = run.trigger_type?.startsWith('pr_') || (run.pr_number !== null && run.pr_number !== undefined && run.pr_number !== 0);
+            const triggerIcon = isPRRun ? '✅ PR' : '⚡ Push';
+            const prLabel = run.pr_number ? `#${run.pr_number}` : run.branch;
+            return {
+              id: run.id,
+              title: `${triggerIcon} ${run.commit_sha.substring(0, 7)} (${prLabel})`,
+              status: run.status === 'completed' ? Status.Completed :
+                run.status === 'running' ? Status.InProgress :
+                  run.status === 'failed' ? Status.Failed :
+                    run.status === 'skipped' ? Status.Pending : Status.Pending
+            };
+          });
+          setTasks(historyTasks);
+        }
+      } catch (error) {
+        console.error('Refresh failed:', error);
+      }
+    };
+    fetchData();
+  };
 
   const handleViewSpec = async () => {
     setShowSpecModal(true);
@@ -334,8 +384,11 @@ function App() {
         )}
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 h-auto xl:h-[calc(100vh-14rem)] min-h-[850px]">
-          {/* Left Column: Metrics & Logs */}
+          {/* Left Column: Manual Trigger, Metrics & Logs */}
           <div className="flex flex-col gap-8 xl:col-span-1 h-full overflow-hidden">
+            <div className="flex-shrink-0">
+              <ManualTrigger onTrigger={handleRefreshData} />
+            </div>
             <div className="flex-shrink-0">
               <MetricsPanel coverage={coverage} llm={metrics} />
             </div>
@@ -350,7 +403,7 @@ function App() {
               <ArchitecturePanel diagramDefinition={architectureDiagram} />
             </div>
             <div className="flex-1 min-h-[250px]">
-              <TaskList tasks={tasks} progress={projectProgress} onViewSpec={handleViewSpec} />
+              <TaskList tasks={tasks} progress={projectProgress} onViewSpec={handleViewSpec} onRetry={handleRefreshData} />
             </div>
           </div>
 
