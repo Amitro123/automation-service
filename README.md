@@ -69,6 +69,7 @@ Real-time monitoring and manual control via React dashboard (http://localhost:51
 - ✅ Real-time log viewer
 - ✅ Live metrics and test coverage
 - ✅ Architecture visualization
+
 ### 3. Project Progress & Metrics
 - Visual progress tracking with real-time updates
 - Test coverage and mutation testing integration using tools like mutmut
