@@ -18,6 +18,9 @@ The `studioai` CLI provides easy configuration management:
 
 ```bash
 # Initialize configuration
+
+![Architecture](assets/architecture_diagram.png)
+
 studioai init
 
 # Interactive configuration
