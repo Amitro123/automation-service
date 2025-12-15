@@ -7,9 +7,33 @@ services:
       - "8080:8080"
     env_file:
       - .env
+    environment:
+      # Use host.docker.internal to reach Acontext on host
+      - ACONTEXT_API_URL=http://host.docker.internal:8029/api/v1
+    extra_hosts:
+      # Required for Windows/Mac Docker to resolve host.docker.internal
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./src:/app/src
       - ./spec.md:/app/spec.md
       - ./README.md:/app/README.md
       - ./code_review.md:/app/code_review.md
+      - ./acontext_memory.json:/app/acontext_memory.json
     restart: unless-stopped
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+networks:
+  default:
+    name: automation-network
+
+volumes:
+  redis_data:

@@ -69,6 +69,26 @@ An autonomous GitHub automation system that triggers on **push and pull request 
 - Automatically updated via scripts/CI when system or specs change
 - **Visualized in the Dashboard**
 
+### 9. 🧠 Self-Improving Capabilities (NEW - Dec 2025)
+- **Long-Term Memory**: Acontext integration learns from past PR reviews
+- **Lesson Injection**: Past mistakes and successes injected into LLM prompts
+- **Similarity Search**: Finds relevant past sessions based on PR title and files
+- **Fail-Safe Design**: Automation continues even if memory is unreachable
+- **API Access**: `POST /api/context/suggest` for MCP/external integrations
+
+**Prerequisites:**
+```bash
+# Start Acontext service (required for memory features)
+acontext docker up
+```
+
+**Configuration:**
+```bash
+ACONTEXT_ENABLED=True              # Enable/disable learning
+ACONTEXT_API_URL=http://localhost:8029/api/v1  # Acontext API endpoint
+ACONTEXT_MAX_LESSONS=5             # Max lessons per prompt
+```
+
 ## 🚀 Quick Start
 
 ### Prerequisites

@@ -25,6 +25,7 @@ from .code_review_updater import CodeReviewUpdater
 from .orchestrator import AutomationOrchestrator
 from .session_memory import SessionMemoryStore
 from . import mutation_service
+from .memory import AcontextClient, SessionInsight
 
 logger = logging.getLogger(__name__)
 
@@ -110,6 +111,33 @@ class RepositoryStatus(BaseModel):
     lastPush: Optional[str] = None
     openIssues: int
     openPRs: int
+
+
+# Acontext Context Suggest Models
+class ContextSuggestRequest(BaseModel):
+    """Request model for /api/context/suggest endpoint."""
+    pr_title: str
+    pr_files: List[str] = []
+    limit: int = 5
+
+
+class SessionInsightResponse(BaseModel):
+    """Response model for a single session insight."""
+    session_id: str
+    pr_title: str
+    timestamp: str
+    status: str
+    key_lessons: List[str]
+    error_types: List[str]
+    files_changed: List[str]
+    similarity_score: float
+
+
+class ContextSuggestResponse(BaseModel):
+    """Response model for /api/context/suggest endpoint."""
+    insights: List[SessionInsightResponse]
+    total_sessions: int
+    lessons_formatted: str
 
 
 # ============== Application State ==============
@@ -581,6 +609,65 @@ def create_api_server(config: Config) -> FastAPI:
         except Exception as e:
             logger.error(f"Failed to fetch spec.md: {e}")
             raise HTTPException(status_code=500, detail=str(e))
+
+    # Acontext client for context suggestions
+    acontext_client = AcontextClient(
+        api_url=config.ACONTEXT_API_URL,
+        storage_path=config.ACONTEXT_STORAGE_PATH,
+        enabled=config.ACONTEXT_ENABLED,
+        max_lessons=config.ACONTEXT_MAX_LESSONS,
+    )
+
+    @app.post("/api/context/suggest", response_model=ContextSuggestResponse)
+    async def suggest_context(request: ContextSuggestRequest):
+        """
+        Get relevant insights from long-term memory based on PR details.
+        
+        For use by MCP or external integrations to retrieve learned lessons
+        before starting automation runs.
+        """
+        try:
+            # Query similar sessions
+            insights = await acontext_client.query_similar_sessions(
+                pr_title=request.pr_title,
+                pr_files=request.pr_files,
+                limit=request.limit,
+            )
+            
+            # Format lessons for prompt injection
+            lessons_formatted = acontext_client.format_lessons_for_prompt(insights)
+            
+            # Convert to response model
+            insight_responses = [
+                SessionInsightResponse(
+                    session_id=i.session_id,
+                    pr_title=i.pr_title,
+                    timestamp=i.timestamp,
+                    status=i.status,
+                    key_lessons=i.key_lessons,
+                    error_types=i.error_types,
+                    files_changed=i.files_changed,
+                    similarity_score=i.similarity_score,
+                )
+                for i in insights
+            ]
+            
+            # Get total session count
+            stats = acontext_client.get_stats()
+            
+            return ContextSuggestResponse(
+                insights=insight_responses,
+                total_sessions=stats.get("total_sessions", 0),
+                lessons_formatted=lessons_formatted,
+            )
+        except Exception as e:
+            logger.error(f"Failed to get context suggestions: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.get("/api/context/stats")
+    async def get_context_stats():
+        """Get statistics about the long-term memory."""
+        return acontext_client.get_stats()
 
     @app.post("/webhook")
     async def webhook(request: Request, background_tasks: BackgroundTasks):

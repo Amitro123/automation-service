@@ -81,6 +81,16 @@ class Config:
     # Maximum concurrent Gemini requests (optional hard cap)
     GEMINI_MAX_CONCURRENT_REQUESTS: int = int(os.getenv("GEMINI_MAX_CONCURRENT_REQUESTS", "3"))
 
+    # Acontext Long-Term Memory Configuration
+    # Enable Acontext for learning from past PRs
+    ACONTEXT_ENABLED: bool = os.getenv("ACONTEXT_ENABLED", "True").lower() == "true"
+    # API URL for Acontext service (use host.docker.internal for Docker)
+    ACONTEXT_API_URL: str = os.getenv("ACONTEXT_API_URL", "http://localhost:8029/api/v1")
+    # Path to local storage file (fallback when API unreachable)
+    ACONTEXT_STORAGE_PATH: str = os.getenv("ACONTEXT_STORAGE_PATH", "acontext_memory.json")
+    # Maximum past lessons to inject into prompts
+    ACONTEXT_MAX_LESSONS: int = int(os.getenv("ACONTEXT_MAX_LESSONS", "5"))
+
     @classmethod
     def validate(cls) -> list[str]:
         """Validate required configuration values.
@@ -132,6 +142,7 @@ class Config:
             "auto_commit": cls.AUTO_COMMIT,
             "create_pr": cls.CREATE_PR,
             "trivial_filter_enabled": cls.TRIVIAL_CHANGE_FILTER_ENABLED,
+            "acontext_enabled": cls.ACONTEXT_ENABLED,
         }
 
     @classmethod

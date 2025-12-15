@@ -104,7 +104,7 @@ async def test_missing_readme(mock_config):
     mock_github.get_file_content = AsyncMock(return_value=None)  # README doesn't exist
     
     mock_provider = MagicMock(spec=ReviewProvider)
-    mock_provider.update_readme = AsyncMock(return_value="# New README\n\nContent")
+    mock_provider.update_readme = AsyncMock(return_value=("# New README\n\nContent", {}))
     
     updater = ReadmeUpdater(mock_github, mock_provider)
     result = await updater.update_readme("abc123")
@@ -125,7 +125,7 @@ async def test_missing_spec(mock_config):
     mock_github.get_file_content = AsyncMock(return_value=None)  # spec.md doesn't exist
     
     mock_provider = AsyncMock(spec=ReviewProvider)
-    mock_provider.update_spec = AsyncMock(return_value="New entry")
+    mock_provider.update_spec = AsyncMock(return_value=("New entry", {}))
     
     updater = SpecUpdater(mock_github, mock_provider)
     result = await updater.update_spec("abc123")

@@ -1,7 +1,7 @@
 # 📋 GitHub Automation Agent - Product Specification & Progress
 
-**Last Updated:** 2025-12-03 23:10 UTC  
-**Status:** Phase 3 Complete ✅ | Phase 4 Deployment 🚀 | PR-Centric Automation ✅ | Zero Silent Failures ✅
+**Last Updated:** 2025-12-15 22:00 UTC  
+**Status:** Phase 3 Complete ✅ | Phase 4 Deployment 🚀 | PR-Centric Automation ✅ | Zero Silent Failures ✅ | Self-Improving Memory ✅
 
 ## 🎯 Product Mission
 
@@ -417,3 +417,77 @@ LOW: Polish
 - Monitor production runs for any edge cases
 - Consider adding more diagnostic tools
 - Document common troubleshooting scenarios
+
+### 2025-12-15 - Acontext Long-Term Memory Integration ✅
+
+**Objective:** Enable the automation agent to learn from past PRs and improve over time by integrating Acontext as a long-term memory layer.
+
+**What Was Achieved:**
+
+1. **✅ Acontext Client Module**
+   - Created `src/automation_agent/memory/acontext_client.py`
+   - Async HTTP client using `aiohttp` targeting `http://localhost:8029/api/v1`
+   - Local JSON fallback when API unreachable (fail-safe design)
+   - Session lifecycle: `start_session()`, `log_event()`, `finish_session()`
+   - Similarity search: `query_similar_sessions()` for finding relevant past runs
+
+2. **✅ Orchestrator Integration**
+   - `run_automation_with_context()` now starts Acontext session at run start
+   - Queries similar sessions to retrieve "lessons learned"
+   - Injects `past_lessons` into LLM prompts for code review, README, and spec updates
+   - Finishes session with final status and error messages
+
+3. **✅ LLM Prompt Engineering**
+   - Updated `analyze_code()`, `update_readme()`, `update_spec()` to accept `past_lessons`
+   - Added instruction: "Use these past lessons to avoid repeating known mistakes"
+   - Past lessons formatted with PR titles, status, and key takeaways
+
+4. **✅ API Endpoints**
+   - `POST /api/context/suggest` - Returns relevant insights for a PR (for MCP integration)
+   - `GET /api/context/stats` - Returns memory statistics
+
+5. **✅ Docker Integration**
+   - Updated `docker-compose.yml` with `host.docker.internal` for Acontext access
+   - Added `extra_hosts` for Windows/Mac Docker compatibility
+   - Added Redis service for future caching needs
+
+6. **✅ Seed Script**
+   - Created `scripts/seed_acontext.py` for importing historical logs
+   - Imports from `session_memory.json` to real Acontext API
+
+**Configuration:**
+```bash
+ACONTEXT_ENABLED=True
+ACONTEXT_API_URL=http://localhost:8029/api/v1
+ACONTEXT_MAX_LESSONS=5
+```
+
+**Prerequisites:**
+```bash
+acontext docker up  # Start Acontext before running agent
+```
+
+**Files Created:**
+- `src/automation_agent/memory/__init__.py`
+- `src/automation_agent/memory/acontext_client.py`
+- `scripts/seed_acontext.py`
+- `tests/test_acontext_client.py` (14 tests)
+
+**Files Modified:**
+- `config.py` - Added `ACONTEXT_API_URL`, `ACONTEXT_ENABLED`, `ACONTEXT_MAX_LESSONS`
+- `orchestrator.py` - Session lifecycle, past_lessons injection
+- `llm_client.py` - `past_lessons` parameter in prompts
+- `api_server.py` - Context suggest endpoints
+- `docker-compose.yml` - Host networking for Acontext
+- `README.md` - Self-Improving Capabilities section
+- `ARCHITECTURE.md` - Long-Term Memory block in diagram
+
+**Test Results:**
+- ✅ 14/14 Acontext tests passing
+- ✅ 156/157 total tests passing (1 pre-existing Jules mock issue)
+
+**Next Steps:**
+- Monitor Acontext performance in production
+- Tune similarity search threshold for better lesson matching
+- Consider vector embeddings for improved semantic search
+

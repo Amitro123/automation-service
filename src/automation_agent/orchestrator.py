@@ -10,6 +10,7 @@ from .config import Config
 from .session_memory import SessionMemoryStore
 from .trigger_filter import TriggerFilter, TriggerContext, TriggerType, RunType
 from .llm_client import RateLimitError
+from .memory import AcontextClient
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +46,15 @@ class AutomationOrchestrator:
         self.code_review_updater = code_review_updater
         self.session_memory = session_memory
         self.config = config
+        
+        # Initialize Acontext long-term memory
+        self.acontext = AcontextClient(
+            api_url=config.ACONTEXT_API_URL,
+            storage_path=config.ACONTEXT_STORAGE_PATH,
+            enabled=config.ACONTEXT_ENABLED,
+            max_lessons=config.ACONTEXT_MAX_LESSONS,
+        )
+        logger.info(f"[ORCHESTRATOR] Acontext initialized: enabled={config.ACONTEXT_ENABLED}, api={config.ACONTEXT_API_URL}")
 
     async def run_automation(self, event_payload: Dict[str, Any]) -> Dict[str, Any]:
         """Process a push event and execute all automation tasks in parallel.
@@ -577,6 +587,41 @@ This PR contains automated documentation updates generated from commit `{commit_
             f"(commit: {context.commit_sha[:7]}, PR: {context.pr_number or 'N/A'})"
         )
         
+        # Extract file list from diff for Acontext
+        pr_files = []
+        if context.diff_analysis and hasattr(context.diff_analysis, 'files'):
+            pr_files = context.diff_analysis.files if context.diff_analysis.files else []
+        
+        # Start Acontext session (fail-safe)
+        await self.acontext.start_session(
+            session_id=run_id,
+            pr_title=context.pr_title or context.commit_message or "",
+            pr_files=pr_files,
+            branch=context.branch,
+            pr_number=context.pr_number,
+        )
+        
+        # Query for similar sessions to learn from past runs
+        past_lessons = ""
+        try:
+            similar_sessions = await self.acontext.query_similar_sessions(
+                pr_title=context.pr_title or context.commit_message or "",
+                pr_files=pr_files,
+            )
+            if similar_sessions:
+                past_lessons = self.acontext.format_lessons_for_prompt(similar_sessions)
+                logger.info(f"[ACONTEXT] Found {len(similar_sessions)} similar sessions, injecting lessons into prompts")
+                # Log the query event
+                await self.acontext.log_event(run_id, "lessons_retrieved", {
+                    "similar_sessions": len(similar_sessions),
+                    "lessons_length": len(past_lessons),
+                })
+        except Exception as e:
+            logger.warning(f"[ACONTEXT] Failed to query similar sessions (continuing without): {e}")
+        
+        # Store past_lessons in context for use by tasks (via instance variable)
+        self._current_past_lessons = past_lessons
+        
         # Build task list based on context
         tasks = []
         task_names = []
@@ -641,6 +686,15 @@ This PR contains automated documentation updates generated from commit `{commit_
             
             logger.warning(f"Skipping PR creation due to critical failures: {summary}")
             
+            # Finish Acontext session with failure status
+            error_msgs = [msg for _, _, msg in critical_failures if msg]
+            await self.acontext.finish_session(
+                session_id=run_id,
+                status=status,
+                error_messages=error_msgs,
+                summary=summary,
+            )
+            
             return {
                 "success": False,
                 "run_id": run_id,
@@ -663,6 +717,22 @@ This PR contains automated documentation updates generated from commit `{commit_
         status = "completed" if success else "failed"
         summary = f"Ran {len(tasks)} tasks: {', '.join(task_names)}"
         self.session_memory.update_run_status(run_id, status, summary)
+        
+        # Finish Acontext session with final status
+        await self.acontext.finish_session(
+            session_id=run_id,
+            status=status,
+            summary=summary,
+        )
+        
+        # Log any issues found for future learning
+        issues_found = []
+        for task_name, result in results_dict.items():
+            if isinstance(result, dict) and result.get("review"):
+                # Extract issues from code review for learning
+                issues_found.append(f"{task_name}: completed")
+        if issues_found:
+            await self.acontext.log_event(run_id, "issues_logged", {"issues": issues_found[:5]})
         
         return {
             "success": success,

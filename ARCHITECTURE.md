@@ -43,6 +43,7 @@ graph TD
         Webhook[Webhook Server]:::component
         Orchestrator[Async Orchestrator]:::orchestrator
         SessionMem[Session Memory Store]:::memory
+        Acontext[Long-Term Memory - Acontext]:::memory
         MutationService[Mutation Service]:::component
         
         %% Review Providers Abstraction
@@ -90,6 +91,7 @@ graph TD
     
     %% Orchestration
     Orchestrator -->|Init Run| SessionMem
+    Orchestrator -->|Query/Store Lessons| Acontext
     Orchestrator -->|Parallel Exec| Reviewer
     Orchestrator -->|Parallel Exec| ReadmeUp
     Orchestrator -->|Parallel Exec| SpecUp
@@ -162,6 +164,36 @@ The system features a **Pluggable Review Provider** layer that abstracts the und
 - **Primary**: **Jules / Google Code Review API** is used for high-quality, specialized code reviews.
 - **Fallback**: If Jules is unavailable or fails, the system automatically falls back to **LLM Providers** (Gemini, OpenAI, Anthropic) to ensure continuity.
 - **Abstraction**: The `ReviewProvider` interface ensures that `CodeReviewer`, `ReadmeUpdater`, and `SpecUpdater` are agnostic to the underlying engine.
+
+## Long-Term Memory (Acontext)
+
+The system features a **Self-Improving Memory Layer** powered by Acontext:
+
+**Purpose:**
+- Learn from past PR reviews and automation runs
+- Inject "lessons learned" into LLM prompts to avoid repeating mistakes
+- Enable the agent to improve over time without retraining
+
+**Components:**
+- `memory/acontext_client.py`: Async client for session management and similarity queries
+- **Session Lifecycle**: `start_session` → `log_event` → `finish_session`
+- **Query**: `query_similar_sessions()` finds relevant past runs based on PR title and files
+- **Prompt Injection**: Past lessons are formatted and injected into LLM prompts
+
+**API Endpoints:**
+- `POST /api/context/suggest` - Get relevant insights for a PR before automation
+- `GET /api/context/stats` - Get memory statistics
+
+**Configuration:**
+```bash
+ACONTEXT_ENABLED=True           # Enable/disable learning
+ACONTEXT_STORAGE_PATH=acontext_memory.json  # Storage file
+ACONTEXT_MAX_LESSONS=5          # Max lessons to inject
+```
+
+**Fail-Safe Design:**
+- All operations gracefully degrade if storage is unreachable
+- Automation runs complete successfully even without memory access
 
 ## Live Updates
 
