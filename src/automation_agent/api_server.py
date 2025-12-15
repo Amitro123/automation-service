@@ -780,10 +780,19 @@ async def handle_event(orchestrator: AutomationOrchestrator, event_type: str, pa
                 return
             logger.info(f"[HANDLER] Push has {len(commits)} commit(s)")
         
-        # For PR events, log details
+        # For PR events, log details and skip automation PRs
         if event_type == "pull_request":
             pr_number = payload.get("number")
             action = payload.get("action")
+            pr_data = payload.get("pull_request", {})
+            head_ref = pr_data.get("head", {}).get("ref", "")
+            
+            # Skip automation PRs to prevent infinite loops
+            if head_ref.startswith("automation/"):
+                logger.info(f"[HANDLER] Skipping automation PR #{pr_number} (branch: {head_ref})")
+                app_state.add_log("INFO", f"Skipped automation PR #{pr_number}")
+                return
+            
             logger.info(f"[HANDLER] Processing PR #{pr_number} action={action}")
         
         app_state.add_log("INFO", f"Starting automation for {event_type} event...")

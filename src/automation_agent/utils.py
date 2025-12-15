@@ -3,8 +3,18 @@
 import logging
 import json
 from typing import Any, Dict
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
+
+
+def get_timestamp() -> str:
+    """Get current timestamp in ISO format.
+    
+    Returns:
+        ISO formatted timestamp string
+    """
+    return datetime.utcnow().isoformat() + "Z"
 
 def setup_logging(level: int = logging.INFO) -> None:
     """Setup basic logging configuration.
@@ -31,3 +41,31 @@ def parse_json_safe(json_str: str) -> Dict[str, Any]:
     except json.JSONDecodeError as e:
         logger.error(f"Failed to parse JSON: {e}")
         return {}
+
+def truncate_string(text: str, max_length: int = 100, suffix: str = "...") -> str:
+    """Truncate a string to a maximum length with a custom suffix.
+    
+    Args:
+        text: The string to truncate
+        max_length: Maximum length (default 100), must be non-negative
+        suffix: Suffix to append when truncated (default "...")
+        
+    Returns:
+        Truncated string with suffix if it was shortened
+        
+    Example:
+        >>> truncate_string("Hello World", 8)
+        'Hello...'
+        >>> truncate_string("Short", 10)
+        'Short'
+        >>> truncate_string("", 10)
+        ''
+    """
+    # Handle edge cases explicitly
+    if max_length < 0:
+        return ""
+    if not text:
+        return ""
+    if len(text) <= max_length:
+        return text
+    return text[:max_length - len(suffix)] + suffix
