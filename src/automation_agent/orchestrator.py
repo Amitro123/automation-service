@@ -51,10 +51,11 @@ class AutomationOrchestrator:
         self.acontext = AcontextClient(
             api_url=config.ACONTEXT_API_URL,
             storage_path=config.ACONTEXT_STORAGE_PATH,
+            storage_type=config.ACONTEXT_STORAGE_TYPE,
             enabled=config.ACONTEXT_ENABLED,
             max_lessons=config.ACONTEXT_MAX_LESSONS,
         )
-        logger.info(f"[ORCHESTRATOR] Acontext initialized: enabled={config.ACONTEXT_ENABLED}, api={config.ACONTEXT_API_URL}")
+        logger.info(f"[ORCHESTRATOR] Acontext initialized: enabled={config.ACONTEXT_ENABLED}, storage_type={config.ACONTEXT_STORAGE_TYPE}, api={config.ACONTEXT_API_URL}")
 
     async def run_automation(self, event_payload: Dict[str, Any]) -> Dict[str, Any]:
         """Process a push event and execute all automation tasks in parallel.

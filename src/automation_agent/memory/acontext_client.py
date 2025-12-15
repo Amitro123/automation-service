@@ -67,6 +67,7 @@ class AcontextClient:
         self,
         api_url: str = "http://localhost:8029/api/v1",
         storage_path: str = "acontext_memory.json",
+        storage_type: str = "api",
         enabled: bool = True,
         max_lessons: int = 5,
     ):
@@ -75,17 +76,25 @@ class AcontextClient:
         
         Args:
             api_url: URL of Acontext API
-            storage_path: Path to local JSON storage (fallback)
+            storage_path: Path to local JSON storage (only used if storage_type='local')
+            storage_type: 'api' (default) or 'local' (for testing/dev)
             enabled: Whether Acontext is enabled
             max_lessons: Maximum lessons to return from queries
         """
         self.api_url = api_url.rstrip("/")
         self.storage_path = storage_path
+        self.storage_type = storage_type
         self.enabled = enabled
         self.max_lessons = max_lessons
         self._memory: Dict[str, Any] = {"sessions": {}, "metadata": {}}
         self._api_available: Optional[bool] = None
-        self._load_memory()
+        
+        # Only load local storage if explicitly configured
+        if self.storage_type == "local":
+            self._load_memory()
+            logger.info(f"[ACONTEXT] Using local storage: {storage_path}")
+        else:
+            logger.info(f"[ACONTEXT] Using API storage: {api_url}")
         
     def _load_memory(self) -> None:
         """Load local fallback memory from disk."""
@@ -196,22 +205,25 @@ class AcontextClient:
             "error_types": [],
         }
         
-        # Try API first
-        result = await self._api_request("POST", "/sessions", session_data)
-        if result:
-            logger.info(f"[ACONTEXT] Started session {session_id} via API")
-            return True
-        
-        # Fallback to local storage
-        try:
-            self._memory["sessions"][session_id] = session_data
-            success = self._save_memory()
-            if success:
-                logger.info(f"[ACONTEXT] Started session {session_id} (local fallback)")
-            return success
-        except Exception as e:
-            logger.warning(f"[ACONTEXT] Failed to start session: {e}")
-            return False
+        # Try API (or local storage if configured)
+        if self.storage_type == "local":
+            try:
+                self._memory["sessions"][session_id] = session_data
+                success = self._save_memory()
+                if success:
+                    logger.info(f"[ACONTEXT] Started session {session_id} (local storage)")
+                return success
+            except Exception as e:
+                logger.error(f"[ACONTEXT] Failed to start session in local storage: {e}")
+                return False
+        else:
+            result = await self._api_request("POST", "/sessions", session_data)
+            if result:
+                logger.info(f"[ACONTEXT] Started session {session_id} via API")
+                return True
+            else:
+                logger.error(f"[ACONTEXT] Failed to start session - API unreachable")
+                return False
     
     async def log_event(
         self,
@@ -239,37 +251,40 @@ class AcontextClient:
             "data": data,
         }
         
-        # Try API first
-        result = await self._api_request(
-            "POST", 
-            f"/sessions/{session_id}/events", 
-            event
-        )
-        if result:
-            return True
-        
-        # Fallback to local storage
-        try:
-            session = self._memory["sessions"].get(session_id)
-            if not session:
-                session = {"session_id": session_id, "events": [], "key_lessons": [], "error_types": []}
-                self._memory["sessions"][session_id] = session
-            
-            session["events"].append(event)
-            
-            # Extract lessons from certain event types
-            if event_type == "code_review_complete":
-                if data.get("issues"):
-                    session["key_lessons"].extend(data["issues"][:3])
-            elif event_type == "error":
-                error_type = data.get("error_type", "unknown")
-                if error_type not in session["error_types"]:
-                    session["error_types"].append(error_type)
-            
-            return self._save_memory()
-        except Exception as e:
-            logger.warning(f"[ACONTEXT] Failed to log event: {e}")
-            return False
+        # Use configured storage
+        if self.storage_type == "local":
+            try:
+                session = self._memory["sessions"].get(session_id)
+                if not session:
+                    session = {"session_id": session_id, "events": [], "key_lessons": [], "error_types": []}
+                    self._memory["sessions"][session_id] = session
+                
+                session["events"].append(event)
+                
+                # Extract lessons from certain event types
+                if event_type == "code_review_complete":
+                    if data.get("issues"):
+                        session["key_lessons"].extend(data["issues"][:3])
+                elif event_type == "error":
+                    error_type = data.get("error_type", "unknown")
+                    if error_type not in session["error_types"]:
+                        session["error_types"].append(error_type)
+                
+                return self._save_memory()
+            except Exception as e:
+                logger.error(f"[ACONTEXT] Failed to log event in local storage: {e}")
+                return False
+        else:
+            result = await self._api_request(
+                "POST", 
+                f"/sessions/{session_id}/events", 
+                event
+            )
+            if result:
+                return True
+            else:
+                logger.error(f"[ACONTEXT] Failed to log event - API unreachable")
+                return False
     
     async def finish_session(
         self,
@@ -300,40 +315,43 @@ class AcontextClient:
             "error_messages": error_messages or [],
         }
         
-        # Try API first
-        result = await self._api_request(
-            "PUT",
-            f"/sessions/{session_id}",
-            finish_data
-        )
-        if result:
-            logger.info(f"[ACONTEXT] Finished session {session_id} via API: {status}")
-            return True
-        
-        # Fallback to local storage
-        try:
-            session = self._memory["sessions"].get(session_id)
-            if not session:
+        # Use configured storage
+        if self.storage_type == "local":
+            try:
+                session = self._memory["sessions"].get(session_id)
+                if not session:
+                    return True
+                
+                session["status"] = status
+                session["finished_at"] = finish_data["finished_at"]
+                session["summary"] = summary
+                
+                if error_messages:
+                    session["error_messages"] = error_messages
+                    for msg in error_messages[:2]:
+                        lesson = f"Error encountered: {msg[:100]}"
+                        if lesson not in session["key_lessons"]:
+                            session["key_lessons"].append(lesson)
+                
+                success = self._save_memory()
+                if success:
+                    logger.info(f"[ACONTEXT] Finished session {session_id} (local): {status}")
+                return success
+            except Exception as e:
+                logger.error(f"[ACONTEXT] Failed to finish session in local storage: {e}")
+                return False
+        else:
+            result = await self._api_request(
+                "PUT",
+                f"/sessions/{session_id}",
+                finish_data
+            )
+            if result:
+                logger.info(f"[ACONTEXT] Finished session {session_id} via API: {status}")
                 return True
-            
-            session["status"] = status
-            session["finished_at"] = finish_data["finished_at"]
-            session["summary"] = summary
-            
-            if error_messages:
-                session["error_messages"] = error_messages
-                for msg in error_messages[:2]:
-                    lesson = f"Error encountered: {msg[:100]}"
-                    if lesson not in session["key_lessons"]:
-                        session["key_lessons"].append(lesson)
-            
-            success = self._save_memory()
-            if success:
-                logger.info(f"[ACONTEXT] Finished session {session_id} (local): {status}")
-            return success
-        except Exception as e:
-            logger.warning(f"[ACONTEXT] Failed to finish session: {e}")
-            return False
+            else:
+                logger.error(f"[ACONTEXT] Failed to finish session - API unreachable")
+                return False
     
     async def query_similar_sessions(
         self,
@@ -357,20 +375,23 @@ class AcontextClient:
             
         limit = limit or self.max_lessons
         
-        # Try API first
-        query_params = {
-            "pr_title": pr_title,
-            "pr_files": pr_files,
-            "limit": limit,
-        }
-        result = await self._api_request("POST", "/sessions/query", query_params)
-        if result and isinstance(result, list):
-            insights = [SessionInsight.from_dict(item) for item in result]
-            logger.info(f"[ACONTEXT] Found {len(insights)} similar sessions via API")
-            return insights
-        
-        # Fallback to local similarity search
-        return self._local_similarity_search(pr_title, pr_files, limit)
+        # Use configured storage
+        if self.storage_type == "local":
+            return self._local_similarity_search(pr_title, pr_files, limit)
+        else:
+            query_params = {
+                "pr_title": pr_title,
+                "pr_files": pr_files,
+                "limit": limit,
+            }
+            result = await self._api_request("POST", "/sessions/query", query_params)
+            if result and isinstance(result, list):
+                insights = [SessionInsight.from_dict(item) for item in result]
+                logger.info(f"[ACONTEXT] Found {len(insights)} similar sessions via API")
+                return insights
+            else:
+                logger.error(f"[ACONTEXT] Failed to query sessions - API unreachable")
+                return []
     
     def _local_similarity_search(
         self,

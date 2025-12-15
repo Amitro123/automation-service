@@ -86,7 +86,9 @@ class Config:
     ACONTEXT_ENABLED: bool = os.getenv("ACONTEXT_ENABLED", "True").lower() == "true"
     # API URL for Acontext service (use host.docker.internal for Docker)
     ACONTEXT_API_URL: str = os.getenv("ACONTEXT_API_URL", "http://localhost:8029/api/v1")
-    # Path to local storage file (fallback when API unreachable)
+    # Storage type: 'api' (default) or 'local' (for testing/development)
+    ACONTEXT_STORAGE_TYPE: str = os.getenv("ACONTEXT_STORAGE_TYPE", "api")
+    # Path to local storage file (only used if STORAGE_TYPE=local)
     ACONTEXT_STORAGE_PATH: str = os.getenv("ACONTEXT_STORAGE_PATH", "acontext_memory.json")
     # Maximum past lessons to inject into prompts
     ACONTEXT_MAX_LESSONS: int = int(os.getenv("ACONTEXT_MAX_LESSONS", "5"))

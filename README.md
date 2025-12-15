@@ -73,7 +73,7 @@ An autonomous GitHub automation system that triggers on **push and pull request 
 - **Long-Term Memory**: Acontext integration learns from past PR reviews
 - **Lesson Injection**: Past mistakes and successes injected into LLM prompts
 - **Similarity Search**: Finds relevant past sessions based on PR title and files
-- **Fail-Safe Design**: Automation continues even if memory is unreachable
+- **Explicit Failures**: API failures log errors (no silent fallback to ephemeral storage)
 - **API Access**: `POST /api/context/suggest` for MCP/external integrations
 
 **Prerequisites:**
@@ -84,10 +84,13 @@ acontext docker up
 
 **Configuration:**
 ```bash
-ACONTEXT_ENABLED=True              # Enable/disable learning
-ACONTEXT_API_URL=http://localhost:8029/api/v1  # Acontext API endpoint
-ACONTEXT_MAX_LESSONS=5             # Max lessons per prompt
+ACONTEXT_ENABLED=True                          # Enable/disable learning
+ACONTEXT_API_URL=http://localhost:8029/api/v1 # Acontext API endpoint
+ACONTEXT_STORAGE_TYPE=api                      # 'api' (default) or 'local' (dev/testing only)
+ACONTEXT_MAX_LESSONS=5                         # Max lessons per prompt
 ```
+
+> **Note**: With `STORAGE_TYPE=api`, if the Acontext API is unreachable, operations will fail and log errors. This prevents data loss in containerized environments where local storage is ephemeral.
 
 ## 🚀 Quick Start
 

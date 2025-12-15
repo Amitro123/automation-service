@@ -614,6 +614,7 @@ def create_api_server(config: Config) -> FastAPI:
     acontext_client = AcontextClient(
         api_url=config.ACONTEXT_API_URL,
         storage_path=config.ACONTEXT_STORAGE_PATH,
+        storage_type=config.ACONTEXT_STORAGE_TYPE,
         enabled=config.ACONTEXT_ENABLED,
         max_lessons=config.ACONTEXT_MAX_LESSONS,
     )
