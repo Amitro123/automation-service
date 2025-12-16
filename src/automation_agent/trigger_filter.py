@@ -417,21 +417,33 @@ class TriggerFilter:
         self,
         event_type: str,
         trigger_mode: str,
+        branch: str = "",
     ) -> tuple[bool, str]:
         """Check if an event should be processed based on trigger mode.
         
         Args:
             event_type: GitHub event type
             trigger_mode: Configuration trigger mode ("pr", "push", "both")
+            branch: Branch name (for push events)
             
         Returns:
             Tuple of (should_process, reason)
         """
+        # Always skip automation branches to prevent infinite loops
+        if branch and branch.startswith("automation/"):
+            return False, f"Automation branch '{branch}' skipped to prevent loops"
+        
         if trigger_mode == "pr":
             if event_type == "pull_request":
                 return True, ""
             elif event_type == "push":
-                return False, "Push events disabled (TRIGGER_MODE=pr)"
+                # In PR mode, allow pushes to feature branches (non-main branches)
+                # These are typically associated with PRs
+                main_branches = {"main", "master", "develop", "dev"}
+                if branch and branch not in main_branches:
+                    return True, ""
+                else:
+                    return False, f"Push to {branch or 'main'} branch disabled (TRIGGER_MODE=pr)"
         
         elif trigger_mode == "push":
             if event_type == "push":

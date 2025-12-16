@@ -1,85 +1,208 @@
 """Configuration management for GitHub Automation Agent."""
 
 import os
-from typing import Optional, List
+import json
+import logging
+from typing import Optional, List, Dict, Any
 from dotenv import load_dotenv
 
 load_dotenv()
+logger = logging.getLogger(__name__)
 
 
-class Config:
-    """Application configuration loaded from environment variables."""
+class ConfigMeta(type):
+    """Metaclass to allow class-level properties for Config."""
+    
+    @property
+    def GITHUB_TOKEN(cls) -> str: return cls._get("GITHUB_TOKEN", "")
+    @property
+    def GITHUB_WEBHOOK_SECRET(cls) -> str: return cls._get("GITHUB_WEBHOOK_SECRET", "")
+    @property
+    def REPOSITORY_OWNER(cls) -> str: return cls._get("REPOSITORY_OWNER", "")
+    @property
+    def REPOSITORY_NAME(cls) -> str: return cls._get("REPOSITORY_NAME", "")
 
-    # GitHub Configuration
-    GITHUB_TOKEN: str = os.getenv("GITHUB_TOKEN", "")
-    GITHUB_WEBHOOK_SECRET: str = os.getenv("GITHUB_WEBHOOK_SECRET", "")
-    REPOSITORY_OWNER: str = os.getenv("REPOSITORY_OWNER", "")
-    REPOSITORY_NAME: str = os.getenv("REPOSITORY_NAME", "")
-
-    # LLM Configuration (supports both OpenAI and Anthropic)
-    OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")
-    ANTHROPIC_API_KEY: Optional[str] = os.getenv("ANTHROPIC_API_KEY")
-    GEMINI_API_KEY: Optional[str] = os.getenv("GEMINI_API_KEY")
-    LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "openai")  # "openai", "anthropic", "gemini"
-    LLM_MODEL: str = os.getenv(
-        "LLM_MODEL",
-        "gpt-4-turbo-preview" if LLM_PROVIDER == "openai" else
-        ("claude-3-opus-20240229" if LLM_PROVIDER == "anthropic" else "gemini-2.0-flash")
-    )
+    # LLM Configuration
+    @property
+    def OPENAI_API_KEY(cls) -> Optional[str]: return cls._get("OPENAI_API_KEY")
+    @property
+    def ANTHROPIC_API_KEY(cls) -> Optional[str]: return cls._get("ANTHROPIC_API_KEY")
+    @property
+    def GEMINI_API_KEY(cls) -> Optional[str]: return cls._get("GEMINI_API_KEY")
+    @property
+    def LLM_PROVIDER(cls) -> str: return cls._get("LLM_PROVIDER", "openai")
+    
+    @property
+    def LLM_MODEL(cls) -> str:
+        default_model = "gpt-4-turbo-preview" if cls.LLM_PROVIDER == "openai" else \
+                       ("claude-3-opus-20240229" if cls.LLM_PROVIDER == "anthropic" else "gemini-2.0-flash")
+        return cls._get("LLM_MODEL", default_model)
 
     # Review Provider Configuration
-    REVIEW_PROVIDER: str = os.getenv("REVIEW_PROVIDER", "llm").lower()  # "llm" or "jules"
-    JULES_API_KEY: Optional[str] = os.getenv("JULES_API_KEY")
-    JULES_API_URL: str = os.getenv("JULES_API_URL", "https://jules.googleapis.com/v1alpha")
-    JULES_SOURCE_ID: Optional[str] = os.getenv("JULES_SOURCE_ID")  # e.g., "sources/github/owner/repo"
-    JULES_PROJECT_ID: Optional[str] = os.getenv("JULES_PROJECT_ID")  # Optional project ID
+    @property
+    def REVIEW_PROVIDER(cls) -> str: return cls._get("REVIEW_PROVIDER", "llm").lower()
+    @property
+    def JULES_API_KEY(cls) -> Optional[str]: return cls._get("JULES_API_KEY")
+    @property
+    def JULES_API_URL(cls) -> str: return cls._get("JULES_API_URL", "https://jules.googleapis.com/v1alpha")
+    @property
+    def JULES_SOURCE_ID(cls) -> Optional[str]: return cls._get("JULES_SOURCE_ID")
+    @property
+    def JULES_PROJECT_ID(cls) -> Optional[str]: return cls._get("JULES_PROJECT_ID")
 
     # Webhook Server Configuration
-    HOST: str = os.getenv("HOST", "0.0.0.0")  # nosec
-    PORT: int = int(os.getenv("PORT", "8080"))
-    DEBUG: bool = os.getenv("DEBUG", "False").lower() == "true"
+    @property
+    def HOST(cls) -> str: return cls._get("HOST", "127.0.0.1")
+    @property
+    def PORT(cls) -> int: return cls._get_int("PORT", "8080")
+    @property
+    def DEBUG(cls) -> bool: return cls._get_bool("DEBUG", "False")
 
     # Automation Behavior
-    CREATE_PR: bool = os.getenv("CREATE_PR", "True").lower() == "true"
-    POST_REVIEW_AS_ISSUE: bool = os.getenv("POST_REVIEW_AS_ISSUE", "False").lower() == "true"
-    AUTO_COMMIT: bool = os.getenv("AUTO_COMMIT", "False").lower() == "true"
-    ARCHITECTURE_FILE: str = os.getenv("ARCHITECTURE_FILE", "ARCHITECTURE.md")
+    @property
+    def CREATE_PR(cls) -> bool: return cls._get_bool("CREATE_PR", "True")
+    @property
+    def POST_REVIEW_AS_ISSUE(cls) -> bool: return cls._get_bool("POST_REVIEW_AS_ISSUE", "False")
+    @property
+    def AUTO_COMMIT(cls) -> bool: return cls._get_bool("AUTO_COMMIT", "False")
+    @property
+    def ARCHITECTURE_FILE(cls) -> str: return cls._get("ARCHITECTURE_FILE", "ARCHITECTURE.md")
 
     # Mutation Testing Configuration
-    ENABLE_MUTATION_TESTS: bool = os.getenv("ENABLE_MUTATION_TESTS", "False").lower() == "true"
-    MUTATION_MAX_RUNTIME_SECONDS: int = int(os.getenv("MUTATION_MAX_RUNTIME_SECONDS", "600"))
-    MUTATION_MIN_DIFF_LINES: int = int(os.getenv("MUTATION_MIN_DIFF_LINES", "10"))
+    @property
+    def ENABLE_MUTATION_TESTS(cls) -> bool: return cls._get_bool("ENABLE_MUTATION_TESTS", "False")
+    @property
+    def MUTATION_MAX_RUNTIME_SECONDS(cls) -> int: return cls._get_int("MUTATION_MAX_RUNTIME_SECONDS", "600")
+    @property
+    def MUTATION_MIN_DIFF_LINES(cls) -> int: return cls._get_int("MUTATION_MIN_DIFF_LINES", "10")
 
     # PR-Centric Trigger Configuration
-    # TRIGGER_MODE: "pr" = PR events only, "push" = push events only, "both" = both
-    TRIGGER_MODE: str = os.getenv("TRIGGER_MODE", "both").lower()
-    ENABLE_PR_TRIGGER: bool = os.getenv("ENABLE_PR_TRIGGER", "True").lower() == "true"
-    ENABLE_PUSH_TRIGGER: bool = os.getenv("ENABLE_PUSH_TRIGGER", "True").lower() == "true"
+    @property
+    def TRIGGER_MODE(cls) -> str: return cls._get("TRIGGER_MODE", "both").lower()
+    @property
+    def ENABLE_PR_TRIGGER(cls) -> bool: return cls._get_bool("ENABLE_PR_TRIGGER", "True")
+    @property
+    def ENABLE_PUSH_TRIGGER(cls) -> bool: return cls._get_bool("ENABLE_PUSH_TRIGGER", "True")
 
     # Trivial Change Filter Configuration
-    TRIVIAL_CHANGE_FILTER_ENABLED: bool = os.getenv("TRIVIAL_CHANGE_FILTER_ENABLED", "True").lower() == "true"
-    TRIVIAL_MAX_LINES: int = int(os.getenv("TRIVIAL_MAX_LINES", "10"))
-    # Comma-separated list of glob patterns for doc files
-    TRIVIAL_DOC_PATHS: List[str] = [
-        p.strip() for p in os.getenv(
-            "TRIVIAL_DOC_PATHS",
-            "README.md,*.md,docs/**,CHANGELOG.md,CONTRIBUTING.md,LICENSE"
-        ).split(",") if p.strip()
-    ]
+    @property
+    def TRIVIAL_CHANGE_FILTER_ENABLED(cls) -> bool: return cls._get_bool("TRIVIAL_CHANGE_FILTER_ENABLED", "True")
+    @property
+    def TRIVIAL_MAX_LINES(cls) -> int: return cls._get_int("TRIVIAL_MAX_LINES", "10")
+    @property
+    def TRIVIAL_DOC_PATHS(cls) -> List[str]: 
+        return cls._get_list("TRIVIAL_DOC_PATHS", "README.md,*.md,docs/**,CHANGELOG.md,CONTRIBUTING.md,LICENSE")
 
     # PR-Centric Automation Behavior
-    # Group automation updates into single PR per source PR
-    GROUP_AUTOMATION_UPDATES: bool = os.getenv("GROUP_AUTOMATION_UPDATES", "True").lower() == "true"
-    # Post code review as PR comment instead of commit comment when triggered by PR
-    POST_REVIEW_ON_PR: bool = os.getenv("POST_REVIEW_ON_PR", "True").lower() == "true"
+    @property
+    def GROUP_AUTOMATION_UPDATES(cls) -> bool: return cls._get_bool("GROUP_AUTOMATION_UPDATES", "True")
+    @property
+    def POST_REVIEW_ON_PR(cls) -> bool: return cls._get_bool("POST_REVIEW_ON_PR", "True")
 
     # Gemini Rate Limiting Configuration
-    # Maximum requests per minute for Gemini API (free tier: 15 RPM)
-    GEMINI_MAX_RPM: int = int(os.getenv("GEMINI_MAX_RPM", "10"))
-    # Minimum delay between consecutive Gemini API calls (seconds)
-    GEMINI_MIN_DELAY_SECONDS: float = float(os.getenv("GEMINI_MIN_DELAY_SECONDS", "2.0"))
-    # Maximum concurrent Gemini requests (optional hard cap)
-    GEMINI_MAX_CONCURRENT_REQUESTS: int = int(os.getenv("GEMINI_MAX_CONCURRENT_REQUESTS", "3"))
+    @property
+    def GEMINI_MAX_RPM(cls) -> int: return cls._get_int("GEMINI_MAX_RPM", "10")
+    @property
+    def GEMINI_MIN_DELAY_SECONDS(cls) -> float: return cls._get_float("GEMINI_MIN_DELAY_SECONDS", "2.0")
+    @property
+    def GEMINI_MAX_CONCURRENT_REQUESTS(cls) -> int: return cls._get_int("GEMINI_MAX_CONCURRENT_REQUESTS", "3")
+
+    # Prompt Configuration
+    @property
+    def CODE_REVIEW_SYSTEM_PROMPT(cls) -> str:
+        default = """You are an expert code reviewer. Analyze the following code changes (git diff) and provide a comprehensive review.
+
+Instructions:
+1. Analyze code quality, potential bugs, security issues, and performance.
+2. Provide specific, actionable feedback.
+3. Structure the review with clear headings (Strengths, Issues, Suggestions).
+4. Be constructive and professional."""
+        return cls._get("CODE_REVIEW_SYSTEM_PROMPT", default)
+    
+    @property
+    def DOCS_UPDATE_SYSTEM_PROMPT(cls) -> str:
+        default = """You are a technical documentation expert. Update the README.md based on the following code changes.
+
+Instructions:
+1. Identify new features, configuration changes, or usage updates from the diff.
+2. Update the README to reflect these changes.
+3. Return the FULL updated README content in markdown format.
+4. Do not include any conversational text, just the markdown."""
+        return cls._get("DOCS_UPDATE_SYSTEM_PROMPT", default)
+
+
+class Config(metaclass=ConfigMeta):
+    """Application configuration loaded from env vars and studioai.config.json."""
+
+    # Config file path
+    CONFIG_FILE = "studioai.config.json"
+    _file_config: Dict[str, Any] = {}
+
+    @classmethod
+    def load_config_file(cls) -> Dict[str, Any]:
+        """Load configuration from studioai.config.json."""
+        if os.path.exists(cls.CONFIG_FILE):
+            try:
+                with open(cls.CONFIG_FILE, "r") as f:
+                    config = json.load(f)
+                    logger.info(f"Loaded configuration from {cls.CONFIG_FILE}")
+                    return config
+            except Exception as e:
+                logger.error(f"Failed to load {cls.CONFIG_FILE}: {e}")
+        return {}
+
+    @classmethod
+    def load(cls):
+        """Force reload of configuration."""
+        cls._file_config = cls.load_config_file()
+
+    @classmethod
+    def _get(cls, key: str, default: Any = None) -> Any:
+        """Get config value with precedence: Env > Config File > Default."""
+        # 1. Environment Variable
+        env_val = os.getenv(key)
+        if env_val is not None:
+            return env_val
+        
+        # 2. Config File
+        if not cls._file_config:
+            cls._file_config = cls.load_config_file()
+        
+        # Map env var keys to config file keys (lowercase usually)
+        file_key = key.lower()
+        if file_key in cls._file_config:
+            return cls._file_config[file_key]
+            
+        # 3. Default
+        return default
+
+    @classmethod
+    def _get_bool(cls, key: str, default: str) -> bool:
+        """Get boolean value."""
+        val = str(cls._get(key, default)).lower()
+        return val == "true"
+
+    @classmethod
+    def _get_int(cls, key: str, default: str) -> int:
+        """Get integer value."""
+        return int(cls._get(key, default))
+        
+    @classmethod
+    def _get_float(cls, key: str, default: str) -> float:
+        """Get float value."""
+        return float(cls._get(key, default))
+
+    @classmethod
+    def _get_list(cls, key: str, default: str) -> List[str]:
+        """Get list from comma-separated string or list in json."""
+        val = cls._get(key)
+        if val is None:
+            val = default
+            
+        if isinstance(val, list):
+            return val
+        
+        return [p.strip() for p in str(val).split(",") if p.strip()]
 
     # Acontext Long-Term Memory Configuration
     # Enable Acontext for learning from past PRs

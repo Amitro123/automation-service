@@ -15,8 +15,11 @@ import {
 import MetricsPanel from './components/MetricsPanel';
 import TaskList from './components/TaskList';
 import IssuesPanel from './components/IssuesPanel';
+import ConfigPanel from '@/components/ConfigPanel';
+import PromptPlayground from '@/components/PromptPlayground';
 import ArchitecturePanel from './components/ArchitecturePanel';
 import LogViewer from './components/LogViewer';
+import { ManualTrigger } from './components/ManualTrigger';
 import {
   REPOSITORIES,
   MOCK_TASKS,
@@ -29,7 +32,7 @@ import {
 } from './constants';
 import { Repository, LogEntry, Task, Status, PRItem, BugItem } from './types';
 import { generateProjectFile } from './services/geminiService';
-import { fetchDashboardMetrics, fetchArchitecture, fetchHistory, RunHistoryItem, fetchSpecContent } from './services/apiService';
+import { fetchDashboardMetrics, fetchArchitecture, fetchHistory, RunHistoryItem, fetchSpecContent, fetchConfig, updateConfig } from './services/apiService';
 import SpecViewerModal from './components/SpecViewerModal';
 
 function App() {
@@ -55,10 +58,23 @@ function App() {
   const [prs, setPrs] = useState<PRItem[]>([]);
   const [projectProgress, setProjectProgress] = useState(0);
 
+  const [config, setConfig] = useState<any>(null);
+
   // Fetch real data from FastAPI backend
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // Fetch Config
+        try {
+          const configRes = await fetch('http://localhost:8080/api/config');
+          if (configRes.ok) {
+            const configData = await configRes.json();
+            setConfig(configData.effective);
+          }
+        } catch (e) {
+          console.error("Failed to fetch config", e);
+        }
+
         const data = await fetchDashboardMetrics();
         if (data) {
           setIsConnected(true);
@@ -74,6 +90,7 @@ function App() {
             estimatedCost: data.llm.estimatedCost,
             efficiencyScore: data.llm.efficiencyScore,
             sessionMemoryUsage: data.llm.sessionMemoryUsage,
+            totalRuns: data.llm.totalRuns || 0,
           });
           if (data.logs.length > 0) {
             setLogs(data.logs.map(l => ({ ...l, level: l.level as 'INFO' | 'WARN' | 'ERROR' })));
@@ -91,13 +108,22 @@ function App() {
         // Fetch History (map to Tasks)
         const historyData = await fetchHistory();
         if (historyData && historyData.length > 0) {
-          const historyTasks: Task[] = historyData.map((run: RunHistoryItem) => ({
-            id: run.id,
-            title: `Run ${run.commit_sha.substring(0, 7)} (${run.branch})`,
-            status: run.status === 'completed' ? Status.Completed :
-              run.status === 'running' ? Status.InProgress :
-                run.status === 'failed' ? Status.Failed : Status.Pending
-          }));
+          const historyTasks: Task[] = historyData.map((run: RunHistoryItem) => {
+            // Determine trigger indicator: PR runs are canonical ✅, push-only are secondary ⚡
+            // Logic: if trigger_type starts with 'pr_' OR if pr_number exists (and is not null/undefined)
+            const isPRRun = run.trigger_type?.startsWith('pr_') || (run.pr_number !== null && run.pr_number !== undefined && run.pr_number !== 0);
+            const triggerIcon = isPRRun ? '✅ PR' : '⚡ Push';
+            const prLabel = run.pr_number ? `#${run.pr_number}` : run.branch;
+
+            return {
+              id: run.id,
+              title: `${triggerIcon} ${run.commit_sha.substring(0, 7)} (${prLabel})`,
+              status: run.status === 'completed' ? Status.Completed :
+                run.status === 'running' ? Status.InProgress :
+                  run.status === 'failed' ? Status.Failed :
+                    run.status === 'skipped' ? Status.Pending : Status.Pending
+            };
+          });
           setTasks(historyTasks);
         }
 
@@ -119,6 +145,55 @@ function App() {
     const interval = setInterval(fetchData, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  const handleRefreshData = () => {
+    // Force refresh data immediately
+    const fetchData = async () => {
+      try {
+        const data = await fetchDashboardMetrics();
+        if (data) {
+          setIsConnected(true);
+          setCoverage({
+            total: data.coverage.total,
+            uncoveredLines: data.coverage.uncoveredLines,
+            mutationScore: data.coverage.mutationScore,
+            mutationStatus: data.coverage.mutationStatus,
+            mutationReason: data.coverage.mutationReason,
+          });
+          setMetrics({
+            tokensUsed: data.llm.tokensUsed,
+            estimatedCost: data.llm.estimatedCost,
+            efficiencyScore: data.llm.efficiencyScore,
+            sessionMemoryUsage: data.llm.sessionMemoryUsage,
+            totalRuns: data.llm.totalRuns || 0,
+          });
+          if (data.logs.length > 0) {
+            setLogs(data.logs.map(l => ({ ...l, level: l.level as 'INFO' | 'WARN' | 'ERROR' })));
+          }
+        }
+        const historyData = await fetchHistory();
+        if (historyData && historyData.length > 0) {
+          const historyTasks: Task[] = historyData.map((run: RunHistoryItem) => {
+            const isPRRun = run.trigger_type?.startsWith('pr_') || (run.pr_number !== null && run.pr_number !== undefined && run.pr_number !== 0);
+            const triggerIcon = isPRRun ? '✅ PR' : '⚡ Push';
+            const prLabel = run.pr_number ? `#${run.pr_number}` : run.branch;
+            return {
+              id: run.id,
+              title: `${triggerIcon} ${run.commit_sha.substring(0, 7)} (${prLabel})`,
+              status: run.status === 'completed' ? Status.Completed :
+                run.status === 'running' ? Status.InProgress :
+                  run.status === 'failed' ? Status.Failed :
+                    run.status === 'skipped' ? Status.Pending : Status.Pending
+            };
+          });
+          setTasks(historyTasks);
+        }
+      } catch (error) {
+        console.error('Refresh failed:', error);
+      }
+    };
+    fetchData();
+  };
 
   const handleViewSpec = async () => {
     setShowSpecModal(true);
@@ -171,6 +246,23 @@ function App() {
       alert("Generation failed. Check API Key.");
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  // Config save handler
+  const handleConfigSave = async (updates: any) => {
+    try {
+      const result = await updateConfig(updates);
+      if (result.success) {
+        // Refresh config
+        const configData = await fetchConfig();
+        setConfig(configData.effective);
+      } else {
+        throw new Error(result.errors?.join(', ') || 'Update failed');
+      }
+    } catch (error) {
+      console.error('Config save error:', error);
+      throw error;
     }
   };
 
@@ -292,8 +384,11 @@ function App() {
         )}
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 h-auto xl:h-[calc(100vh-14rem)] min-h-[850px]">
-          {/* Left Column: Metrics & Logs */}
+          {/* Left Column: Manual Trigger, Metrics & Logs */}
           <div className="flex flex-col gap-8 xl:col-span-1 h-full overflow-hidden">
+            <div className="flex-shrink-0">
+              <ManualTrigger onTrigger={handleRefreshData} />
+            </div>
             <div className="flex-shrink-0">
               <MetricsPanel coverage={coverage} llm={metrics} />
             </div>
@@ -308,12 +403,18 @@ function App() {
               <ArchitecturePanel diagramDefinition={architectureDiagram} />
             </div>
             <div className="flex-1 min-h-[250px]">
-              <TaskList tasks={tasks} progress={projectProgress} onViewSpec={handleViewSpec} />
+              <TaskList tasks={tasks} progress={projectProgress} onViewSpec={handleViewSpec} onRetry={handleRefreshData} />
             </div>
           </div>
 
           {/* Right Column: Issues & PRs */}
           <div className="flex flex-col gap-8 xl:col-span-1 h-full overflow-hidden">
+            <ConfigPanel config={config} onSave={handleConfigSave} />
+            <PromptPlayground
+              initialCodeReviewPrompt={config?.code_review_system_prompt}
+              initialDocsPrompt={config?.docs_update_system_prompt}
+              onSave={handleConfigSave}
+            />
             <IssuesPanel bugs={bugs} prs={prs} />
           </div>
         </div>

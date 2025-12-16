@@ -5,48 +5,81 @@ An autonomous GitHub automation system that triggers on **push and pull request 
 ## 💡 Why This Agent?
 
 - **Reduces repetitive code review work** — highlights risky changes and suggests fixes automatically
-- **Keeps docs always fresh** — README, spec.md, and code_review.md stay in sync with actual code changes
+- **Keeps docs always fresh** — README, spec.md, and AUTOMATED_REVIEWS.md stay in sync with actual code changes
 - **Intelligent layer over GitHub** — uses advanced LLMs + async orchestration instead of rigid YAML workflows
 
-## ✨ Features
+---
 
-### 1. 🔍 Automated Code Review
-- **Intelligent Analysis**: Uses LLMs (GPT-4o / Claude 3.5 / Gemini Pro) to analyze code changes
-- **Comprehensive Feedback**: Code quality, bugs, security, performance, best practices
-- **Flexible Output**: Commit comments, PR comments, GitHub issues, and persistent code_review.md logging
-- **Structured Reviews**: Strengths, issues, suggestions, security concerns
-- **Session Memory**: Maintains historic context for continuous improvement
+## 🎯 Key Capabilities
 
-### 2. 📝 Automatic Documentation Updates
-- **README Updater**: Context-aware, analyzes diffs to update docs
-- **Spec Updater**: Dynamically appends development progress logs
-- **Code Review Updater**: Appends review summaries to persistent logs
+### 1. StudioAI CLI
 
-### 3. 📊 Real-Time Dashboard
-- **Live Metrics**: Real test coverage from coverage.xml, LLM usage tracking, token costs, calculated efficiency scores
-- **Real Data Integration**: Fetches live bugs from GitHub issues, open PRs with check status, session memory metrics
-- **Visual Progress**: Task tracking with real statuses from automation runs
-- **Architecture Visualization**: Interactive Mermaid diagrams with clear component descriptions
-- **System Logs**: Real-time log viewer with filtering
-- **Security Status**: Bandit scan results and vulnerability tracking
-- **Multi-Repository**: Switch between repositories with live updates
+The `studioai` CLI provides easy configuration management:
 
-### 4. 📊 Project Progress & Metrics
+```bash
+# Initialize configuration
+
+![Architecture](.assets/architecture_diagram.png)
+
+studioai init
+
+# Interactive configuration
+studioai configure
+
+# Check system status
+studioai status
+
+# Test PR automation flow
+studioai test-pr-flow
+```
+
+Configuration is stored in `studioai.config.json` and can also be edited via:
+- **Dashboard**: Visual config panel with toggles and dropdowns
+- **API**: `PATCH /api/config` endpoint for programmatic updates
+- **Environment Variables**: Override any setting via env vars
+
+### 2. Interactive Dashboard
+
+Real-time monitoring and manual control via React dashboard (http://localhost:5173):
+
+**Manual Trigger**:
+- Trigger automation for any commit or branch without waiting for events
+- Input: Commit SHA or branch name  
+- Use case: Re-run automation after config changes, test on old commits
+- Location: Purple gradient panel at top of left column
+
+**Retry Failed Runs**:
+- One-click retry for failed automation runs
+- Automatically reconstructs original run context (PR or push)
+- Instant feedback with loading states and toast notifications
+- Location: "Retry" button next to failed runs
+
+**Features**:
+- ✅ Loading states with spinners
+- ✅ Toast notifications for success/error  
+- ✅ Automatic data refresh
+- ✅ Real-time log viewer
+- ✅ Live metrics and test coverage
+- ✅ Architecture visualization
+
+### 3. Project Progress & Metrics
 - Visual progress tracking with real-time updates
 - Test coverage and mutation testing integration using tools like mutmut
 - LLM usage stats: token consumption, cost estimation, efficiency
 - Security guardrails integrated with Bandit scans and CI/CD enforcement
 - Multi-repository support with auto-detection of required files (README.md, spec.md)
 
-### 5. 🎯 PR-Centric Automation (NEW)
-- **Trigger Modes**: Configure to respond to PRs only, pushes only, or both
+### 4. 🎯 PR-Centric Automation (Recommended)
+- **Trigger Modes**: Configure to respond to PRs only (`TRIGGER_MODE=pr`), pushes only, or both
 - **Trivial Change Filter**: Skip automation for small doc edits, whitespace-only changes
 - **Smart Task Routing**: Code review only runs on code changes, not doc-only PRs
-- **Grouped Automation PRs**: README + spec updates bundled into single PR per source PR
+- **Single Grouped Automation PR**: README + spec + AUTOMATED_REVIEWS.md bundled into **one PR** (`automation/pr-{pr_number}-updates`)
 - **PR Review Comments**: Code reviews posted as PR reviews instead of commit comments
-- **Configurable Thresholds**: Set max lines for trivial detection, doc file patterns
+- **Reuses Existing PRs**: Subsequent runs update the same automation PR instead of creating new ones
 
-### 6. 🛡️ Robust Error Handling & Zero Silent Failures (NEW - Dec 2025)
+> **⚠️ Important**: Automation grouping **only works for PR-triggered runs** (`TRIGGER_MODE=pr`). Push-only branches will **not create any automation PRs**—they only log runs to SessionMemory.
+
+### 5. 🛡️ Robust Error Handling & Zero Silent Failures
 - **No Silent Failures**: Every error is logged, tracked, and visible in SessionMemory
 - **Comprehensive Logging**: `[CODE_REVIEW]`, `[ORCHESTRATOR]`, `[JULES]`, `[GROUPED_PR]` prefixes for easy debugging
 - **Structured Error Returns**: All failures include `error_type` and `message` fields
@@ -58,18 +91,19 @@ An autonomous GitHub automation system that triggers on **push and pull request 
 - **Dashboard Visibility**: All failures visible in `/api/history` with detailed error reasons
 - **Run Status**: Properly set to `failed`, `completed_with_issues`, or `completed` based on task results
 
-### 7. 🔒 Security Features
+### 6. 🔒 Security Features
 - HMAC-SHA256 verification of webhook signatures
 - Minimal GitHub token scopes
 - No secrets logged; credential storage limited to environment variables
 - Automated security scans integrated in CI
+- Default `HOST=127.0.0.1` for local development (Docker uses `0.0.0.0`)
 
-### 8. 🗺️ Dynamic Architecture Diagram
+### 7. 🗺️ Dynamic Architecture Diagram
 - ARCHITECTURE.md includes a live Mermaid diagram reflecting system components and project progress
 - Automatically updated via scripts/CI when system or specs change
 - **Visualized in the Dashboard**
 
-### 9. 🧠 Self-Improving Capabilities (NEW - Dec 2025)
+### 8. 🧠 Self-Improving Capabilities (Acontext Integration)
 - **Long-Term Memory**: Acontext integration learns from past PR reviews
 - **Lesson Injection**: Past mistakes and successes injected into LLM prompts
 - **Similarity Search**: Finds relevant past sessions based on PR title and files
@@ -91,6 +125,19 @@ ACONTEXT_MAX_LESSONS=5                         # Max lessons per prompt
 ```
 
 > **Note**: With `STORAGE_TYPE=api`, if the Acontext API is unreachable, operations will fail and log errors. This prevents data loss in containerized environments where local storage is ephemeral.
+
+---
+
+## 📸 Dashboard Preview
+
+### Interactive Manual Trigger
+![Manual Trigger Flow] (./assets/architecture_diagram.png)
+
+*Trigger automation for any commit or branch with instant feedback - watch the purple gradient panel in action with loading states and toast notifications*
+
+> **Features Shown**: Manual trigger input → Loading spinner → Success toast → Real-time log updates
+
+---
 
 ## 🚀 Quick Start
 
@@ -117,7 +164,47 @@ cp .env.example .env
 
 Edit `.env` with your credentials.
 
-### Review Provider Configuration (NEW - Dec 2025)
+---
+
+## StudioAI CLI & Configuration
+
+This project features a **StudioAI CLI** for easy configuration and management, enabling a Spec-Driven Development workflow.
+
+### Quick Start
+Initialize the automation agent with the interactive wizard:
+```bash
+python -m automation_agent.cli init
+# OR if installed via pip
+studioai init
+```
+
+### Configuration Precedence
+The system loads configuration in the following order (highest precedence first):
+1.  **Environment Variables** (`.env`): Overrides everything.
+2.  **Configuration File** (`studioai.config.json`): Managed by the CLI.
+3.  **Defaults**: Hardcoded safe defaults.
+
+### CLI Commands
+
+| Command | Description |
+| :--- | :--- |
+| `studioai init` | Runs the interactive setup wizard. |
+| `studioai configure` | Updates configuration non-interactively (e.g., `--trigger-mode both`). |
+| `studioai status` | Checks system health and recent run stats via the API. |
+| `studioai test-pr-flow` | Triggers a smoke test for the PR automation flow. |
+
+### Configuration Options (`studioai.config.json`)
+```json
+{
+  "trigger_mode": "both",           // "pr", "push", or "both"
+  "group_automation_updates": true, // Group changes into single PR
+  "post_review_on_pr": true,        // Post review comments directly on PR
+  "repository_owner": "Owner",
+  "repository_name": "Repo"
+}
+```
+
+### Review Provider Configuration
 ```bash
 # Choose review provider: "llm" or "jules"
 REVIEW_PROVIDER=llm
@@ -139,40 +226,65 @@ JULES_SOURCE_ID=sources/github/owner/repo  # Get from: curl 'https://jules.googl
 python test_jules_review.py  # Validates config and tests API
 ```
 
-### PR-Centric Configuration (Optional)
+---
+
+## 🌐 Deployment
+
+### Docker Compose (Recommended)
+
+The easiest way to deploy both backend and dashboard together:
+
 ```bash
-# Trigger mode: "pr", "push", or "both" (default: both)
-TRIGGER_MODE=both
+# 1. Create .env file with your credentials
+cp .env.example .env
+# Edit .env with your API keys
 
-# Skip automation for trivial changes
-TRIVIAL_CHANGE_FILTER_ENABLED=True
-TRIVIAL_MAX_LINES=10
+# 2. Start all services
+docker-compose up -d
 
-# Post code review on PR instead of commit
-POST_REVIEW_ON_PR=True
+# 3. Access the application
+# Backend API: http://localhost:8080
+# Dashboard: http://localhost:5173
 
-# Group doc updates into single automation PR
-GROUP_AUTOMATION_UPDATES=True
+# 4. View logs
+docker-compose logs -f
+
+# 5. Stop services
+docker-compose down
 ```
 
-### Run Locally
+**Services included:**
+- `backend` - FastAPI server with automation engine
+- `dashboard` - React dashboard with nginx
 
-#### Option 1: FastAPI Server (Recommended - includes Dashboard API)
+See **[DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md)** for complete deployment guide including:
+- Production configuration
+- Health checks and monitoring
+- Troubleshooting
+- Security best practices
+- CI/CD integration
+
+---
+
+## 📊 Dashboard
+
+### Running the Dashboard
+
+The project includes a real-time dashboard for monitoring automation metrics, test coverage, LLM usage, and system status.
+
+**Start the dashboard:**
 ```bash
-# Windows (PowerShell)
-.venv\Scripts\python.exe run_api.py
-
-# Linux/Mac
-python run_api.py
+cd dashboard
+npm install  # First time only
+npm run dev
 ```
 
-#### Option 2: Flask Server (Legacy webhook-only)
-```bash
-# Windows (PowerShell)
-$env:PYTHONPATH = "$PWD/src"
-python -m automation_agent.main
+Dashboard runs on: **http://localhost:5173**
 
-# Linux/Mac
+See [`dashboard/DASHBOARD_SETUP.md`](dashboard/DASHBOARD_SETUP.md) for detailed setup and API integration instructions.
+
+---
+
 ## 🧲 Agent Platform Integration (Optional)
 
 Compatible with **Windsurf**, **AntiGravity**, **n8n**, or any agent orchestrator:
@@ -189,27 +301,47 @@ GitHub Push → Agent Platform Webhook → Orchestrator → GitHub API
 5. Calls `code_review_updater.py` → appends review summary to logs
 6. Platform handles retries, logging, notifications
 
+---
+
 ## 📋 Workflow
 
-### Standard Flow (Push Events)
-1. **Developer pushes code** → webhook triggers
-2. **Webhook verifies signature** → extracts diff/commit data
-3. **Trigger filter analyzes diff** → classifies as trivial/code/docs change
-4. **Orchestrator runs tasks based on change type:**
-   - Code review → comment/issue + persistent logs (code changes only)
-   - README update → PR (if changes detected)
-   - spec.md update → append entry
-   - code_review.md update → append review summary with session memory
-5. **Results posted** → repo stays documented automatically and progress tracked
+### PR-Centric Flow (Recommended ✅)
+> **This is the canonical E2E flow for grouped automation PRs.**
 
-### PR-Centric Flow (Pull Request Events)
 1. **Developer opens/updates PR** → webhook triggers
 2. **Trigger filter classifies event** → pr_opened, pr_synchronized, pr_reopened
 3. **Diff analyzed for trivial changes** → skip automation if trivial
 4. **Orchestrator runs context-aware tasks:**
    - Code review → posted as **PR review comment** (not commit comment)
    - Documentation updates → grouped into **single automation PR** per source PR
+   - Updates: README.md, spec.md, AUTOMATED_REVIEWS.md
 5. **Results linked to source PR** → clear audit trail
+
+```mermaid
+sequenceDiagram
+    participant Dev as Developer
+    participant GH as GitHub
+    participant API as api_server.py
+    participant Orch as orchestrator.py
+    participant GitHub as GitHub API
+    
+    Dev->>GH: Opens/Updates PR #123
+    GH->>API: Webhook (pull_request event)
+    API->>Orch: run_automation_with_context()
+    Orch->>Orch: Run tasks in parallel
+    Note right of Orch: code_review, readme_update, spec_update
+    Orch->>GitHub: Create/reuse branch automation/pr-123-updates
+    Orch->>GitHub: Commit README.md, spec.md, AUTOMATED_REVIEWS.md
+    Orch->>GitHub: Find existing PR for branch
+    alt PR exists
+        Orch->>GitHub: Update PR body
+    else No existing PR
+        Orch->>GitHub: Create new PR
+    end
+    Orch->>API: Return results
+```
+
+---
 
 ## 🧪 Testing
 
@@ -229,15 +361,41 @@ git push
 **Expected results:**
 - ✅ Code review comment/issue
 - ✅ README PR (if applicable)
-- ✅ spec.md + code_review.md entries appended
+- ✅ spec.md + AUTOMATED_REVIEWS.md entries appended
 
 ### Test Status
-**Current Pass Rate**: 100% (99/99 tests passing) as of 2025-11-30
+**Current Pass Rate**: 100% (147/147 tests passing) as of 2025-12-10
 
-- ✅ Unit Tests
-- ✅ Integration Tests
-- ✅ Edge Cases
-- ✅ Load Tests
+---
+
+## Quality & Evaluation
+
+We maintain high code quality standards through multiple layers of testing and evaluation.
+
+### Security (Bandit)
+We use [Bandit](https://github.com/PyCQA/bandit) to scan for common security issues in Python code.
+- **Run Locally**: `bandit -r src/ -ll`
+- **CI**: Runs on every PR (blocking).
+
+### Fast Tests (Unit & Integration)
+Standard pytest suite for logic and integration testing.
+- **Run Locally**: `python -m pytest`
+- **CI**: Runs on every PR (blocking).
+
+### Mutation Tests (Deep Testing)
+We use mutation testing to verify test suite quality.
+- **Run Locally (Windows/Linux)**: `python src/automation_agent/mutation_service.py` (or check scripts).
+- **CI**: scheduled nightly or manual.
+
+### LLM Evaluation (DeepEval)
+We use [DeepEval](https://github.com/confident-ai/deepeval) to evaluate the quality of LLM-generated code reviews and documentation updates.
+- **Location**: `tests/deepeval/`
+- **Run Locally**: `deepeval test run tests/deepeval/test_*.py`
+- **Requirement**: `GEMINI_API_KEY` (or configured provider key) must be set.
+- **Note**: If the API key is missing, these tests will automatically **skip** to prevent blocking development.
+- **CI**: Runs on `main` and `ai-eval` branches, or scheduled/manual triggers.
+
+---
 
 ## 📦 Project Structure
 
@@ -264,114 +422,5 @@ automation_agent/
 └── tests/                             # Pytest test suite
 ```
 
-## 🗺️ Roadmap
-
-- ✅ Multi-LLM support (Gemini, local models)
-- 🔗 Multi-repo orchestration
-- 🎛️ Per-branch policies (strict main, relaxed feature branches)
-- 🔔 Integrations: Slack/Jira/n8n notifications
-- 📊 Metrics dashboard for review quality and velocity
-
-## 🔒 Security
-
-- HMAC-SHA256 webhook signature verification
-- Minimal GitHub token scopes
-- No logging of secrets/diffs
-- Environment-only credential storage
-- Guardrails tests with Bandit integrated into CI (`.github/workflows/security.yml`)
-
-## 📊 Dashboard
-
-### Running the Dashboard
-
-The project includes a real-time dashboard for monitoring automation metrics, test coverage, LLM usage, and system status.
-
-**Start the dashboard:**
-```bash
-cd dashboard
-npm install  # First time only
-npm run dev
-```
-
-Dashboard runs on: **http://localhost:5173**
-
-**Features:**
-- 📊 Live test coverage and mutation scores
-- 💰 LLM token usage and cost tracking
-- 📋 Task progress and bug tracking
-- 🔐 Security status from Bandit scans
-- 📝 Real-time system logs
-- 🗺️ Interactive architecture diagrams (Live from `ARCHITECTURE.md`)
-- 📜 Session History & Run Logs
-
-See [`dashboard/DASHBOARD_SETUP.md`](dashboard/DASHBOARD_SETUP.md)
-
-5. Displays results in Actions summary
-6. (Optional) Comments on PRs with scores
-
-**Using CI results in dashboard:**
-1. Download `mutation_results.json` from workflow artifacts
-2. Copy to repo root
-3. Restart API server: `python run_api.py`
-4. Dashboard displays real mutation score
-
-See [`.github/workflows/MUTATION_TESTING.md`](.github/workflows/MUTATION_TESTING.md) for details.
- On Windows, the feature will show as "skipped" with instructions. Run mutation tests in CI for best results.
- for detailed setup and API integration instructions.
-
-## 🌐 Deployment
-
-### Docker Deployment
-```bash
-docker build -t automation-agent .
-docker run -p 8080:8080 --env-file .env automation-agent
-```
-
-### Docker Compose (Recommended)
-```bash
-docker-compose up -d
-```
-
-### CI/CD
-Included GitHub Actions workflow (`.github/workflows/ci.yml`) runs tests on every push and builds Docker image on main branch pushes.
-
-## Diagram
-
-The project includes an ARCHITECTURE.md file with a live Mermaid diagram illustrating the system and project progress.
-
-**Example Mermaid snippet:**
-
-```mermaid
-graph TD
-    %% Backend Core (The Brain)
-    subgraph Backend["Backend Core (The Brain)"]
-        Webhook[Webhook Server]:::component
-        Orchestrator[Async Orchestrator]:::orchestrator
-        SessionMem[Session Memory Store]:::memory
-        
-        %% Parallel Tasks
-        subgraph Tasks["Parallel Tasks"]
-            Reviewer[Code Reviewer]:::component
-            ReadmeUp[README Updater]:::component
-            SpecUp[Spec Updater]:::component
-            ReviewUp[Code Review Updater]:::component
-        end
-    end
-
-    %% Frontend (Consumer)
-    subgraph Frontend["Frontend (Consumer)"]
-        Dashboard[React Dashboard]:::frontend
-    end
-
-    Webhook -->|Trigger| Orchestrator
-    Orchestrator -->|Init Run| SessionMem
-    Dashboard -->|Fetch Metrics/History| Webhook
-    Webhook -.->|Read| SessionMem
-```
-
-The diagram updates automatically as the project evolves.
-
 ## 📄 License
-MIT#   T e s t 
- 
- 
+MIT

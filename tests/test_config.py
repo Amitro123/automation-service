@@ -12,30 +12,26 @@ class TestConfig(unittest.TestCase):
             "REPOSITORY_OWNER": "owner",
             "REPOSITORY_NAME": "repo",
             "OPENAI_API_KEY": "key",
-            "LLM_PROVIDER": "openai"
+            "LLM_PROVIDER": "openai",
+            "JULES_API_KEY": "jules_key",
+            "JULES_SOURCE_ID": "source",
         }):
-            # Reload config to pick up env vars
-            # Since Config properties are class attributes loaded at import time,
-            # we need to mock the class attributes or reload the module.
-            # However, the validate method checks the class attributes.
-            # Let's mock the attributes directly on the class for the test.
-
-            Config.GITHUB_TOKEN = "token"
-            Config.GITHUB_WEBHOOK_SECRET = "secret"
-            Config.REPOSITORY_OWNER = "owner"
-            Config.REPOSITORY_NAME = "repo"
-            Config.OPENAI_API_KEY = "key"
-            Config.LLM_PROVIDER = "openai"
-
+            # Clear any cached file config
+            Config._file_config = {}
             errors = Config.validate()
             self.assertEqual(errors, [])
 
     def test_validate_failure(self):
-        Config.GITHUB_TOKEN = ""
-        errors = Config.validate()
-        self.assertIn("GITHUB_TOKEN is required", errors)
+        # Ensure environment is clean/missing keys
+        with patch.dict(os.environ, {}, clear=True):
+             Config._file_config = {} # correct way to clear cache
+             errors = Config.validate()
+             self.assertIn("GITHUB_TOKEN is required", errors)
 
     def test_get_repo_full_name(self):
-        Config.REPOSITORY_OWNER = "owner"
-        Config.REPOSITORY_NAME = "repo"
-        self.assertEqual(Config.get_repo_full_name(), "owner/repo")
+        with patch.dict(os.environ, {
+            "REPOSITORY_OWNER": "owner",
+            "REPOSITORY_NAME": "repo"
+        }):
+            Config._file_config = {}
+            self.assertEqual(Config.get_repo_full_name(), "owner/repo")

@@ -10,6 +10,7 @@ def mock_config():
     config.POST_REVIEW_AS_ISSUE = False
     config.CREATE_PR = True
     config.AUTO_COMMIT = False
+    config.GROUP_AUTOMATION_UPDATES = False
     return config
 
 @pytest.fixture

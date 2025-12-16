@@ -73,7 +73,7 @@ class SpecUpdater:
             logger.error(f"Failed to generate spec update: {e}")
             return {
                 "success": False,
-                "error_type": "spec_generation_failed",
+                "error_type": "spec_update_error",
                 "message": str(e)
             }
 

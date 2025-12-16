@@ -65,6 +65,7 @@ export const INITIAL_METRICS: LLMMetrics = {
   estimatedCost: 1.45,
   efficiencyScore: 88,
   sessionMemoryUsage: 42,
+  totalRuns: 0,
 };
 
 export const COVERAGE_DATA: CoverageMetrics = {

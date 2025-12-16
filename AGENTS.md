@@ -40,11 +40,53 @@ dashboard/ # React + Vite dashboard
 ├── services/apiService.ts # FastAPI client
 └── components/ # UI components
 run_api.py # FastAPI server launcher (NEW)
-.env.example # Configuration template
+.env.example ## Configuration & CLI
+**Primary Config Source**: `src/automation_agent/config.py`.
+- PRECEDENCE: `os.environ` > `studioai.config.json` > Defaults.
+- **Do NOT** hardcode values. Always use `Config.MY_VAR`.
+- **Do NOT** manually edit `studioai.config.json` without verifying key names.
+- Use `Config.validate()` to ensure required values exist.
+
+### StudioAI CLI
+- **Purpose**: Interactive configuration wizard + status checks.
+- **Commands**:
+  - `studioai init` → Initialize `studioai.config.json` with interactive prompts.
+  - `studioai configure` → Edit existing config interactively.
+  - `studioai status` → Show current config + GitHub connection status.
+  - `studioai test-pr-flow` → Simulate a PR event for testing.
+
+### Runtime Configuration
+- **Config File**: `studioai.config.json` (created by CLI or API)
+- **Precedence**: Environment Variables > Config File > Defaults
+- **Runtime Editing**: 
+  - **Dashboard**: Visual config panel with toggles, dropdowns, and save button
+  - **API**: `PATCH /api/config` endpoint for programmatic updates
+  - **CLI**: `studioai configure` for interactive updates
+- **No Restart Required**: All config changes apply immediately to new automation runs
+
+### Prompt Playground
+- **Purpose**: Customize LLM behavior for code reviews and documentation updates
+- **Access**: Dashboard UI with tabbed interface (Code Review / Docs Update)
+- **Features**:
+  - Live editing of system prompts
+  - Character counter
+  - Reset to defaults
+  - Immediate persistence to `studioai.config.json`
+- **Impact**: Tune tone, strictness, focus areas without code changes
+The CLI (`src/automation_agent/cli.py`) is the user-facing interface for configuration.
+- When adding new config vars, update:
+    1. `Config` class in `config.py` (add property and default).
+    2. `init` and `configure` commands in `cli.py` (if user-configurable).
+    3. `ConfigMeta` in `config.py` (for static access compatibility).
+
 requirements.txt # Dependencies
 README.md # User documentation
 spec.md # Product spec + progress log
 
+
+## Testing
+- **Run Tests**: `pytest`
+- **CLI Tests**: `pytest tests/test_cli_config.py`
 
 ## 🚀 Setup & Run
 
@@ -67,20 +109,9 @@ python -m automation_agent.main # http://localhost:8080/
 
 ## 🛠️ Core Workflow (NEVER BREAK THIS)
 
-### Push Event Flow
-```
-GitHub Push Event → webhook_server.py/api_server.py
-→ Verify HMAC signature → extract diff/commit SHA
-→ trigger_filter.py → classify event + analyze diff
-→ IF trivial change: skip automation, log reason
-→ ELSE: orchestrator.py → run tasks IN PARALLEL:
-   ↳ code_reviewer.py → post comment/issue
-   ↳ readme_updater.py → create PR (if changes)
-   ↳ spec_updater.py → append to spec.md
-→ Log results + GitHub artifacts created
-```
+### PR-Centric Flow (Recommended ✅)
+> **This is the canonical flow for grouped automation PRs.**
 
-### Pull Request Event Flow (NEW)
 ```
 GitHub PR Event (opened/synchronized/reopened) → api_server.py
 → Verify HMAC signature → extract PR number + diff
@@ -88,9 +119,30 @@ GitHub PR Event (opened/synchronized/reopened) → api_server.py
 → IF trivial change: skip automation, log reason
 → ELSE: orchestrator.run_automation_with_context():
    ↳ code_reviewer.py → post PR REVIEW (not commit comment)
-   ↳ readme_updater.py + spec_updater.py → grouped into SINGLE automation PR
+   ↳ readme_updater.py + spec_updater.py + review_log → SINGLE automation PR
 → Session memory tracks: trigger_type, run_type, pr_number, skip_reason
 ```
+
+**Result**: One grouped automation PR (`automation/pr-{pr_number}-updates`) with README.md + spec.md + AUTOMATED_REVIEWS.md.
+
+### Push-Only Flow (Secondary)
+> Push events without PRs run automation but **do NOT create any automation PRs**.
+
+```
+GitHub Push Event → webhook_server.py/api_server.py
+→ Verify HMAC signature → extract diff/commit SHA
+→ trigger_filter.py → classify event + analyze diff
+→ IF on automation/* branch: skip (prevents infinite loops)
+→ IF trivial change: skip automation, log reason
+→ ELSE: orchestrator.py → run tasks IN PARALLEL:
+   ↳ code_reviewer.py → post comment/issue
+   ↳ readme_updater.py → returns content only (no PR)
+   ↳ spec_updater.py → returns content only (no PR)
+→ Log: "Skipping automation PR creation because pr_number is None"
+→ SessionMemory logs the run, but GitHub stays clean
+```
+
+**Important**: Push-only events **never create automation PRs**—only SessionMemory logs.
 
 **All tasks log execution to `session_memory.py`**
 
@@ -302,7 +354,7 @@ Your changes are successful if:
   - Never overwrite the log, always append.
   - If `AUTOMATED_REVIEWS.md` is missing, create it.
   - Use `LLMClient.summarize_review` for consistency.
-  - Note: Uses `AUTOMATED_REVIEWS.md` (not `code_review.md`) to avoid collision with `CODE_REVIEW.md` on case-insensitive filesystems.
+  - Note: Uses `AUTOMATED_REVIEWS.md` to avoid collision with `CODE_REVIEW.md` (manual reports).
 
 ---
 
@@ -376,3 +428,105 @@ When working on this codebase:
 4. **Never allow silent failures** - every error must be visible
 5. **Test with** `python check_e2e.py` after changes
 6. **Verify Jules integration with** `python test_jules_review.py`
+
+---
+
+## 🐳 Docker Compose Deployment (NEW - Dec 2025)
+
+### Quick Start
+```bash
+# 1. Create .env file
+cp .env.example .env
+# Edit with your credentials
+
+# 2. Start all services
+docker-compose up -d
+
+# 3. Access
+# Backend API: http://localhost:8080
+# Dashboard: http://localhost:5173
+
+# 4. View logs
+docker-compose logs -f
+
+# 5. Stop
+docker-compose down
+```
+
+### Architecture
+- **Backend Service** (`automation-agent-backend`):
+  - FastAPI server with automation engine
+  - Health checks every 30s
+  - Persistent volumes for session data
+  - Port: 8080
+
+- **Dashboard Service** (`automation-agent-dashboard`):
+  - React + Vite build with nginx
+  - API proxy to backend
+  - Health checks every 30s
+  - Port: 5173 (nginx on port 80 internally)
+
+- **Networking**:
+  - Bridge network `automation-network`
+  - Services communicate via service names
+  - Dashboard proxies `/api/*` to `http://backend:8080`
+
+### Files
+- `Dockerfile` - Backend container (FastAPI + health checks)
+- `dashboard/Dockerfile` - Frontend container (multi-stage: Node builder + nginx)
+- `dashboard/nginx.conf` - Production web server config (SPA routing + API proxy)
+- `docker-compose.yml` - Multi-service orchestration
+- `DOCKER_DEPLOYMENT.md` - Comprehensive deployment guide
+
+### Configuration
+- **HOST Binding**: Defaults to `127.0.0.1` for local dev, set to `0.0.0.0` for Docker
+- **Environment Variables**: All config via `.env` file or Docker secrets
+- **Health Checks**: Both services have automated health monitoring
+- **Persistent Data**: Volumes for `session_memory.json`, `coverage.xml`, docs
+
+### Security Improvements (Dec 2025)
+- ✅ Fixed silent exception handler in `api_server.py`
+- ✅ Changed default HOST from `0.0.0.0` to `127.0.0.1` (local dev security)
+- ✅ Docker explicitly sets `HOST=0.0.0.0` when needed
+- ✅ All 150 tests passing after security fixes
+
+See **[DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md)** for production deployment, troubleshooting, and best practices.
+
+---
+
+## 🎮 Dashboard Actions API (NEW - Dec 2025)
+
+### Manual Trigger & Retry Endpoints
+
+**`POST /api/runs/{run_id}/retry`**
+- Retry a failed automation run
+- Reconstructs original event payload (PR or push)
+- Triggers automation in background
+- Returns: `{ success, message, original_run_id, commit_sha, pr_number }`
+
+**`POST /api/manual-run`**
+- Manually trigger automation for any commit or branch
+- Request body: `{ commit_sha?: string, branch?: string }`
+- Resolves branch to latest commit if needed
+- Returns: `{ success, message, commit_sha, branch }`
+
+**Frontend Components**:
+- `ManualTrigger.tsx` - Gradient purple panel with commit/branch inputs
+- `TaskList.tsx` - Retry button for failed runs with loading states
+- Both include toast notifications and automatic data refresh
+
+**Usage**:
+```bash
+# Retry a failed run
+curl -X POST http://localhost:8080/api/runs/run_abc123/retry
+
+# Manual trigger by branch
+curl -X POST http://localhost:8080/api/manual-run \
+  -H "Content-Type: application/json" \
+  -d '{"branch": "main"}'
+
+# Manual trigger by commit
+curl -X POST http://localhost:8080/api/manual-run \
+  -H "Content-Type: application/json" \
+  -d '{"commit_sha": "abc123def456"}'
+```

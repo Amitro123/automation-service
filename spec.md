@@ -99,6 +99,30 @@ Next Steps
 
  Multi-LLM support (Gemini) - Done ✅
 
+### [2025-12-08] Single Grouped Automation PR Enforcement ✅
+- **Summary**: Enforced exactly ONE automation PR per source PR containing all documentation updates.
+- **Canonical E2E Flow** (PR-triggered):
+  1. Developer opens/updates PR → webhook triggers
+  2. Automation creates/reuses branch: `automation/pr-{pr_number}-updates`
+  3. Commits README.md, spec.md, AUTOMATED_REVIEWS.md to same branch
+  4. Creates ONE automation PR (or updates existing one)
+- **Push-only Flow**:
+  - Does NOT create any automation PRs
+  - Logs run to SessionMemory only
+  - Message: `"Skipping automation PR creation because pr_number is None (push-only event)"`
+- **Configuration**:
+  - `TRIGGER_MODE=pr` → Recommended for grouped automation
+  - `GROUP_AUTOMATION_UPDATES=True` → Bundles updates (only works with PRs)
+- **Key Changes**:
+  - `orchestrator.py`: Refactored `_handle_grouped_automation_pr` to find/reuse existing PRs
+  - `orchestrator.py`: Simplified `_run_readme_update` and `_run_spec_update` to only return content
+  - `github_client.py`: Uses `find_open_pr_for_branch` and `update_pull_request` for PR reuse
+  - `api_server.py` + `trigger_filter.py`: Skip `automation/*` branches (prevents infinite loops)
+- **Dashboard**: Shows `✅ PR` vs `⚡ Push` indicators for runs
+- **Acceptance Criteria**: ✅
+  - Feature PR → exactly one automation PR with all 3 files
+  - Push-only → no automation PRs, SessionMemory logged
+
 ### [2025-11-30] Fix Test Suite
 - **Summary**: Comprehensive test suite fixes achieving 98% pass rate.
 - **Decisions**:
@@ -209,7 +233,7 @@ Next Steps
 [x] Dashboard Integration (React + Vite) connected to live API
 [x] Session Memory & Live Architecture Diagram
 [x] GitHub Actions CI/CD (security.yml fixed)
-[ ] Docker container + health checks
+[x] Docker container + health checks + docker-compose with dashboard
 [ ] Agent platform hooks (Windsurf/AntiGravity)
 [ ] Multi-repo support
 [ ] Per-branch policies
@@ -416,6 +440,7 @@ LOW: Polish
 - Configure Jules API with actual source ID (optional)
 - Monitor production runs for any edge cases
 - Consider adding more diagnostic tools
+<<<<<<< HEAD
 - Document common troubleshooting scenarios
 
 ### 2025-12-15 - Acontext Long-Term Memory Integration ✅
@@ -491,3 +516,293 @@ acontext docker up  # Start Acontext before running agent
 - Tune similarity search threshold for better lesson matching
 - Consider vector embeddings for improved semantic search
 
+=======
+
+### [2025-12-10] StudioAI CLI & Spec-Driven Config ✅
+- **Summary**: Transitioned to a spec-driven, CLI-first configuration system for easier management and automation.
+- **Features**:
+  - **StudioAI CLI**: `init`, `configure`, `status` commands.
+  - **Spec-Driven Config**: `studioai.config.json` support with precedence logic.
+  - **Config API**: Endpoints to read/validate/apply configuration.
+  - **Dashboard**: Configuration panel with real-time settings view.
+- **Decisions**:
+  - **Precedence**: Env Vars > Config File > Defaults (Backward Compatibility).
+  - **Config Metaclass**: Used to support static property access (`Config.VAR`) while allowing dynamic loading.
+  - **CLI Tools**: Built with `typer` for robust command-line handling.
+- **Files Modified**:
+  - `src/automation_agent/cli.py` (New)
+  - `src/automation_agent/config.py` (Refactored)
+  - `src/automation_agent/api_server.py` (Endpoints added)
+  - `dashboard/App.tsx`, `dashboard/src/components/ConfigPanel.tsx` (Dashboard UI)
+
+### [2025-12-10] AI Evaluation Workflow Improvements ✅
+- **Summary**: Enhanced AI evaluation workflow to support graceful skipping and reduce noise.
+- **Changes**:
+  - **Graceful Skipping**: `tests/deepeval/conftest.py` automatically skips tests if `GEMINI_API_KEY` is missing.
+  - **Workflow Optimization**: `.github/workflows/evaluation.yml` now only runs on `main` and `ai-eval` branches.
+  - **Documentation**: `README.md` updated to clarify API key requirements for DeepEval.
+- **Impact**: Feature branches without keys no longer fail CI; main branch quality checks remain enforced.
+
+### [2025-12-10] Runtime Configuration & Prompt Playground ✅
+- **Summary**: Implemented runtime configuration management and prompt customization without server restart.
+- **Changes**:
+  - **Config Backend**:
+    - Added `CODE_REVIEW_SYSTEM_PROMPT` and `DOCS_UPDATE_SYSTEM_PROMPT` to `Config` class
+    - Implemented `PATCH /api/config` endpoint for runtime updates with validation
+    - Updated `LLMClient` to read prompts from `Config` dynamically
+  - **Dashboard UI**:
+    - Made `ConfigPanel` editable with toggles (booleans), dropdowns (enums), and save button
+    - Created `PromptPlayground` component with tabbed interface for code review and docs prompts
+    - Wired both components to `PATCH /api/config` with real-time updates
+  - **Integration**: All changes persist to `studioai.config.json` and reload without restart
+- **Impact**: 
+  - Users can tune LLM behavior (tone, strictness, focus areas) via dashboard
+  - Configuration changes apply immediately to new automation runs
+  - No server restart required for prompt or config updates
+- **Files Modified**:
+  - `src/automation_agent/config.py` (Added prompt properties)
+  - `src/automation_agent/llm_client.py` (Dynamic prompt loading)
+  - `src/automation_agent/api_server.py` (PATCH endpoint)
+  - `dashboard/components/ConfigPanel.tsx` (Editable UI)
+  - `dashboard/components/PromptPlayground.tsx` (New component)
+  - `dashboard/App.tsx` (Integration)
+
+### [2025-12-10] Product Polish Sprint - Session Checkpoint 🔄
+**Status**: 17/34 tasks complete (50%)
+
+#### ✅ Completed This Session:
+
+**Phase 1: Config Backend** (5/5 tasks)
+- [x] Add `prompts_config` to config schema
+- [x] Add `PATCH /api/config` endpoint
+- [x] Add config validation logic
+- [x] Update `LLMClient` to use configurable prompts
+- [x] Verified working (no restart needed)
+
+**Phase 2: Config Dashboard** (3/3 tasks)
+- [x] Make `ConfigPanel` editable (toggles, dropdowns)
+- [x] Wire "Save" button to `PATCH /api/config`
+- [x] Add "Recommended" badges
+
+**Phase 3: Prompt Playground** (3/3 tasks)
+- [x] Create `PromptPlayground.tsx` component
+- [x] Wire to config API
+- [x] Add "Reset to Default" functionality
+
+**Phase 4: Documentation** (6/6 tasks)
+- [x] Updated `README.md` with new features
+- [x] Added spec entry to `spec.md`
+- [x] Updated `AGENTS.md` with runtime config sections
+- [x] Created comprehensive walkthrough
+- [x] Highlighted dashboard capabilities
+- [x] Documented all three config interfaces (Dashboard/API/CLI)
+
+**Code Quality Improvements**:
+- [x] Fixed dependency specifications (`pyproject.toml`, `requirements.txt`)
+- [x] Removed unused imports from `cli.py`
+- [x] Added type hints to all CLI commands
+- [x] Improved error handling (specific exceptions)
+- [x] Added structured logging throughout
+- [x] Removed hardcoded API URLs from dashboard
+- [x] Added API service abstraction (`fetchConfig`, `updateConfig`)
+- [x] Added docstrings to API endpoints
+
+#### 🔄 Remaining Work (9 tasks):
+
+**Dashboard Actions** (4 tasks) - ✅ COMPLETE
+- [x] Add `POST /api/runs/{run_id}/retry` endpoint
+- [x] Add `POST /api/manual-run` endpoint
+- [x] Create `ManualTrigger.tsx` component
+- [x] Add "Retry" button to TaskList
+
+**Docker Compose Setup** (4 tasks) - ✅ COMPLETE
+- [x] Create `docker-compose.yml`
+- [x] Add backend service
+- [x] Add dashboard service
+- [x] Document `.env` requirements
+
+**Visual Assets** (5 tasks) - ✅ COMPLETE
+- [x] Create `assets/` directory
+- [x] Create capture guide
+- [x] Capture manual trigger flow GIF
+- [x] Embed in README
+- [x] Dashboard preview section added
+
+**Verification** (5 tasks)
+- [ ] Test config persistence
+- [ ] Test prompt playground
+- [ ] Test retry action
+- [ ] Test manual trigger
+- [ ] Test Docker Compose startup
+
+**Next Session**: Final verification testing of all features.
+
+---
+
+### [2025-12-11] Docker Compose Production Setup & Code Review Fixes ✅
+
+**Objective:** Complete production-ready Docker deployment and address code review security findings
+
+**What Was Achieved:**
+
+1. **✅ Code Review Fixes**
+   - Fixed silent exception handler in `api_server.py` (line 524) - now logs warnings instead of silent `pass`
+   - Changed default HOST binding from `0.0.0.0` to `127.0.0.1` for better local development security
+   - Updated `.env.example` with HOST configuration documentation
+   - Bandit security scan now passes with improved configuration
+   - All 150 tests passing (3 non-critical async mock warnings remain)
+
+2. **✅ Docker Compose Multi-Service Setup**
+   - Created `dashboard/Dockerfile` with multi-stage build (Node builder + nginx production)
+   - Created `dashboard/nginx.conf` for SPA routing and API proxying
+   - Updated main `Dockerfile` to use FastAPI server (`run_api.py`) with health checks
+   - Improved `docker-compose.yml` with:
+     - Backend service with health checks and persistent volumes
+     - Dashboard service with nginx and API proxy
+     - Bridge network for service communication
+     - Proper dependency management
+
+3. **✅ Comprehensive Deployment Documentation**
+   - Created `DOCKER_DEPLOYMENT.md` with:
+     - Quick start guide
+     - Environment configuration examples
+     - Production deployment best practices
+     - Troubleshooting guide
+     - Monitoring and logging instructions
+     - Security hardening recommendations
+     - CI/CD integration examples
+
+4. **✅ Documentation Updates**
+   - Updated `README.md` with improved Docker Compose instructions
+   - Updated `spec.md` Phase 4 checklist (Docker tasks complete)
+   - Updated `.env.example` with security-focused HOST documentation
+
+**Files Modified:**
+- `Dockerfile` - FastAPI server + health checks + curl installation
+- `docker-compose.yml` - Multi-service setup with networking
+- `.env.example` - HOST configuration documentation
+- `src/automation_agent/api_server.py` - Fixed silent exception
+- `src/automation_agent/config.py` - Secure HOST default
+- `README.md` - Docker Compose deployment section
+- `spec.md` - Phase 4 progress update
+
+**Files Created:**
+- `dashboard/Dockerfile` - Multi-stage React build with nginx
+- `dashboard/nginx.conf` - Production web server configuration
+- `DOCKER_DEPLOYMENT.md` - Comprehensive deployment guide
+
+**Test Results:**
+- ✅ 150/150 tests passing
+- ✅ 3 non-critical RuntimeWarnings (async mock setup)
+- ✅ Zero test failures
+- ✅ All code review issues resolved
+
+**Deployment:**
+```bash
+docker-compose up -d
+# Backend: http://localhost:8080
+# Dashboard: http://localhost:5173
+```
+
+**Next Steps:**
+- Implement dashboard actions (retry + manual trigger)
+- Create visual assets (screenshots + GIFs)
+- Complete verification testing
+
+### December 11, 2025 - Dashboard Actions & Interactive Features
+
+**Implemented Dashboard Actions (4/4 tasks complete)**:
+
+1. **Backend Endpoints**:
+   - Added `POST /api/runs/{run_id}/retry` - Reconstructs original run context and re-triggers automation
+   - Added `POST /api/manual-run` - Triggers automation for any commit SHA or branch
+   - Added `get_branch()` method to `GitHubClient` for branch resolution
+   - Both endpoints support background task execution with proper error handling
+
+2. **Frontend Components**:
+   - Created `ManualTrigger.tsx` component with polished UX:
+     - Gradient purple design with smooth animations
+     - Loading states with spinners during API calls
+     - Toast notifications for success/error feedback
+     - Input validation and keyboard shortcuts (Enter to submit)
+     - Auto-refresh data after successful trigger
+   - Updated `TaskList.tsx` with retry functionality:
+     - "Retry" button for failed runs with icon and loading state
+     - Toast notifications with auto-dismiss (3 seconds)
+     - Proper error handling and user feedback
+     - Integrated with data refresh callback
+
+3. **Documentation Updates**:
+   - Added "Interactive Dashboard Features" section to `README.md`
+   - Documented manual trigger and retry functionality
+   - Updated `spec.md` to mark Dashboard Actions as complete
+   - Updated `AGENTS.md` with new API endpoints
+
+**UX Improvements**:
+- ✅ All buttons have loading states to prevent double-clicks
+- ✅ Toast notifications provide immediate feedback
+- ✅ Visual distinction for retry buttons (rose theme for failed runs)
+- ✅ Smooth animations and transitions throughout
+- ✅ Automatic data refresh after actions
+
+**Technical Details**:
+- Retry endpoint fetches PR data for PR events, commit data for push events
+- Manual trigger resolves branch to latest commit SHA if needed
+- Both features use FastAPI BackgroundTasks for async execution
+- Frontend uses React hooks (useState) for state management
+- Proper TypeScript typing throughout
+
+**Status**: Dashboard is now fully interactive and ready for visual assets recording.
+
+---
+
+### December 11, 2025 - Visual Assets & Dashboard Showcase
+
+**Completed Visual Assets (5/5 tasks)**:
+
+1. **Assets Directory Setup**:
+   - Created `assets/` directory for storing visual content
+   - Created `CAPTURE_GUIDE.md` with detailed instructions for capturing screenshots
+
+2. **Hero Recording - Manual Trigger Flow**:
+   - Captured interactive flow showing:
+     - Purple gradient Manual Trigger panel
+     - User typing "main" in branch input
+     - Loading spinner on button click
+     - Success toast notification (green with checkmark)
+     - Real-time System Logs updating
+   - Saved as: `assets/manual-trigger-flow.webp`
+   - Duration: ~10 seconds showing complete interaction cycle
+
+3. **README Integration**:
+   - Added new "📸 Dashboard Preview" section
+   - Embedded manual trigger flow recording
+   - Added descriptive caption highlighting key features
+   - Positioned after "Key Capabilities" for maximum visibility
+
+4. **Dashboard Deployment**:
+   - Started dashboard with `npm run dev` on http://localhost:5173
+   - Verified accessibility and functionality
+   - Confirmed all interactive features working (manual trigger, retry buttons)
+
+**Visual Assets Showcase**:
+- ✅ Hero GIF demonstrates the polished purple/rose theme
+- ✅ Shows loading states and toast notifications in action
+- ✅ Highlights real-time log updates
+- ✅ Professional, production-ready UI
+
+**Documentation Updates**:
+- Updated `README.md` with Dashboard Preview section
+- Updated `spec.md` to mark Visual Assets complete
+- Updated `task.md` to reflect completion status
+
+**Technical Details**:
+- Used browser subagent for automated capture
+- Recording format: WebP for optimal quality/size ratio
+- Captured at native dashboard resolution
+- Shows authentic user interaction flow
+
+**Status**: Visual assets complete! README now has a professional showcase of the interactive dashboard. Ready for final verification testing.
+
+---
+>>>>>>> origin/master

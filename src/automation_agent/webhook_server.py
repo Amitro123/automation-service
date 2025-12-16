@@ -59,6 +59,7 @@ class WebhookServer:
         self.session_memory = SessionMemoryStore()
 
         # Initialize orchestrator
+        # Initialize orchestrator
         self.orchestrator = AutomationOrchestrator(
             github_client=self.github_client,
             code_reviewer=self.code_reviewer,
@@ -70,6 +71,10 @@ class WebhookServer:
         )
 
         logger.info("Webhook server components initialized")
+        logger.warning(
+            "DEPRECATION WARNING: WebhookServer is deprecated and will be removed in a future release. "
+            "Please use 'api_server.py' (FastAPI) instead."
+        )
 
     def _setup_routes(self):
         """Setup Flask routes."""

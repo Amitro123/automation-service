@@ -10,10 +10,19 @@ from automation_agent.llm_client import LLMClient
 
 @pytest.fixture
 def mock_config():
-    config = MagicMock(spec=Config)
+    config = MagicMock()
     config.POST_REVIEW_AS_ISSUE = False
     config.CREATE_PR = True
     config.AUTO_COMMIT = False
+    config.GROUP_AUTOMATION_UPDATES = False
+    config.TRIGGER_MODE = "push"
+    config.ENABLE_PR_TRIGGER = True
+    config.ENABLE_PUSH_TRIGGER = True
+    config.TRIVIAL_CHANGE_FILTER_ENABLED = True
+    config.TRIVIAL_MAX_LINES = 10
+    config.TRIVIAL_DOC_PATHS = ["README.md"]
+    config.POST_REVIEW_ON_PR = True
+    config.LLM_PROVIDER = "openai"
     return config
 
 @pytest.fixture

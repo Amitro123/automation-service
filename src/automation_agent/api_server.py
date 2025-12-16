@@ -51,6 +51,7 @@ class LLMMetrics(BaseModel):
     estimatedCost: float
     efficiencyScore: float
     sessionMemoryUsage: float
+    totalRuns: int = 0
 
 
 class TaskItem(BaseModel):
@@ -388,20 +389,67 @@ def create_api_server(config: Config) -> FastAPI:
             return []
 
     async def _calculate_progress() -> float:
-        """Calculate project progress based on spec.md tasks."""
+        """Calculate project progress based on spec.md content.
+        
+        Uses multiple heuristics:
+        1. Checkbox tasks: [x] vs [ ]
+        2. ✅ markers indicating completed items
+        3. Development Log entries (### [...] markers)
+        
+        Reads local spec.md first, falls back to GitHub if not found.
+        """
+        import re
+        import os
+        
+        content = None
+        
+        # Try local file first
         try:
-            content = await github_client.get_file_content("spec.md")
-            if not content:
+            local_spec = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "spec.md")
+            if os.path.exists(local_spec):
+                with open(local_spec, "r", encoding="utf-8") as f:
+                    content = f.read()
+                logger.debug(f"Read progress from local spec.md ({len(content)} chars)")
+        except Exception as e:
+            logger.debug(f"Could not read local spec.md: {e}")
+        
+        # Fallback to GitHub API
+        if not content:
+            try:
+                content = await github_client.get_file_content("spec.md")
+            except Exception as e:
+                logger.error(f"Failed to fetch spec.md from GitHub: {e}")
                 return 0.0
+        
+        if not content:
+            return 0.0
+        
+        try:
+            # Count checkbox-style tasks
+            checkbox_total = content.count("- [ ]") + content.count("- [x]")
+            checkbox_completed = content.count("- [x]")
             
-            # Simple heuristic: Count [x] vs [ ]
-            total_tasks = content.count("- [ ]") + content.count("- [x]")
-            completed_tasks = content.count("- [x]")
+            # Count ✅ markers (often used to mark completed milestones)
+            checkmark_count = content.count("✅")
             
-            if total_tasks == 0:
+            # Count Development Log entries (### [...] date markers)
+            log_entries = len(re.findall(r"### \[\d{4}-\d{2}-\d{2}\]", content))
+            
+            # Calculate progress:
+            # If checkboxes exist, use them as primary metric
+            if checkbox_total > 0:
+                progress = (checkbox_completed / checkbox_total) * 100
+            elif checkmark_count > 0:
+                # Estimate: assume we're tracking ~10 total milestones
+                progress = min((checkmark_count / 10) * 100, 100)
+            elif log_entries > 0:
+                # Estimate progress based on number of development log entries
+                # Assume ~10 log entries represents 100% progress
+                progress = min((log_entries / 10) * 100, 100)
+            else:
                 return 0.0
                 
-            return round((completed_tasks / total_tasks) * 100, 1)
+            return round(progress, 1)
         except Exception as e:
             logger.error(f"Failed to calculate progress: {e}")
             return 0.0
@@ -475,7 +523,8 @@ def create_api_server(config: Config) -> FastAPI:
                 tokensUsed=global_metrics.get("total_tokens", 0),
                 estimatedCost=global_metrics.get("total_cost", 0.0),
                 efficiencyScore=efficiency_score,
-                sessionMemoryUsage=session_memory_usage
+                sessionMemoryUsage=session_memory_usage,
+                totalRuns=global_metrics.get("total_runs", 0)
             ),
             tasks=tasks,
             bugs=bugs,
@@ -489,6 +538,30 @@ def create_api_server(config: Config) -> FastAPI:
             projectProgress=project_progress
         )
     
+    @app.get("/api/spec")
+    async def get_spec():
+        """Get the content of spec.md (local preferred, then GitHub)."""
+        import os
+        
+        # Try local first
+        try:
+            local_spec = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "spec.md")
+            if os.path.exists(local_spec):
+                with open(local_spec, "r", encoding="utf-8") as f:
+                    return {"content": f.read()}
+        except Exception as e:
+            logger.warning(f"Failed to read local spec.md: {e}")
+            
+        # Fallback to GitHub
+        try:
+            content = await github_client.get_file_content("spec.md")
+            if content:
+                return {"content": content}
+        except Exception as e:
+            logger.error(f"Failed to fetch spec.md: {e}")
+            
+        return {"content": "Failed to load spec.md"}
+
     @app.get("/api/logs")
     async def get_logs(limit: int = 50):
         logs = list(app_state.logs)
@@ -508,6 +581,150 @@ def create_api_server(config: Config) -> FastAPI:
         """Get automation runs associated with a specific PR."""
         return session_memory.get_runs_by_pr(pr_number, limit)
 
+    @app.post("/api/runs/{run_id}/retry")
+    async def retry_run(run_id: str, background_tasks: BackgroundTasks):
+        """Retry a failed automation run.
+        
+        Args:
+            run_id: ID of the run to retry
+            background_tasks: FastAPI background tasks
+            
+        Returns:
+            Success message with original run ID
+        """
+        # Fetch run from session memory
+        run = session_memory.get_run(run_id)
+        if not run:
+            raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
+        
+        # Extract context from original run
+        commit_sha = run["commit_sha"]
+        branch = run["branch"]
+        pr_number = run.get("pr_number")
+        
+        logger.info(f"[API] Retrying run {run_id}: commit={commit_sha[:7]}, pr={pr_number or 'N/A'}")
+        
+        # Reconstruct payload for orchestrator
+        if pr_number:
+            # PR event - fetch PR data
+            try:
+                pr_data = await github_client.get_pull_request(pr_number)
+                payload = {
+                    "action": "synchronize",  # Treat retry as synchronize
+                    "number": pr_number,
+                    "pull_request": pr_data,
+                }
+                event_type = "pull_request"
+            except Exception as e:
+                logger.error(f"Failed to fetch PR {pr_number}: {e}")
+                raise HTTPException(status_code=500, detail=f"Failed to fetch PR data: {e}")
+        else:
+            # Push event - use commit data
+            try:
+                commit_info = await github_client.get_commit_info(commit_sha)
+                payload = {
+                    "ref": f"refs/heads/{branch}",
+                    "head_commit": {
+                        "id": commit_sha,
+                        "message": commit_info.get("commit", {}).get("message", "Retry"),
+                    },
+                    "commits": [commit_info],
+                }
+                event_type = "push"
+            except Exception as e:
+                logger.error(f"Failed to fetch commit {commit_sha}: {e}")
+                raise HTTPException(status_code=500, detail=f"Failed to fetch commit data: {e}")
+        
+        # Trigger automation in background
+        background_tasks.add_task(handle_event, orchestrator, event_type, payload)
+        
+        app_state.add_log("INFO", f"Retry triggered for run {run_id[:12]}...")
+        
+        return {
+            "success": True,
+            "message": "Retry triggered successfully",
+            "original_run_id": run_id,
+            "commit_sha": commit_sha,
+            "pr_number": pr_number,
+        }
+
+    @app.post("/api/manual-run")
+    async def manual_run(
+        request: Request,
+        background_tasks: BackgroundTasks,
+    ):
+        """Manually trigger automation for a commit or branch.
+        
+        Request body:
+            commit_sha: Commit SHA (optional if branch provided)
+            branch: Branch name (optional if commit_sha provided)
+            
+        Returns:
+            Success message with run details
+        """
+        body = await request.json()
+        commit_sha = body.get("commit_sha")
+        branch = body.get("branch")
+        
+        # Validate inputs
+        if not commit_sha and not branch:
+            raise HTTPException(
+                status_code=400,
+                detail="Either 'commit_sha' or 'branch' must be provided"
+            )
+        
+        logger.info(f"[API] Manual run requested: commit={commit_sha or 'N/A'}, branch={branch or 'N/A'}")
+        
+        # If branch provided without commit, get latest commit
+        if branch and not commit_sha:
+            try:
+                # Get branch info
+                branch_info = await github_client.get_branch(branch)
+                commit_sha = branch_info["commit"]["sha"]
+                logger.info(f"[API] Resolved branch {branch} to commit {commit_sha[:7]}")
+            except Exception as e:
+                logger.error(f"Failed to get branch {branch}: {e}")
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Branch '{branch}' not found: {e}"
+                )
+        
+        # Verify commit exists
+        try:
+            commit_info = await github_client.get_commit_info(commit_sha)
+            if not commit_info:
+                raise HTTPException(status_code=404, detail=f"Commit {commit_sha} not found")
+        except Exception as e:
+            logger.error(f"Failed to fetch commit {commit_sha}: {e}")
+            raise HTTPException(status_code=404, detail=f"Commit not found: {e}")
+        
+        # Get branch from commit if not provided
+        if not branch:
+            # Try to get branch from commit (may not always be available)
+            branch = commit_info.get("commit", {}).get("tree", {}).get("sha", "master")
+        
+        # Build payload for orchestrator
+        payload = {
+            "ref": f"refs/heads/{branch}",
+            "head_commit": {
+                "id": commit_sha,
+                "message": commit_info.get("commit", {}).get("message", "Manual trigger"),
+            },
+            "commits": [commit_info],
+        }
+        
+        # Trigger automation in background
+        background_tasks.add_task(handle_event, orchestrator, "push", payload)
+        
+        app_state.add_log("INFO", f"Manual run triggered: {commit_sha[:7]} on {branch}")
+        
+        return {
+            "success": True,
+            "message": "Manual run triggered successfully",
+            "commit_sha": commit_sha,
+            "branch": branch,
+        }
+
     @app.get("/api/trigger-config")
     async def get_trigger_config():
         """Get current trigger configuration for dashboard display."""
@@ -521,7 +738,124 @@ def create_api_server(config: Config) -> FastAPI:
             "group_automation_updates": config.GROUP_AUTOMATION_UPDATES,
             "post_review_on_pr": config.POST_REVIEW_ON_PR,
         }
+
+    # Configuration API
+    @app.get("/api/config")
+    async def get_config():
+        """Get effective configuration."""
+        import json
+        
+        # Load file config if exists to indicate what's from file vs env
+        file_config = config.load_config_file()
+        
+        return {
+            "effective": {
+                "trigger_mode": config.TRIGGER_MODE,
+                "group_automation_updates": config.GROUP_AUTOMATION_UPDATES,
+                "post_review_on_pr": config.POST_REVIEW_ON_PR,
+                "repository_owner": config.REPOSITORY_OWNER,
+                "repository_name": config.REPOSITORY_NAME,
+                "code_review_system_prompt": config.CODE_REVIEW_SYSTEM_PROMPT,
+                "docs_update_system_prompt": config.DOCS_UPDATE_SYSTEM_PROMPT,
+                "llm_provider": config.LLM_PROVIDER,
+                "llm_model": config.LLM_MODEL,
+                "review_provider": config.REVIEW_PROVIDER
+            },
+            "file_config": file_config
+        }
     
+    @app.post("/api/config/validate")
+    async def validate_config(config_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Validate configuration object.
+        
+        Args:
+            config_data: Configuration dictionary to validate.
+            
+        Returns:
+            Dict with 'valid' boolean and optional 'errors' list.
+        """
+        logger.info("[CONFIG] Validating configuration")
+        # Simple validation for now
+        errors = []
+        if "trigger_mode" in config_data and config_data["trigger_mode"] not in ["pr", "push", "both"]:
+            errors.append("Invalid trigger_mode. Must be 'pr', 'push', or 'both'")
+        
+        logger.info(f"[CONFIG] Validation result: valid={len(errors) == 0}")
+        if errors:
+            return {"valid": False, "errors": errors}
+        return {"valid": True}
+    
+    @app.patch("/api/config")
+    async def update_config(updates: Dict[str, Any]):
+        """Update configuration with validation and persistence."""
+        import json
+        
+        # Validate updates
+        validation = await validate_config(updates)
+        if not validation["valid"]:
+            return {"success": False, "errors": validation["errors"]}
+        
+        # Load current config file
+        file_config = config.load_config_file()
+        
+        # Apply updates
+        file_config.update(updates)
+        
+        # Persist to file
+        try:
+            with open(config.CONFIG_FILE, "w") as f:
+                json.dump(file_config, f, indent=2)
+            
+            # Reload config
+            config.load()
+            
+            return {
+                "success": True,
+                "message": "Configuration updated successfully",
+                "updated_config": file_config
+            }
+        except Exception as e:
+            logger.error(f"Failed to update config: {e}")
+            return {"success": False, "errors": [str(e)]}
+
+    @app.post("/api/config/apply")
+    async def apply_config(config_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Apply configuration to studioai.config.json.
+        
+        Args:
+            config_data: Configuration updates to apply.
+            
+        Returns:
+            Dict with 'success' boolean and 'message' string.
+            
+        Raises:
+            HTTPException: If configuration update fails.
+        """
+        logger.info(f"[CONFIG] Applying configuration: {list(config_data.keys())}")
+        
+        CONFIG_FILE = "studioai.config.json"
+        
+        try:
+            # Read existing to preserve fields not in update
+            existing = {}
+            if os.path.exists(CONFIG_FILE):
+                with open(CONFIG_FILE, "r") as f:
+                    existing = json.load(f)
+            
+            existing.update(config_data)
+            
+            with open(CONFIG_FILE, "w") as f:
+                json.dump(existing, f, indent=4)
+                
+            # Reload config in memory
+            config.load()
+            logger.info("[CONFIG] Configuration applied successfully")
+            
+            return {"success": True, "message": "Configuration applied"}
+        except OSError as e:
+            logger.error(f"[CONFIG] Failed to apply configuration: {e}")
+            raise HTTPException(status_code=500, detail=str(e)) from e
+
     @app.post("/api/mutation/run")
     async def run_mutation_tests_endpoint(background_tasks: BackgroundTasks):
         """Trigger mutation tests to run in the background."""
@@ -772,14 +1106,25 @@ async def handle_event(orchestrator: AutomationOrchestrator, event_type: str, pa
     try:
         logger.info(f"[HANDLER] Starting handle_event for {event_type}")
         
-        # For push events, check if there are commits
+        # For push events, check if there are commits and skip automation branches
         if event_type == "push":
             commits = payload.get("commits", [])
             if not commits:
                 logger.info("[HANDLER] No commits in push event, skipping")
                 app_state.add_log("INFO", "No commits in push event")
                 return
-            logger.info(f"[HANDLER] Push has {len(commits)} commit(s)")
+            
+            # Extract branch name from ref
+            ref = payload.get("ref", "")
+            branch = ref.replace("refs/heads/", "") if ref.startswith("refs/heads/") else ref
+            
+            # Skip automation branches to prevent infinite loops
+            if branch.startswith("automation/"):
+                logger.info(f"[HANDLER] Skipping push to automation branch: {branch}")
+                app_state.add_log("INFO", f"Skipped push to automation branch: {branch}")
+                return
+            
+            logger.info(f"[HANDLER] Push has {len(commits)} commit(s) on branch: {branch}")
         
         # For PR events, log details and skip automation PRs
         if event_type == "pull_request":

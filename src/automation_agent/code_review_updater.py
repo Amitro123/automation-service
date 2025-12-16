@@ -13,7 +13,7 @@ class CodeReviewUpdater:
     """Maintains a persistent log of code reviews in CODE_REVIEW.md."""
 
     # The main code review log file
-    LOG_FILE = "CODE_REVIEW.md"
+    LOG_FILE = "AUTOMATED_REVIEWS.md"
 
     def __init__(self, github_client: GitHubClient, llm_client: LLMClient):
         """Initialize code review updater.
@@ -67,8 +67,8 @@ class CodeReviewUpdater:
         return updated_log
 
     def _create_initial_log(self) -> str:
-        """Create initial CODE_REVIEW.md structure."""
-        return """# Code Review Report
+        """Create initial AUTOMATED_REVIEWS.md structure."""
+        return """# Automated Code Review Log
 
 **Date:** (Auto-generated)
 **Reviewer:** GitHub Automation Agent (AI)

@@ -17,7 +17,11 @@ async def test_update_spec_success(spec_updater, mock_github_client, mock_llm_cl
     mock_github_client.get_file_content.return_value = "Old Spec Content"
     mock_github_client.get_recent_commits.return_value = []
     
+<<<<<<< HEAD
     # LLM returns ONLY the new entry (content, metadata)
+=======
+    # LLM returns ONLY the new entry
+>>>>>>> origin/master
     mock_llm_client.update_spec.return_value = ("New Entry", {})
     
     result = await spec_updater.update_spec("sha123")
@@ -40,10 +44,16 @@ async def test_update_spec_failure(spec_updater, mock_github_client, mock_llm_cl
     
     result = await spec_updater.update_spec("sha123")
     
+<<<<<<< HEAD
     # Should return error dictionary, not None
     assert isinstance(result, dict)
     assert result["success"] is False
     assert result["error_type"] == "spec_generation_failed"
+=======
+    assert result is not None
+    assert result["success"] is False
+    assert result["error_type"] == "spec_update_error"
+>>>>>>> origin/master
     assert "Error" in result["message"]
 
 @pytest.mark.asyncio

@@ -14,16 +14,26 @@ class TestWebhookServerSync(unittest.TestCase):
 
     def setUp(self):
         # Mock Config
-        self.config = MagicMock(spec=Config)
+        # Mock Config
+        self.config = MagicMock()
         self.config.GITHUB_TOKEN = "token"
         self.config.GITHUB_WEBHOOK_SECRET = "secret"
         self.config.REPOSITORY_OWNER = "owner"
         self.config.REPOSITORY_NAME = "repo"
         self.config.LLM_PROVIDER = "openai"
+        self.config.LLM_MODEL = "gpt-4"
         self.config.OPENAI_API_KEY = "key"
         self.config.HOST = "0.0.0.0"
         self.config.PORT = 8080
         self.config.DEBUG = False
+        self.config.TRIGGER_MODE = "push"
+        self.config.ENABLE_PR_TRIGGER = True
+        self.config.ENABLE_PUSH_TRIGGER = True
+        self.config.GROUP_AUTOMATION_UPDATES = False
+        self.config.GEMINI_MAX_RPM = 10
+        self.config.GEMINI_MIN_DELAY_SECONDS = 2.0
+        self.config.GEMINI_MAX_CONCURRENT_REQUESTS = 3
+        self.config.REVIEW_PROVIDER = "llm"
 
         # Patch components initialization
         with patch('src.automation_agent.webhook_server.GitHubClient'), \
@@ -129,16 +139,25 @@ class TestWebhookServerSync(unittest.TestCase):
 @pytest.fixture
 def webhook_server():
     """Create a WebhookServer instance with mocked dependencies."""
-    config = MagicMock(spec=Config)
+    config = MagicMock()
     config.GITHUB_TOKEN = "token"
     config.GITHUB_WEBHOOK_SECRET = "secret"
     config.REPOSITORY_OWNER = "owner"
     config.REPOSITORY_NAME = "repo"
     config.LLM_PROVIDER = "openai"
+    config.LLM_MODEL = "gpt-4"
     config.OPENAI_API_KEY = "key"
     config.HOST = "0.0.0.0"
     config.PORT = 8080
     config.DEBUG = False
+    config.TRIGGER_MODE = "push"
+    config.ENABLE_PR_TRIGGER = True
+    config.ENABLE_PUSH_TRIGGER = True
+    config.GROUP_AUTOMATION_UPDATES = False
+    config.GEMINI_MAX_RPM = 10
+    config.GEMINI_MIN_DELAY_SECONDS = 2.0
+    config.GEMINI_MAX_CONCURRENT_REQUESTS = 3
+    config.REVIEW_PROVIDER = "llm"
 
     with patch('src.automation_agent.webhook_server.GitHubClient'), \
          patch('src.automation_agent.webhook_server.LLMClient'), \

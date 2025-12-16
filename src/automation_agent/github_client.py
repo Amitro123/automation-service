@@ -331,10 +331,10 @@ class GitHubClient:
 
     async def get_pull_request(self, pr_number: int) -> Optional[Dict[str, Any]]:
         """Get a specific pull request.
-
+        
         Args:
             pr_number: Pull request number
-
+        
         Returns:
             Pull request data dictionary or None
         """
@@ -346,6 +346,25 @@ class GitHubClient:
                 return response.json()
         except httpx.HTTPError as e:
             logger.error(f"Failed to fetch pull request #{pr_number}: {e}")
+            return None
+
+    async def get_branch(self, branch_name: str) -> Optional[Dict[str, Any]]:
+        """Get branch information.
+        
+        Args:
+            branch_name: Branch name
+        
+        Returns:
+            Branch data dictionary or None
+        """
+        url = f"{self.base_url}/repos/{self.owner}/{self.repo}/branches/{branch_name}"
+        try:
+            async with httpx.AsyncClient(headers=self.headers, timeout=self.timeout) as client:
+                response = await client.get(url)
+                response.raise_for_status()
+                return response.json()
+        except httpx.HTTPError as e:
+            logger.error(f"Failed to get branch {branch_name}: {e}")
             return None
 
     async def get_pull_request_diff(self, pr_number: int) -> Optional[str]:
