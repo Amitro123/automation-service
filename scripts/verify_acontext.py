@@ -74,7 +74,7 @@ async def verify_connection(api_url: str) -> bool:
     
     # Show stats
     stats = client.get_stats()
-    print(f"\n📊 Stats:")
+    print("\n📊 Stats:")
     print(f"   - Total sessions: {stats['total_sessions']}")
     print(f"   - API available: {stats['api_available']}")
     print(f"   - Enabled: {stats['enabled']}")

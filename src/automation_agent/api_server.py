@@ -161,7 +161,8 @@ class AppState:
 
 # Global state instance
 app_state = AppState()
-session_memory = SessionMemoryStore()
+# Note: session_memory will be initialized with config in create_api_server()
+session_memory = SessionMemoryStore(storage_path=Config.SESSION_MEMORY_PATH)
 
 
 def create_api_server(config: Config) -> FastAPI:

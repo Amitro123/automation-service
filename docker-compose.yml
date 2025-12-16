@@ -28,7 +28,8 @@ services:
       - ./spec.md:/app/spec.md
       - ./README.md:/app/README.md
       - ./code_review.md:/app/code_review.md
-      - ./acontext_memory.json:/app/acontext_memory.json
+      # Note: acontext_memory.json only needed for ACONTEXT_STORAGE_TYPE=local (dev/testing)
+      # - ./acontext_memory.json:/app/acontext_memory.json
       - ./ARCHITECTURE.md:/app/ARCHITECTURE.md
       - ./CODE_REVIEW.md:/app/CODE_REVIEW.md
     restart: unless-stopped
@@ -38,18 +39,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
-    depends_on:
-      - redis
-    networks:
-      - automation-network
-
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    restart: unless-stopped
     networks:
       - automation-network
 
@@ -76,6 +65,3 @@ services:
 networks:
   automation-network:
     driver: bridge
-
-volumes:
-  redis_data:

@@ -21,7 +21,7 @@ class CodeReviewer:
         self.github = github_client
         self.provider = review_provider
 
-    async def review_commit(self, commit_sha: str, post_as_issue: bool = False, pr_number: int = None, run_id: str = None) -> Dict[str, Any]:
+    async def review_commit(self, commit_sha: str, post_as_issue: bool = False, pr_number: int = None, run_id: str = None, past_lessons: str = "") -> Dict[str, Any]:
         """Review a commit and post findings.
 
         Args:
@@ -29,6 +29,7 @@ class CodeReviewer:
             post_as_issue: If True, post as issue; otherwise as commit comment
             pr_number: If provided, post as PR review instead of commit comment
             run_id: Run ID for logging context
+            past_lessons: Optional lessons from past reviews (Acontext integration)
 
         Returns:
             Dictionary with success status, review content, and error details
@@ -70,7 +71,7 @@ class CodeReviewer:
             # Generate code review with usage metadata
             logger.info(f"{log_prefix} Generating code review via provider...")
             try:
-                review_result, usage_metadata = await self.provider.review_code(diff)
+                review_result, usage_metadata = await self.provider.review_code(diff, past_lessons)
                 logger.info(f"{log_prefix} Provider returned result (type: {type(review_result).__name__})")
                 
                 # Check if provider returned a structured error (e.g., Jules 404)

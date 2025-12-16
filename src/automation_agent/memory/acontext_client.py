@@ -290,7 +290,7 @@ class AcontextClient:
         self,
         session_id: str,
         status: str,
-        error_messages: List[str] = None,
+        error_messages: Optional[List[str]] = None,
         summary: str = "",
     ) -> bool:
         """
@@ -478,7 +478,10 @@ class AcontextClient:
         return "\n".join(lines)
     
     def get_stats(self) -> Dict[str, Any]:
-        """Get statistics about stored sessions."""
+        """Get statistics about stored sessions.
+        
+        Note: When using API storage, stats reflect local cache only.
+        """
         sessions = self._memory.get("sessions", {})
         
         status_counts = {}
@@ -486,11 +489,18 @@ class AcontextClient:
             status = session.get("status", "unknown")
             status_counts[status] = status_counts.get(status, 0) + 1
         
-        return {
+        stats = {
             "total_sessions": len(sessions),
             "status_breakdown": status_counts,
             "api_url": self.api_url,
             "api_available": self._api_available,
             "storage_path": self.storage_path,
             "enabled": self.enabled,
+            "storage_type": self.storage_type,
         }
+        
+        # Add note when using API storage
+        if self.storage_type == "api":
+            stats["note"] = "Stats reflect local cache only when storage_type='api'"
+        
+        return stats

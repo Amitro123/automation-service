@@ -215,6 +215,10 @@ class Config(metaclass=ConfigMeta):
     ACONTEXT_STORAGE_PATH: str = os.getenv("ACONTEXT_STORAGE_PATH", "acontext_memory.json")
     # Maximum past lessons to inject into prompts
     ACONTEXT_MAX_LESSONS: int = int(os.getenv("ACONTEXT_MAX_LESSONS", "5"))
+    
+    # Session Memory Configuration
+    # Path to session memory storage file
+    SESSION_MEMORY_PATH: str = os.getenv("SESSION_MEMORY_PATH", "session_memory.json")
 
     @classmethod
     def validate(cls) -> list[str]:

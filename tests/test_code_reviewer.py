@@ -35,7 +35,7 @@ async def test_review_commit_success(code_reviewer, mock_github_client, mock_pro
     assert "Code review analysis" in result["review"]
     assert "usage_metadata" in result
     mock_github_client.get_commit_diff.assert_called_once_with("sha123")
-    mock_provider.review_code.assert_called_once_with("diff content")
+    mock_provider.review_code.assert_called_once_with("diff content", "")  # Now includes past_lessons
     mock_github_client.post_commit_comment.assert_called_once()
 
 @pytest.mark.asyncio

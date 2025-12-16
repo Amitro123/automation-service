@@ -32,7 +32,8 @@ def format_run(run):
     print(f"🔀 Trigger: {run.get('trigger_type', 'N/A')}")
     print(f"📊 Status: {run.get('status', 'N/A')}")
     print(f"🌿 Branch: {run.get('branch', 'N/A')}")
-    print(f"📝 Commit: {run.get('commit_sha', 'N/A')[:7]}")
+    commit_sha = run.get('commit_sha') or 'N/A'
+    print(f"📝 Commit: {commit_sha[:7]}")
     
     if run.get('pr_number'):
         print(f"🔗 PR: #{run['pr_number']} - {run.get('pr_title', 'N/A')}")

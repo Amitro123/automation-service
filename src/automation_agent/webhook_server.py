@@ -56,7 +56,7 @@ class WebhookServer:
         self.code_review_updater = CodeReviewUpdater(self.github_client, self.llm_client)
 
         # Initialize session memory
-        self.session_memory = SessionMemoryStore()
+        self.session_memory = SessionMemoryStore(storage_path=self.config.SESSION_MEMORY_PATH)
 
         # Initialize orchestrator
         # Initialize orchestrator

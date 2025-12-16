@@ -14,8 +14,12 @@ class ReviewProvider(ABC):
     """Abstract base class for code review providers."""
 
     @abstractmethod
-    async def review_code(self, diff: str) -> tuple[Union[str, Dict[str, Any]], Dict[str, Any]]:
+    async def review_code(self, diff: str, past_lessons: str = "") -> tuple[Union[str, Dict[str, Any]], Dict[str, Any]]:
         """Analyze code changes and provide a review.
+        
+        Args:
+            diff: Code diff to review
+            past_lessons: Optional lessons from past reviews (Acontext integration)
         
         Returns:
             Tuple of (review_content_or_error_dict, usage_metadata)
@@ -23,8 +27,13 @@ class ReviewProvider(ABC):
         pass
 
     @abstractmethod
-    async def update_readme(self, diff: str, current_readme: str) -> tuple[str, Dict[str, Any]]:
+    async def update_readme(self, diff: str, current_readme: str, past_lessons: str = "") -> tuple[str, Dict[str, Any]]:
         """Generate updates for README.md.
+        
+        Args:
+            diff: Code diff
+            current_readme: Current README content
+            past_lessons: Optional lessons from past updates (Acontext integration)
         
         Returns:
             Tuple of (updated_readme, usage_metadata)
@@ -32,8 +41,14 @@ class ReviewProvider(ABC):
         pass
 
     @abstractmethod
-    async def update_spec(self, commit_info: Dict[str, Any], diff: str, current_spec: str) -> tuple[str, Dict[str, Any]]:
+    async def update_spec(self, commit_info: Dict[str, Any], diff: str, current_spec: str, past_lessons: str = "") -> tuple[str, Dict[str, Any]]:
         """Update spec.md based on commit info.
+        
+        Args:
+            commit_info: Commit information
+            diff: Code diff
+            current_spec: Current spec content
+            past_lessons: Optional lessons from past updates (Acontext integration)
         
         Returns:
             Tuple of (updated_spec, usage_metadata)
@@ -47,14 +62,18 @@ class LLMReviewProvider(ReviewProvider):
     def __init__(self, llm_client: LLMClient):
         self.llm = llm_client
 
-    async def review_code(self, diff: str) -> tuple[Union[str, Dict[str, Any]], Dict[str, Any]]:
+    async def review_code(self, diff: str, past_lessons: str = "") -> tuple[Union[str, Dict[str, Any]], Dict[str, Any]]:
         """Review code using LLM.
+        
+        Args:
+            diff: Code diff to review
+            past_lessons: Optional lessons from past reviews (Acontext integration)
         
         Returns:
             Tuple of (review_content_or_error_dict, usage_metadata)
         """
         try:
-            review, metadata = await self.llm.analyze_code(diff)
+            review, metadata = await self.llm.analyze_code(diff, past_lessons)
             return review, metadata
         except Exception as e:
             # LLMClient already raises RateLimitError for 429s
@@ -67,11 +86,11 @@ class LLMReviewProvider(ReviewProvider):
             }
             return error_dict, {}
 
-    async def update_readme(self, diff: str, current_readme: str) -> tuple[str, Dict[str, Any]]:
-        return await self.llm.update_readme(diff, current_readme)
+    async def update_readme(self, diff: str, current_readme: str, past_lessons: str = "") -> tuple[str, Dict[str, Any]]:
+        return await self.llm.update_readme(diff, current_readme, past_lessons)
 
-    async def update_spec(self, commit_info: Dict[str, Any], diff: str, current_spec: str) -> tuple[str, Dict[str, Any]]:
-        return await self.llm.update_spec(commit_info, diff, current_spec)
+    async def update_spec(self, commit_info: Dict[str, Any], diff: str, current_spec: str, past_lessons: str = "") -> tuple[str, Dict[str, Any]]:
+        return await self.llm.update_spec(commit_info, diff, current_spec, past_lessons)
 
 
 class JulesReviewProvider(ReviewProvider):
@@ -85,8 +104,10 @@ class JulesReviewProvider(ReviewProvider):
         self.source_id = config.JULES_SOURCE_ID  # e.g., "sources/github/owner/repo"
         self.project_id = config.JULES_PROJECT_ID  # Optional
 
-    async def review_code(self, diff: str) -> tuple[Union[str, Dict[str, Any]], Dict[str, Any]]:
+    async def review_code(self, diff: str, past_lessons: str = "") -> tuple[Union[str, Dict[str, Any]], Dict[str, Any]]:
         """Review code using Jules API by creating a session.
+        
+        Note: past_lessons are not yet supported by Jules API, falling back to LLM if needed.
         
         Jules API workflow:
         1. Create a session with the diff/prompt
@@ -178,7 +199,7 @@ class JulesReviewProvider(ReviewProvider):
                     if response.status >= 500:
                         logger.warning(f"[JULES] Jules API server error ({response.status}), falling back to LLM provider.")
                         logger.debug(f"[JULES] Server error response: {response_text[:500]}")
-                        return await self.fallback.review_code(diff)
+                        return await self.fallback.review_code(diff, past_lessons)
                     
                     # Success - parse session response
                     if response.status == 200:
@@ -216,12 +237,12 @@ class JulesReviewProvider(ReviewProvider):
         except aiohttp.ClientError as e:
             # Network/timeout errors - fall back to LLM
             logger.warning(f"[JULES] Network error: {e}. Falling back to LLM provider.")
-            return await self.fallback.review_code(diff)
+            return await self.fallback.review_code(diff, past_lessons)
         except Exception as e:
             # Other errors - fall back to LLM
             logger.warning(f"[JULES] Unexpected error: {e}. Falling back to LLM provider.")
             logger.exception("[JULES] Full traceback:")
-            return await self.fallback.review_code(diff)
+            return await self.fallback.review_code(diff, past_lessons)
     
     async def _wait_for_session_completion(self, session: aiohttp.ClientSession, session_id: str, headers: Dict[str, str], max_polls: int = 10, poll_interval: int = 3) -> Optional[str]:
         """Poll Jules session until it completes and extract review content.
@@ -284,15 +305,15 @@ class JulesReviewProvider(ReviewProvider):
         logger.warning(f"[JULES] Session polling timed out after {max_polls} attempts")
         return None
 
-    async def update_readme(self, diff: str, current_readme: str) -> tuple[str, Dict[str, Any]]:
+    async def update_readme(self, diff: str, current_readme: str, past_lessons: str = "") -> tuple[str, Dict[str, Any]]:
         """Jules does not support README updates yet, using fallback."""
         logger.info("Jules does not support README updates, using fallback.")
-        return await self.fallback.update_readme(diff, current_readme)
+        return await self.fallback.update_readme(diff, current_readme, past_lessons)
 
-    async def update_spec(self, commit_info: Dict[str, Any], diff: str, current_spec: str) -> tuple[str, Dict[str, Any]]:
+    async def update_spec(self, commit_info: Dict[str, Any], diff: str, current_spec: str, past_lessons: str = "") -> tuple[str, Dict[str, Any]]:
         """Jules does not support Spec updates yet, using fallback."""
         logger.info("Jules does not support Spec updates, using fallback.")
-        return await self.fallback.update_spec(commit_info, diff, current_spec)
+        return await self.fallback.update_spec(commit_info, diff, current_spec, past_lessons)
 
     def _format_jules_review(self, raw_review: str) -> str:
         """Format Jules output to match our expected markdown structure."""

@@ -79,8 +79,8 @@ async def test_orchestrator_runs_all_tasks(orchestrator):
     
     # Verify all three tasks were called
     code_reviewer.review_commit.assert_called_once_with(commit_sha="abc123", post_as_issue=False)
-    readme_updater.update_readme.assert_called_once_with(commit_sha="abc123", branch="main")
-    spec_updater.update_spec.assert_called_once_with(commit_sha="abc123", branch="main")
+    readme_updater.update_readme.assert_called_once_with(commit_sha="abc123", branch="main", past_lessons="")
+    spec_updater.update_spec.assert_called_once_with(commit_sha="abc123", branch="main", past_lessons="")
     code_review_updater.update_review_log.assert_called_once()
     
     # Verify result structure

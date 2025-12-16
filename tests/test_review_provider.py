@@ -88,7 +88,7 @@ async def test_jules_review_failure_fallback(mock_config, mock_fallback_provider
         review, metadata = await provider.review_code("diff")
         
         assert review == "Fallback Review"
-        mock_fallback_provider.review_code.assert_called_once_with("diff")
+        mock_fallback_provider.review_code.assert_called_once_with("diff", "")  # Now includes past_lessons
 
 @pytest.mark.asyncio
 async def test_jules_review_exception_fallback(mock_config, mock_fallback_provider):
@@ -103,7 +103,7 @@ async def test_jules_review_exception_fallback(mock_config, mock_fallback_provid
         review, metadata = await provider.review_code("diff")
         
         assert review == "Fallback Review"
-        mock_fallback_provider.review_code.assert_called_once_with("diff")
+        mock_fallback_provider.review_code.assert_called_once_with("diff", "")  # Now includes past_lessons
 
 @pytest.mark.asyncio
 async def test_jules_update_readme_fallback(mock_config, mock_fallback_provider):
@@ -112,7 +112,7 @@ async def test_jules_update_readme_fallback(mock_config, mock_fallback_provider)
     result, metadata = await provider.update_readme("diff", "readme")
     
     assert result == "Fallback Readme"
-    mock_fallback_provider.update_readme.assert_called_once_with("diff", "readme")
+    mock_fallback_provider.update_readme.assert_called_once_with("diff", "readme", "")
 
 @pytest.mark.asyncio
 async def test_jules_update_spec_fallback(mock_config, mock_fallback_provider):
@@ -121,4 +121,4 @@ async def test_jules_update_spec_fallback(mock_config, mock_fallback_provider):
     result, metadata = await provider.update_spec({}, "diff", "spec")
     
     assert result == "Fallback Spec"
-    mock_fallback_provider.update_spec.assert_called_once_with({}, "diff", "spec")
+    mock_fallback_provider.update_spec.assert_called_once_with({}, "diff", "spec", "")

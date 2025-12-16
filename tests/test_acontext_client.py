@@ -24,12 +24,21 @@ class TestAcontextClient:
     @pytest.fixture
     def client(self, temp_storage):
         """Create a client with temporary storage."""
-        return AcontextClient(storage_path=temp_storage, enabled=True, max_lessons=3)
+        return AcontextClient(
+            storage_path=temp_storage,
+            storage_type="local",  # Use local storage for testing
+            enabled=True,
+            max_lessons=3
+        )
 
     @pytest.fixture
     def disabled_client(self, temp_storage):
         """Create a disabled client."""
-        return AcontextClient(storage_path=temp_storage, enabled=False)
+        return AcontextClient(
+            storage_path=temp_storage,
+            storage_type="local",  # Use local storage for testing
+            enabled=False
+        )
 
     @pytest.mark.asyncio
     async def test_start_session_success(self, client):

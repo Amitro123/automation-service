@@ -23,12 +23,13 @@ class ReadmeUpdater:
         self.github = github_client
         self.provider = review_provider
 
-    async def update_readme(self, commit_sha: str, branch: str = "main") -> Optional[Union[str, Dict[str, Any]]]:
+    async def update_readme(self, commit_sha: str, branch: str = "main", past_lessons: str = "") -> Optional[Union[str, Dict[str, Any]]]:
         """Update README.md based on code changes.
 
         Args:
             commit_sha: Commit SHA to analyze
             branch: Branch to update README on
+            past_lessons: Optional lessons from past updates (Acontext integration)
 
         Returns:
             str: Updated README content on success
@@ -57,7 +58,7 @@ class ReadmeUpdater:
         # Generate updated README
         try:
             # Provider now returns tuple (content, metadata)
-            updated_readme, usage_metadata = await self.provider.update_readme(diff, current_readme)
+            updated_readme, usage_metadata = await self.provider.update_readme(diff, current_readme, past_lessons)
             updated_readme = self._clean_readme_output(updated_readme)
             # Store metadata for later logging
             self._last_usage_metadata = usage_metadata

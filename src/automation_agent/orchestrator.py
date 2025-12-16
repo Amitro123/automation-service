@@ -240,7 +240,7 @@ class AutomationOrchestrator:
             self.session_memory.update_task_result(run_id, "code_review", result)
             return result
 
-    async def _run_readme_update(self, commit_sha: str, branch: str, run_id: str, pr_number: Optional[int] = None) -> Dict[str, Any]:
+    async def _run_readme_update(self, commit_sha: str, branch: str, run_id: str, pr_number: Optional[int] = None, past_lessons: str = "") -> Dict[str, Any]:
         """Run README update task.
         
         Args:
@@ -248,12 +248,13 @@ class AutomationOrchestrator:
             branch: Branch name
             run_id: Run ID for session memory
             pr_number: PR number if this is part of a PR (for grouped updates)
+            past_lessons: Optional lessons from past updates (Acontext integration)
         """
         try:
             logger.info("Task 2: Checking README updates...")
             # Call async method directly
             updated_readme = await self.readme_updater.update_readme(
-                commit_sha=commit_sha, branch=branch
+                commit_sha=commit_sha, branch=branch, past_lessons=past_lessons
             )
 
             # Check if result is an error dict (rate limit, etc.)
@@ -328,7 +329,7 @@ class AutomationOrchestrator:
             self.session_memory.update_task_result(run_id, "readme_update", result)
             return result
 
-    async def _run_spec_update(self, commit_sha: str, branch: str, run_id: str, pr_number: Optional[int] = None) -> Dict[str, Any]:
+    async def _run_spec_update(self, commit_sha: str, branch: str, run_id: str, pr_number: Optional[int] = None, past_lessons: str = "") -> Dict[str, Any]:
         """Run spec.md update task.
         
         Args:
@@ -336,12 +337,13 @@ class AutomationOrchestrator:
             branch: Branch name
             run_id: Run ID for session memory
             pr_number: PR number if this is part of a PR (for grouped updates)
+            past_lessons: Optional lessons from past updates (Acontext integration)
         """
         try:
             logger.info("Task 3: Updating spec.md...")
             # Call async method directly
             updated_spec = await self.spec_updater.update_spec(
-                commit_sha=commit_sha, branch=branch
+                commit_sha=commit_sha, branch=branch, past_lessons=past_lessons
             )
 
             # Check if result is an error dict (rate limit, etc.)
@@ -644,15 +646,15 @@ This PR contains automated documentation updates generated from commit `{commit_
         task_names = []
         
         if context.should_run_code_review:
-            tasks.append(self._run_code_review_with_context(context, run_id))
+            tasks.append(self._run_code_review_with_context(context, run_id, past_lessons))
             task_names.append("code_review")
         
         if context.should_run_readme_update:
-            tasks.append(self._run_readme_update(context.commit_sha, context.branch, run_id, context.pr_number))
+            tasks.append(self._run_readme_update(context.commit_sha, context.branch, run_id, context.pr_number, past_lessons))
             task_names.append("readme_update")
         
         if context.should_run_spec_update:
-            tasks.append(self._run_spec_update(context.commit_sha, context.branch, run_id, context.pr_number))
+            tasks.append(self._run_spec_update(context.commit_sha, context.branch, run_id, context.pr_number, past_lessons))
             task_names.append("spec_update")
         
         if not tasks:
@@ -800,10 +802,16 @@ This PR contains automated documentation updates generated from commit `{commit_
         self,
         context: TriggerContext,
         run_id: str,
+        past_lessons: str = "",
     ) -> Dict[str, Any]:
         """Run code review with PR-centric context.
         
         If triggered by a PR, posts review on the PR instead of commit.
+        
+        Args:
+            context: Trigger context with PR/commit information
+            run_id: Run ID for logging
+            past_lessons: Optional lessons from past reviews (Acontext integration)
         """
         try:
             logger.info(f"[ORCHESTRATOR] Task: Running code review for run_id={run_id}")
@@ -814,6 +822,7 @@ This PR contains automated documentation updates generated from commit `{commit_
                 post_as_issue=self.config.POST_REVIEW_AS_ISSUE,
                 pr_number=context.pr_number if context.pr_number else None,
                 run_id=run_id,
+                past_lessons=past_lessons,
             )
             
             review_success = review_result.get("success", False)
