@@ -1,17 +1,12 @@
 """
-🤖 MCP Auto-Fix Bot - Autonomous Code Cleanup
-==============================================
-Zero-touch autonomous bot that:
-1. Clones/installs MCP Auditor if needed
-2. Scans codebase for dead code
-3. Applies ONLY [LOW RISK] fixes (unused imports)
-4. Commits changes automatically
-
-Safety Features:
-- Excludes external_libs to prevent self-scanning
-- Only applies LOW RISK fixes
-- Creates backups before modifications
-- Git commits with bot signature
+🤖 MCP Autonomous Bot - Full Lifecycle & PR Generation
+=======================================================
+Advanced autonomous engineering bot that acts as a contributor:
+1. 🔧 Setup: Self-installs auditor engine
+2. 🧪 Test: Runs project tests (pytest) to establish baseline
+3. 📊 Audit: Generates comprehensive analysis report (Async)
+4. 🛠️ Fix: Auto-remediates dead code (LOW risk only)
+5. 🚀 PR: Creates a new git branch with fixes and report
 
 Usage:
     python bot_executor.py
@@ -19,6 +14,8 @@ Usage:
 
 import sys
 import subprocess
+import os
+import asyncio
 from pathlib import Path
 from datetime import datetime
 
@@ -28,166 +25,163 @@ AUDITOR_REPO_DIR = TARGET_LIB_DIR / "mcp-python-auditor"
 REPO_URL = "https://github.com/Amitro123/mcp-python-auditor.git"
 
 
-def ensure_auditor_installed():
-    """Ensures the auditor engine is present and dependencies are installed."""
+def ensure_environment():
+    """ प्रि_pares environment, installs dependencies, and ensures tools exist."""
+    print(f"🔧 Bot: Setting up environment...")
+    
+    # 1. Install Auditor if missing
     if not AUDITOR_REPO_DIR.exists():
-        print("🤖 Bot: Initializing Auditor Engine...")
         TARGET_LIB_DIR.mkdir(exist_ok=True)
-        subprocess.run(
-            ["git", "clone", REPO_URL, str(AUDITOR_REPO_DIR)], 
-            check=True,
-            capture_output=True
-        )
-        print(f"✅ Bot: Cloned auditor to {AUDITOR_REPO_DIR}")
+        subprocess.run(["git", "clone", REPO_URL, str(AUDITOR_REPO_DIR)], check=True)
+        print(f"   ✅ Cloned auditor to {AUDITOR_REPO_DIR}")
         
-    # Install reqs (quietly)
+    # 2. Install dependencies (pip install)
     req_file = AUDITOR_REPO_DIR / "requirements.txt"
     if req_file.exists():
-        subprocess.run(
-            [sys.executable, "-m", "pip", "install", "-r", str(req_file), "--quiet"], 
-            check=True
-        )
+        subprocess.run([sys.executable, "-m", "pip", "install", "-r", str(req_file), "--quiet"], check=True)
 
-
-def run_autonomous_fix(project_root: str = "."):
-    """
-    Main Bot Entry Point.
-    Analyzes code -> Filters for Safety -> Fixes -> Commits.
-    """
-    print(f"\n{'='*70}")
-    print(f"🤖 MCP AUTO-FIX BOT: Waking up...")
-    print(f"{'='*70}\n")
-    
-    ensure_auditor_installed()
-    
-    # Inject Path
+    # 3. Inject path to Python
     auditor_path = str(AUDITOR_REPO_DIR.absolute())
     if auditor_path not in sys.path:
         sys.path.insert(0, auditor_path)
-        print(f"🔌 Bot: Injected {AUDITOR_REPO_DIR} into Python path")
+        print(f"   ✅ Injected path: {auditor_path}")
 
+
+def run_project_tests():
+    """Runs project tests before auditing."""
+    print("\n🧪 Phase 1: Running Project Tests (pytest)...")
+    try:
+        # Run pytest but don't fail script on error (we want the report)
+        result = subprocess.run(
+            [sys.executable, "-m", "pytest", "tests", "-q"],
+            capture_output=True,
+            text=True
+        )
+        if result.returncode == 0:
+            print("   ✅ Tests Passed Successfully!")
+        else:
+            print("   ⚠️  Tests Failed (But continuing audit)...")
+    except Exception as e:
+        print(f"   ⚠️  Could not run tests: {e}")
+
+
+def run_full_automation_cycle(project_root: str = "."):
+    """
+    Full Process: Tests -> Audit -> Fix -> PR
+    """
+    print(f"\n{'='*70}")
+    print(f"🤖 MCP AUTOMATION BOT: Starting Full Lifecycle")
+    print(f"{'='*70}\n")
+    
+    ensure_environment()
+    
     try:
         from app.core.base_tool import BaseTool
+        from app.agents.analyzer_agent import AnalyzerAgent
         from app.core.fix_orchestrator import AutoFixOrchestrator
         
-        # --- CRITICAL: PREVENT SELF-SCANNING ---
+        # Guard: Prevent self-scanning
         BaseTool.IGNORED_DIRECTORIES.add("external_libs")
         BaseTool.IGNORED_DIRECTORIES.add(".git")
-        print(f"🛡️  Bot: Added external_libs to ignore list (prevents self-scan)")
         
-        print(f"🎯 Target: {Path(project_root).resolve()}")
+        target_path = Path(project_root).resolve()
+
+        # Step 1: Run Tests
+        run_project_tests()
+
+        # Step 2: Full Audit
+        print("\n📊 Phase 2: Stress Testing & Auditing...")
+        print("   Running ALL tools (Architecture, Security, Complexity)...")
+        
+        # Prepare reports directory
+        reports_dir = target_path / "reports"
+        reports_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Initialize Agent (Corrected API)
+        agent = AnalyzerAgent(reports_dir=reports_dir)
+        
+        # Run Analysis (Corrected Async Call)
+        audit_result = asyncio.run(agent.analyze_project(str(target_path)))
+        report_path = audit_result.report_path
+        
+        print(f"   ✅ Score: {audit_result.score}/100")
+        print(f"   ✅ Report Generated: {report_path}")
+        
+        # Step 3: Auto-Fix
+        print("\n🛠️  Phase 3: Auto-Remediation...")
         orchestrator = AutoFixOrchestrator(project_path=project_root)
         
-        # Run Analysis
-        print("🔍 Scanning codebase for dead code...")
+        # Scan specifically for dead code
         report = orchestrator.deadcode_tool.analyze(Path(project_root))
-        
-        # Extract and classify fixes
+        # Corrected method: _classify_fixes
         candidates = orchestrator._classify_fixes(report)
         
-        if not candidates:
-            print("✅ Bot: No issues found. Codebase is clean!")
-            print(f"{'='*70}\n")
-            return
-
-        # Display summary
-        low_risk = sum(1 for c in candidates if c['risk'] == 'LOW')
-        high_risk = sum(1 for c in candidates if c['risk'] == 'HIGH')
-        
-        print(f"\n📊 Analysis Complete:")
-        print(f"   [LOW RISK]  Unused Imports: {low_risk} (will auto-fix)")
-        print(f"   [HIGH RISK] Functions/Variables: {high_risk} (requires human review)")
-        print()
-
         fixes_applied = 0
-        files_modified = set()
-        
-        # Apply Safe Fixes Only
-        print(f"🛡️  Safety Filter: Applying [LOW RISK] fixes only\n")
-        
-        for item in candidates:
-            if item['risk'] == 'LOW':
-                print(f"   🛠️  Auto-fixing unused import '{item['name']}' in {item['file']}:{item['line']}")
-                
-                # Apply fix
-                file_path = Path(project_root) / item['file']
-                res = orchestrator.editor_tool.delete_line(
-                    file_path=str(file_path),
-                    line_number=item['line']
-                )
-                
-                if res['status'] == 'success':
-                    fixes_applied += 1
-                    files_modified.add(item['file'])
-                    print(f"      ✓ Fixed")
+        if candidates:
+            print(f"   🛡️  Safety Filter: [LOW RISK] fixes only.")
+            for item in candidates:
+                if item['risk'] == 'LOW':
+                    print(f"      🔧 Fixing {item['type']} in {item['file']}...")
+                    res = orchestrator.editor_tool.delete_line(
+                        file_path=str(target_path / item['file']), 
+                        line_number=item['line']
+                    )
+                    if res['status'] == 'success':
+                        fixes_applied += 1
+                        print("         ✓ Fixed")
+                    else:
+                        print(f"         ✗ Failed: {res.get('error')}")
                 else:
-                    print(f"      ✗ Failed: {res.get('error', 'Unknown error')}")
-            else:
-                print(f"   ⏭️  Skipping [HIGH RISK] '{item['name']}' in {item['file']} (human review required)")
-
-        # Summary
-        print(f"\n{'='*70}")
-        print(f"📊 BOT RESULTS")
-        print(f"{'='*70}")
-        print(f"Fixes Applied: {fixes_applied}")
-        print(f"Files Modified: {len(files_modified)}")
-        for file in sorted(files_modified):
-            print(f"  • {file}")
-        print(f"High Risk Issues: {high_risk} (skipped for safety)")
-        print()
-
-        # Git Commit
-        if fixes_applied > 0:
-            print(f"✨ Bot: Successfully fixed {fixes_applied} issue(s)")
-            _commit_changes(fixes_applied)
+                    print(f"      ⏭️  Skipping [HIGH RISK] in {item['file']}...")
         else:
-            print("✅ Bot: No safe fixes required")
+            print("   ✅ No dead code found.")
         
-        print(f"{'='*70}\n")
+        # Step 4: Create PR (if changes exist)
+        has_report = report_path and os.path.exists(report_path)
+        if fixes_applied > 0 or has_report:
+            _create_pr_branch(fixes_applied)
+        else:
+            print("\n✅ No changes needed. Project is pristine.")
 
     except Exception as e:
-        print(f"❌ Bot Crash: {e}")
+        print(f"\n❌ CRITICAL FAILURE: {e}")
         import traceback
         traceback.print_exc()
 
 
-def _commit_changes(count):
-    """Commits changes with bot signature."""
+def _create_pr_branch(fix_count):
+    """Creates a new branch, commits, and pushes."""
+    print("\n🚀 Phase 4: Preparing Pull Request...")
+    
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M")
+    branch_name = f"fix/mcp-audit-{timestamp}"
+    commit_msg = f"chore: MCP Bot Audit & Fixes ({fix_count} issues fixed)"
+
     try:
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        msg = f"style: Auto-fix {count} dead code issue{'s' if count > 1 else ''} (MCP Bot {timestamp})"
+        # 1. Create new branch
+        subprocess.run(["git", "checkout", "-b", branch_name], check=True, capture_output=True)
+        print(f"   🌱 Created branch: {branch_name}")
         
-        print(f"🚀 Git: Committing changes...")
+        # 2. Add files
+        subprocess.run(["git", "add", "."], check=True)
         
-        # Configure local git user for the bot
-        subprocess.run(
-            ["git", "config", "user.name", "MCP Bot"], 
-            check=True,
-            capture_output=True
-        )
-        subprocess.run(
-            ["git", "config", "user.email", "bot@mcp.local"], 
-            check=True,
-            capture_output=True
-        )
+        # 3. Commit
+        subprocess.run(["git", "config", "user.name", "MCP Bot"], check=True)
+        subprocess.run(["git", "config", "user.email", "bot@mcp.local"], check=True)
+        subprocess.run(["git", "commit", "-m", commit_msg], check=True, capture_output=True)
+        print(f"   💾 Committed changes")
         
-        # Stage and commit
-        subprocess.run(["git", "add", "."], check=True, capture_output=True)
-        result = subprocess.run(
-            ["git", "commit", "-m", msg], 
-            check=True,
-            capture_output=True,
-            text=True
-        )
-        
-        print(f"✅ Git: Committed -> '{msg}'")
-        print(f"    Run 'git log -1' to view details")
-        
+        # 4. Push (Mock)
+        # Note: Actual push requires credentials.
+        print(f"\n✨ SUCCESS! Branch is ready.")
+        print(f"   👉 To Create PR: git push -u origin {branch_name}")
+        print(f"   👉 Changes: {commit_msg}")
+
     except subprocess.CalledProcessError as e:
-        print(f"⚠️  Git Error: {e}")
+        print(f"   ⚠️  Git operation failed: {e}")
         if e.stderr:
-            print(f"    stderr: {e.stderr}")
+            print(f"   Stderr: {e.stderr}")
 
 
 if __name__ == "__main__":
-    run_autonomous_fix()
+    run_full_automation_cycle()
