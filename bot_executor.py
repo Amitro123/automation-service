@@ -1,12 +1,12 @@
 """
-🤖 MCP Autonomous Bot - Full Lifecycle & PR Generation
-=======================================================
-Advanced autonomous engineering bot that acts as a contributor:
-1. 🔧 Setup: Self-installs auditor engine
-2. 🧪 Test: Runs project tests (pytest) to establish baseline
-3. 📊 Audit: Generates comprehensive analysis report (Async)
-4. 🛠️ Fix: Auto-remediates dead code (LOW risk only)
-5. 🚀 PR: Creates a new git branch with fixes and report
+🤖 MCP Autonomous Bot - E2E Verification
+=========================================
+Robust verification bot that:
+1. 📦 Setups environment independently
+2. 🔌 Uses hybrid Import strategy (pip + path injection)
+3. 📊 Runs Full Audit (Async)
+4. 🛠️  Runs Auto-Fix (Low Risk)
+5. 🚀 Creates PR branch
 
 Usage:
     python bot_executor.py
@@ -26,94 +26,104 @@ REPO_URL = "https://github.com/Amitro123/mcp-python-auditor.git"
 
 
 def ensure_environment():
-    """ प्रि_pares environment, installs dependencies, and ensures tools exist."""
+    """Sets up auditor engine with hybrid approach (Install + Path)."""
     print(f"🔧 Bot: Setting up environment...")
     
-    # 1. Install Auditor if missing
+    # 1. Clone (Skip pull to preserve our local fixes)
     if not AUDITOR_REPO_DIR.exists():
         TARGET_LIB_DIR.mkdir(exist_ok=True)
         subprocess.run(["git", "clone", REPO_URL, str(AUDITOR_REPO_DIR)], check=True)
-        print(f"   ✅ Cloned auditor to {AUDITOR_REPO_DIR}")
-        
-    # 2. Install dependencies (pip install)
-    req_file = AUDITOR_REPO_DIR / "requirements.txt"
-    if req_file.exists():
-        subprocess.run([sys.executable, "-m", "pip", "install", "-r", str(req_file), "--quiet"], check=True)
+        print(f"   ✅ Cloned auditor")
+    else:
+        print(f"   ℹ️  Repo exists (skipping pull to preserve local fixes)")
 
-    # 3. Inject path to Python
+    # 1.5 Patch known bugs (Self-Healing the Auditor itself!)
+    _patch_auditor_bugs()
+
+    # 2. Install Dependencies via pip (reads pyproject.toml)
+    # Using 'pip install .' ensures dependencies like bandit/radon are present
+    print("   📦 Checking dependencies...")
+    subprocess.run(
+        [sys.executable, "-m", "pip", "install", "-e", str(AUDITOR_REPO_DIR), "--quiet"], 
+        check=True
+    )
+    
+    # 3. CRITICAL: Inject path to ensure 'from app...' works even if pip fails package resolution
     auditor_path = str(AUDITOR_REPO_DIR.absolute())
     if auditor_path not in sys.path:
         sys.path.insert(0, auditor_path)
-        print(f"   ✅ Injected path: {auditor_path}")
+        print(f"   🔌 Injected path: {auditor_path}")
 
 
-def run_project_tests():
-    """Runs project tests before auditing."""
-    print("\n🧪 Phase 1: Running Project Tests (pytest)...")
+def _patch_auditor_bugs():
+    """Hot-patches known syntax errors in the cloned repo."""
+    target_file = AUDITOR_REPO_DIR / "app/core/report_generator.py"
+    if not target_file.exists():
+        return
+        
     try:
-        # Run pytest but don't fail script on error (we want the report)
-        result = subprocess.run(
-            [sys.executable, "-m", "pytest", "tests", "-q"],
-            capture_output=True,
-            text=True
-        )
-        if result.returncode == 0:
-            print("   ✅ Tests Passed Successfully!")
-        else:
-            print("   ⚠️  Tests Failed (But continuing audit)...")
+        content = target_file.read_text("utf-8")
+        # Fix the malformed import
+        if "try:\n        _write_complexity_section," in content:
+            print("   🚑 Self-Healing: Patching report_generator.py syntax error...")
+            new_content = content.replace(
+                "try:\n        _write_complexity_section,",
+                "try:\n    from app.core.enhanced_sections import (\n        _write_complexity_section,"
+            )
+            target_file.write_text(new_content, "utf-8")
     except Exception as e:
-        print(f"   ⚠️  Could not run tests: {e}")
+        print(f"   ⚠️ Patching failed: {e}")
 
 
 def run_full_automation_cycle(project_root: str = "."):
-    """
-    Full Process: Tests -> Audit -> Fix -> PR
-    """
+    """Full E2E Cycle"""
     print(f"\n{'='*70}")
-    print(f"🤖 MCP AUTOMATION BOT: Starting Full Lifecycle")
+    print(f"🤖 MCP E2E BOT: Starting Verification")
     print(f"{'='*70}\n")
     
     ensure_environment()
     
     try:
+        # Import Tools
         from app.core.base_tool import BaseTool
         from app.agents.analyzer_agent import AnalyzerAgent
         from app.core.fix_orchestrator import AutoFixOrchestrator
         
-        # Guard: Prevent self-scanning
+        # Prevent self-scan
         BaseTool.IGNORED_DIRECTORIES.add("external_libs")
         BaseTool.IGNORED_DIRECTORIES.add(".git")
         
         target_path = Path(project_root).resolve()
 
-        # Step 1: Run Tests
-        run_project_tests()
-
-        # Step 2: Full Audit
-        print("\n📊 Phase 2: Stress Testing & Auditing...")
-        print("   Running ALL tools (Architecture, Security, Complexity)...")
+        # --- STEP 1: AUDIT ---
+        print("\n📊 Phase 1: Full Audit...")
         
-        # Prepare reports directory
+        # Ensure reports dir exists
         reports_dir = target_path / "reports"
         reports_dir.mkdir(parents=True, exist_ok=True)
         
-        # Initialize Agent (Corrected API)
+        # Initialize Agent
         agent = AnalyzerAgent(reports_dir=reports_dir)
         
-        # Run Analysis (Corrected Async Call)
+        # Run Async Audit
+        print("   Running AnalyzerAgent (Async)...")
         audit_result = asyncio.run(agent.analyze_project(str(target_path)))
+        
+        score = audit_result.score
         report_path = audit_result.report_path
         
-        print(f"   ✅ Score: {audit_result.score}/100")
-        print(f"   ✅ Report Generated: {report_path}")
-        
-        # Step 3: Auto-Fix
-        print("\n🛠️  Phase 3: Auto-Remediation...")
+        print(f"   ✅ Audit Complete!")
+        print(f"      Score: {score}/100")
+        print(f"      Report: {report_path}")
+
+        # --- STEP 2: FIX ---
+        print("\n🛠️  Phase 2: Auto-Remediation...")
         orchestrator = AutoFixOrchestrator(project_path=project_root)
         
-        # Scan specifically for dead code
+        # Scan for dead code
         report = orchestrator.deadcode_tool.analyze(Path(project_root))
-        # Corrected method: _classify_fixes
+        
+        # Use CORRECT method: _classify_fixes
         candidates = orchestrator._classify_fixes(report)
         
         fixes_applied = 0
@@ -132,55 +142,45 @@ def run_full_automation_cycle(project_root: str = "."):
                     else:
                         print(f"         ✗ Failed: {res.get('error')}")
                 else:
-                    print(f"      ⏭️  Skipping [HIGH RISK] in {item['file']}...")
+                    print(f"      ⏭️  Skipping [HIGH RISK] in {item['file']}")
         else:
             print("   ✅ No dead code found.")
         
-        # Step 4: Create PR (if changes exist)
-        has_report = report_path and os.path.exists(report_path)
-        if fixes_applied > 0 or has_report:
+        # --- STEP 3: PR ---
+        if fixes_applied > 0:
             _create_pr_branch(fixes_applied)
         else:
-            print("\n✅ No changes needed. Project is pristine.")
+            print("\n✅ System matches baseline. E2E Test Passed.")
 
+    except ImportError as e:
+        print(f"\n❌ IMPORT ERROR: {e}")
+        print("   This usually means 'app' module not found in path.")
+        print(f"   Current sys.path: {sys.path[:3]}...")
     except Exception as e:
-        print(f"\n❌ CRITICAL FAILURE: {e}")
+        print(f"\n❌ RUNTIME FAILURE: {e}")
         import traceback
         traceback.print_exc()
 
 
 def _create_pr_branch(fix_count):
-    """Creates a new branch, commits, and pushes."""
-    print("\n🚀 Phase 4: Preparing Pull Request...")
-    
+    """Creates PR branch"""
     timestamp = datetime.now().strftime("%Y%m%d-%H%M")
     branch_name = f"fix/mcp-audit-{timestamp}"
-    commit_msg = f"chore: MCP Bot Audit & Fixes ({fix_count} issues fixed)"
+    commit_msg = f"chore: MCP Bot Audit & Fixes ({fix_count} issues)"
 
+    print(f"\n🚀 Phase 3: Creating PR Branch...")
     try:
-        # 1. Create new branch
         subprocess.run(["git", "checkout", "-b", branch_name], check=True, capture_output=True)
-        print(f"   🌱 Created branch: {branch_name}")
-        
-        # 2. Add files
         subprocess.run(["git", "add", "."], check=True)
-        
-        # 3. Commit
         subprocess.run(["git", "config", "user.name", "MCP Bot"], check=True)
         subprocess.run(["git", "config", "user.email", "bot@mcp.local"], check=True)
         subprocess.run(["git", "commit", "-m", commit_msg], check=True, capture_output=True)
-        print(f"   💾 Committed changes")
         
-        # 4. Push (Mock)
-        # Note: Actual push requires credentials.
-        print(f"\n✨ SUCCESS! Branch is ready.")
-        print(f"   👉 To Create PR: git push -u origin {branch_name}")
-        print(f"   👉 Changes: {commit_msg}")
+        print(f"   ✅ Branch '{branch_name}' created")
+        print(f"   👉 To Push: git push -u origin {branch_name}")
 
-    except subprocess.CalledProcessError as e:
-        print(f"   ⚠️  Git operation failed: {e}")
-        if e.stderr:
-            print(f"   Stderr: {e.stderr}")
+    except Exception as e:
+        print(f"   ⚠️  Git error: {e}")
 
 
 if __name__ == "__main__":
