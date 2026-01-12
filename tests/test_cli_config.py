@@ -1,7 +1,6 @@
 import os
 import json
 import pytest
-from unittest.mock import patch, mock_open
 from automation_agent.config import Config
 from typer.testing import CliRunner
 from automation_agent.cli import app, CONFIG_FILE

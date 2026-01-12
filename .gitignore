@@ -53,3 +53,7 @@ session_memory.json
 
 # DeepEval
 .deepeval/
+
+# External Libraries (MCP Auditor Integration)
+external_libs/
+*.bak

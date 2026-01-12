@@ -35,3 +35,12 @@ coverage>=7.3.0
 # Security
 bandit>=1.7.0
 defusedxml>=0.7.1
+detect-secrets>=1.5.0
+
+# MCP Python Auditor (Brain Integration)
+# Install from GitHub: pip install git+https://github.com/Amitro123/mcp-python-auditor.git
+astor>=0.8.1
+rapidfuzz>=3.10.0
+python-multipart>=0.0.12
+aiofiles>=24.1.0
+# mcp-python-auditor @ git+https://github.com/Amitro123/mcp-python-auditor.git

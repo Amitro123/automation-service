@@ -4,9 +4,7 @@ from src.automation_agent.api_server import CoverageMetrics
 
 def test_parse_coverage_real_data():
     """Test parsing real coverage.xml data"""
-    from src.automation_agent import api_server
     import xml.etree.ElementTree as ET
-    from io import StringIO
     
     # Mock coverage.xml content
     mock_xml = """<?xml version="1.0" ?>
@@ -51,7 +49,6 @@ def test_parse_coverage_real_data():
 
 def test_parse_coverage_fallback():
     """Test fallback when coverage.xml is missing"""
-    from src.automation_agent import api_server
     
     with patch("os.path.exists", return_value=False):
         def _parse_coverage(file_path: str = "coverage.xml"):
