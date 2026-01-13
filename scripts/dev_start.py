@@ -16,7 +16,12 @@ import signal
 import time
 import threading
 import re
+import shutil
+import logging
 from pathlib import Path
+
+# Configure logging for debug output
+logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
 # Colors for terminal output
 class Colors:
@@ -43,8 +48,9 @@ def stream_output(process, prefix: str, color: str):
         for line in iter(process.stdout.readline, ''):
             if line:
                 print_colored(prefix, line.rstrip(), color)
-    except Exception:
-        pass
+    except Exception as e:
+        # Log stream termination for debugging (process may have exited normally)
+        logging.debug(f"Output stream for {prefix} ended: {e}")
 
 
 def find_ngrok_url(process, timeout: int = 15) -> str | None:
@@ -65,8 +71,9 @@ def find_ngrok_url(process, timeout: int = 15) -> str | None:
                         return tunnel.get("public_url")
                     elif tunnel.get("public_url"):
                         return tunnel.get("public_url")
-        except Exception:
-            pass
+        except Exception as e:
+            # Expected during ngrok startup - polling until API is ready
+            logging.debug(f"Waiting for ngrok API: {e}")
         
         time.sleep(1)
     
@@ -95,15 +102,30 @@ def get_ngrok_command() -> str | None:
     return None
 
 
+def get_npm_path() -> str | None:
+    """
+    Safely resolve the full path to npm executable.
+    
+    Security Note: Using shutil.which() instead of relying on PATH lookup
+    at subprocess execution time. This is safer as it resolves the path
+    once at startup in a controlled manner.
+    """
+    return shutil.which("npm")
+
+
 def check_npm_installed() -> bool:
-    """Check if npm is installed."""
+    """Check if npm is installed and get its path."""
+    npm_path = get_npm_path()
+    if not npm_path:
+        return False
+    
     try:
         result = subprocess.run(
-            ["npm", "--version"],
+            [npm_path, "--version"],
             capture_output=True,
             text=True,
-            timeout=5,
-            shell=True  # Required for Windows
+            timeout=5
+            # shell=False (default) - safer, using resolved path
         )
         return result.returncode == 0
     except (FileNotFoundError, subprocess.TimeoutExpired):
@@ -138,11 +160,13 @@ def main():
             try:
                 proc.terminate()
                 proc.wait(timeout=5)
-            except Exception:
+            except Exception as e:
+                logging.debug(f"Graceful termination failed: {e}, forcing kill...")
                 try:
                     proc.kill()
-                except Exception:
-                    pass
+                except Exception as kill_error:
+                    # Process may have already exited - log for debugging
+                    logging.debug(f"Kill failed (process may have exited): {kill_error}")
         print("All services stopped.")
     
     # Handle Ctrl+C
@@ -222,14 +246,21 @@ def main():
         # 3. Start Frontend
         print_colored("FRONTEND", "Starting dashboard on http://localhost:5173...", Colors.FRONTEND)
         
+        # Get npm path securely
+        npm_path = get_npm_path()
+        if not npm_path:
+            print_colored("ERROR", "npm executable not found in PATH!", Colors.ERROR)
+            cleanup()
+            sys.exit(1)
+        
         # Check if node_modules exists
         if not (dashboard_dir / "node_modules").exists():
             print_colored("FRONTEND", "Installing dependencies (npm install)...", Colors.FRONTEND)
             npm_install = subprocess.run(
-                ["npm", "install"],
+                [npm_path, "install"],
                 cwd=dashboard_dir,
-                shell=True,  # Required for Windows
                 capture_output=True
+                # shell=False (default) - using resolved npm_path for security
             )
             if npm_install.returncode != 0:
                 print_colored("ERROR", "npm install failed!", Colors.ERROR)
@@ -238,13 +269,13 @@ def main():
                 sys.exit(1)
         
         frontend_proc = subprocess.Popen(
-            ["npm", "run", "dev"],
+            [npm_path, "run", "dev"],
             cwd=dashboard_dir,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
-            bufsize=1,
-            shell=True  # Required for Windows
+            bufsize=1
+            # shell=False (default) - using resolved npm_path for security
         )
         processes.append(frontend_proc)
         
